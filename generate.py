@@ -1,194 +1,158 @@
 """
 generate.py — читает данные из Google Sheets и генерирует index.html
-Требует: SHEET_ID в переменных окружения (GitHub Secrets)
-Таблица должна быть публичной (доступ "Просматривать" для всех с ссылкой)
+Таблица должна быть публичной (доступ "Переглядач" для всех з посиланням)
 """
-import os, json, requests, re
+import os, json, requests, io, csv
 from datetime import datetime
 
 SHEET_ID = os.environ.get("SHEET_ID", "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
 
-def fetch_sheet(sheet_name):
-    """Читает лист через публичный CSV экспорт Google Sheets"""
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={requests.utils.quote(sheet_name)}"
+def fetch_csv(sheet_name):
+    url = (
+        f"https://docs.google.com/spreadsheets/d/{SHEET_ID}"
+        f"/gviz/tq?tqx=out:csv&sheet={requests.utils.quote(sheet_name)}"
+    )
+    print(f"Fetching sheet: {sheet_name}")
     r = requests.get(url, timeout=30)
     r.raise_for_status()
-    import csv, io
     reader = csv.reader(io.StringIO(r.text))
     return list(reader)
 
-def safe_float(v, default=None):
+def f(v, default=None):
     try:
-        return float(str(v).replace(',', '.').replace(' ', '').replace('\xa0', ''))
+        s = str(v).strip().replace(',', '.').replace(' ', '').replace('\xa0', '').replace('%','')
+        return float(s) if s else default
     except:
         return default
 
-def parse_data():
-    """Парсит данные из Google Sheets"""
-    print("Fetching data from Google Sheets...")
-    
-    try:
-        rows = fetch_sheet("_Drukar_Product")
-    except Exception as e:
-        print(f"Error fetching sheet: {e}")
-        return None
+def row_vals(row, start=2, count=5):
+    if row is None:
+        return [None] * count
+    result = []
+    data_cells = [c for c in row[start:] if str(c).strip() not in ('', 'None')]
+    for i in range(count):
+        result.append(f(data_cells[i]) if i < len(data_cells) else None)
+    return result
 
-    # Ищем строки с данными по месяцам
-    # Структура: row[0]=категория, row[1]=подкатегория, row[2..]=значения по месяцам
-    months = []
-    petg_prod = []
-    pla_prod = []
-    petg_nf = []
-    pla_nf = []
-    petg_waste = []
-    pla_waste = []
-    total_costs = []
-    income = []
-    profit = []
-    cost_petg_kg = []
-    cost_pla_kg = []
+def get_row(rows, keyword):
+    kw = keyword.lower().strip()
+    for row in rows:
+        for cell in row:
+            if kw in str(cell).lower():
+                return row
+    return None
 
-    header_row = None
+def pct(v):
+    if v is None: return None
+    return round(v * 100, 2) if abs(v) <= 1.5 else round(v, 2)
+
+def parse():
+    rows = fetch_csv("_Drukar_Product")
+
+    def vals(keyword):
+        return row_vals(get_row(rows, keyword))
+
+    petg_prod   = vals('PETG, Продукции, кг')
+    pla_prod    = vals('PLA, Продукции, кг')
+    petg_nf_raw = vals('PETG, НФ, %')
+    pla_nf_raw  = vals('PLA, НФ, %')
+    petg_w_raw  = vals('PETG, Брак, %')
+    pla_w_raw   = vals('PLA, Брак, %')
+    petg_nf_kg  = vals('PETG, НФ, кг')
+    pla_nf_kg   = vals('PLA, НФ, кг')
+    petg_w_kg   = vals('PETG, Брак, кг')
+    pla_w_kg    = vals('PLA, Брак, кг')
+    expenses    = vals('Разом (всі витрати)')
+    income      = vals('ДОХОД, грн')
+    profit      = vals('Операційний')
+
+    cpkg_petg = [None]*5
+    cpkg_pla  = [None]*5
     for i, row in enumerate(rows):
-        # Ищем строку с месяцами (заголовок)
-        row_str = ' '.join(str(c) for c in row)
-        if 'ноябрь' in row_str.lower() or 'листопад' in row_str.lower() or '2025' in row_str:
-            header_row = i
-            # Извлекаем названия месяцев из заголовка
-            for cell in row:
-                cell = str(cell).strip()
-                if cell and ('2025' in cell or '2026' in cell or 'ноябрь' in cell.lower() or 'декабрь' in cell.lower()):
-                    months.append(cell)
+        if 'себестоимость 1 кг' in ' '.join(str(c) for c in row).lower():
+            if i+1 < len(rows): cpkg_petg = row_vals(rows[i+1])
+            if i+2 < len(rows): cpkg_pla  = row_vals(rows[i+2])
             break
 
-    if not months:
-        print("Could not find month headers, using defaults")
-        months = ['Листопад 2025', 'Грудень 2025', 'Січень 2026', 'Лютий 2026', 'Березень 2026']
+    nf_pct = []
+    waste_pct = []
+    for i in range(5):
+        pp = petg_prod[i] or 0; lp = pla_prod[i] or 0
+        total = pp + lp
+        nf_sum = (petg_nf_kg[i] or 0) + (pla_nf_kg[i] or 0)
+        w_sum  = (petg_w_kg[i] or 0)  + (pla_w_kg[i] or 0)
+        nf_pct.append(round(nf_sum/total*100, 2) if total else None)
+        waste_pct.append(round(w_sum/total*100, 2) if total else None)
 
-    def get_row_values(rows, keyword):
-        """Находит строку по ключевому слову и возвращает числовые значения"""
-        for row in rows:
-            row_flat = ' '.join(str(c) for c in row).lower()
-            if keyword.lower() in row_flat:
-                vals = []
-                for cell in row[2:]:  # пропускаем первые 2 столбца с метками
-                    vals.append(safe_float(cell))
-                return vals[:5]  # берём до 5 месяцев
-        return [None] * 5
-
-    # Извлекаем данные
-    petg_prod = get_row_values(rows, 'PETG, Продукции, кг')
-    pla_prod = get_row_values(rows, 'PLA, Продукции, кг')
-    petg_nf_pct = get_row_values(rows, 'PETG, НФ, %')
-    pla_nf_pct = get_row_values(rows, 'PLA, НФ, %')
-    petg_waste_pct = get_row_values(rows, 'PETG, Брак, %')
-    pla_waste_pct = get_row_values(rows, 'PLA, Брак, %')
-
-    # Пробуем получить финансовые данные
-    try:
-        rows_seb = fetch_sheet("_AllData_Sebest")
-        total_costs_row = get_row_values(rows_seb, 'Разом (всі витрати)')
-        income_row = get_row_values(rows_seb, 'ДОХОД')
-        profit_row = get_row_values(rows_seb, 'Операційний Прибуток')
-        cost_petg_row = get_row_values(rows_seb, 'PETG')
-        cost_pla_row = get_row_values(rows_seb, 'PLA')
-    except Exception as e:
-        print(f"Could not fetch sebest sheet: {e}")
-        total_costs_row = [None]*5
-        income_row = [None]*5
-        profit_row = [None]*5
-        cost_petg_row = [None]*5
-        cost_pla_row = [None]*5
-
-    def pct_to_display(v):
-        """Конвертирует долю (0.05) в проценты (5.0) если нужно"""
-        if v is None: return None
-        if abs(v) < 1: return round(v * 100, 2)
-        return round(v, 2)
+    total_prod = [
+        round((petg_prod[i] or 0) + (pla_prod[i] or 0), 1)
+        if petg_prod[i] is not None or pla_prod[i] is not None else None
+        for i in range(5)
+    ]
 
     data = {
-        "months_short": months,
-        "updated": datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
-        "petg_prod": petg_prod,
-        "pla_prod": pla_prod,
-        "total_prod": [
-            (p + l) if p is not None and l is not None else None
-            for p, l in zip(petg_prod, pla_prod)
-        ],
-        "nf_pct": [pct_to_display(v) for v in [
-            # Общий НФ как среднее PETG+PLA (примерно)
-            (safe_float(petg_nf_pct[i]) if i < len(petg_nf_pct) else None)
-            for i in range(5)
-        ]],
-        "petg_nf": [pct_to_display(v) for v in petg_nf_pct],
-        "pla_nf": [pct_to_display(v) for v in pla_nf_pct],
-        "petg_waste": [pct_to_display(v) for v in petg_waste_pct],
-        "pla_waste": [pct_to_display(v) for v in pla_waste_pct],
-        "income": income_row,
-        "expenses": total_costs_row,
-        "profit": profit_row,
-        "cost_petg_kg": cost_petg_row,
-        "cost_pla_kg": cost_pla_row,
+        "updated":      datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
+        "petg_prod":    [round(v,1) if v else None for v in petg_prod],
+        "pla_prod":     [round(v,1) if v else None for v in pla_prod],
+        "total_prod":   total_prod,
+        "nf_pct":       nf_pct,
+        "waste_pct":    waste_pct,
+        "petg_nf":      [pct(v) for v in petg_nf_raw],
+        "pla_nf":       [pct(v) for v in pla_nf_raw],
+        "petg_waste":   [pct(v) for v in petg_w_raw],
+        "pla_waste":    [pct(v) for v in pla_w_raw],
+        "income":       [round(v) if v else None for v in income],
+        "expenses":     [round(v) if v else None for v in expenses],
+        "profit":       [round(v) if v else None for v in profit],
+        "cost_petg_kg": [round(v,2) if v else None for v in cpkg_petg],
+        "cost_pla_kg":  [round(v,2) if v else None for v in cpkg_pla],
     }
 
-    print(f"Data parsed: {len(months)} months")
-    print(f"PETG prod: {petg_prod}")
-    print(f"PLA prod: {pla_prod}")
+    print("\n=== Parsed data ===")
+    for k, v in data.items():
+        if k != 'updated':
+            print(f"  {k}: {v}")
     return data
 
-
-def js_val(v):
-    """Конвертирует Python значение в JS"""
+def jv(v):
     if v is None: return 'null'
-    if isinstance(v, list):
-        return '[' + ','.join(js_val(x) for x in v) + ']'
-    if isinstance(v, float): return str(round(v, 2))
-    if isinstance(v, int): return str(v)
-    return json.dumps(v, ensure_ascii=False)
+    if isinstance(v, list): return '[' + ','.join(jv(x) for x in v) + ']'
+    return str(v)
 
-
-def generate_html(data):
-    """Генерирует полный HTML дашборда с подставленными данными"""
-    
-    # Читаем шаблон
+def generate(data):
     with open('template.html', 'r', encoding='utf-8') as f:
-        template = f.read()
-
-    # Подставляем данные
-    replacements = {
-        '{{UPDATED}}': data.get('updated', ''),
-        '{{PETG_PROD}}': js_val(data['petg_prod']),
-        '{{PLA_PROD}}': js_val(data['pla_prod']),
-        '{{TOTAL_PROD}}': js_val(data['total_prod']),
-        '{{NF_PCT}}': js_val(data['nf_pct']),
-        '{{PETG_NF}}': js_val(data['petg_nf']),
-        '{{PLA_NF}}': js_val(data['pla_nf']),
-        '{{PETG_WASTE}}': js_val(data['petg_waste']),
-        '{{PLA_WASTE}}': js_val(data['pla_waste']),
-        '{{INCOME}}': js_val(data['income']),
-        '{{EXPENSES}}': js_val(data['expenses']),
-        '{{PROFIT}}': js_val(data['profit']),
-        '{{COST_PETG_KG}}': js_val(data['cost_petg_kg']),
-        '{{COST_PLA_KG}}': js_val(data['cost_pla_kg']),
+        html = f.read()
+    subs = {
+        '{{UPDATED}}':      data['updated'],
+        '{{PETG_PROD}}':    jv(data['petg_prod']),
+        '{{PLA_PROD}}':     jv(data['pla_prod']),
+        '{{TOTAL_PROD}}':   jv(data['total_prod']),
+        '{{NF_PCT}}':       jv(data['nf_pct']),
+        '{{PETG_NF}}':      jv(data['petg_nf']),
+        '{{PLA_NF}}':       jv(data['pla_nf']),
+        '{{PETG_WASTE}}':   jv(data['petg_waste']),
+        '{{PLA_WASTE}}':    jv(data['pla_waste']),
+        '{{INCOME}}':       jv(data['income']),
+        '{{EXPENSES}}':     jv(data['expenses']),
+        '{{PROFIT}}':       jv(data['profit']),
+        '{{COST_PETG_KG}}': jv(data['cost_petg_kg']),
+        '{{COST_PLA_KG}}':  jv(data['cost_pla_kg']),
     }
-
-    html = template
-    for k, v in replacements.items():
+    for k, v in subs.items():
         html = html.replace(k, v)
-
+    missing = [k for k in subs if k in html]
+    if missing:
+        print(f"WARNING: unreplaced placeholders: {missing}")
     return html
 
-
 if __name__ == '__main__':
-    data = parse_data()
-    if data is None:
-        print("ERROR: Could not parse data. Keeping existing index.html")
-        exit(0)
-    
-    html = generate_html(data)
-    
+    try:
+        data = parse()
+    except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback; traceback.print_exc()
+        exit(1)
+    html = generate(data)
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
-    
-    print(f"index.html generated successfully ({len(html)} chars)")
-    print(f"Updated: {data['updated']}")
+    print(f"\nindex.html generated ({len(html):,} chars), updated: {data['updated']}")
