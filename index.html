@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRUKAR — Виробничий Дашборд</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+  :root{--bg:#0d0f14;--surface:#161921;--surface2:#1e2230;--border:#252a3a;--accent:#e8ff47;--accent2:#47b4ff;--accent3:#ff6b47;--text:#e8ecf4;--muted:#6b7494;--good:#4fffb0;--warn:#ffb347;--bad:#ff5555}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:4px;color:var(--accent);line-height:1}
+  .logo span{color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace;display:block;letter-spacing:2px;margin-top:2px}
+  .header-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:right;line-height:1.8}
+  .tabs{display:flex;gap:2px;background:var(--bg);padding:14px 32px 0;border-bottom:1px solid var(--border)}
+  .tab{padding:9px 18px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;border:1px solid transparent;border-bottom:none;background:transparent;text-transform:uppercase;transition:all .2s;border-radius:4px 4px 0 0}
+  .tab:hover{color:var(--text);border-color:var(--border)}
+  .tab.active{color:var(--accent);border-color:var(--border);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px}
+  .main{padding:24px 32px;max-width:1700px;margin:0 auto}
+  .tab-content{display:none}.tab-content.active{display:block}
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s}
+  .kpi-card:hover{border-color:var(--accent2)}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent-bar,var(--accent))}
+  .kpi-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+  .kpi-value{font-family:'Bebas Neue',sans-serif;font-size:34px;line-height:1;color:var(--text);letter-spacing:1px}
+  .kpi-unit{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px}
+  .kpi-delta{font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:5px}
+  .delta-up{color:var(--good)}.delta-down{color:var(--bad)}.delta-warn{color:var(--warn)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+  .grid-31{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:0}
+  .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+  .card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .card-subtitle{font-size:13px;color:var(--text);margin-top:3px;font-weight:600}
+  .cw{position:relative;height:240px}.cw-sm{position:relative;height:190px}.cw-lg{position:relative;height:300px}
+  .badge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 7px;border-radius:3px;letter-spacing:1px;white-space:nowrap}
+  .badge-red{background:rgba(255,85,85,.15);color:var(--bad);border:1px solid rgba(255,85,85,.3)}
+  .badge-green{background:rgba(79,255,176,.1);color:var(--good);border:1px solid rgba(79,255,176,.25)}
+  .badge-yellow{background:rgba(232,255,71,.1);color:var(--accent);border:1px solid rgba(232,255,71,.25)}
+  .badge-blue{background:rgba(71,180,255,.1);color:var(--accent2);border:1px solid rgba(71,180,255,.25)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  td{padding:8px 10px;border-bottom:1px solid rgba(37,42,58,.5);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--surface2)}
+  .section-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .section-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block}
+  .month-switcher{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .month-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .15s;letter-spacing:.5px}
+  .month-btn:hover{border-color:var(--accent2);color:var(--text)}
+  .month-btn.active{border-color:var(--accent);background:rgba(232,255,71,.08);color:var(--accent)}
+  #heatmapWrap{overflow-x:auto;padding-bottom:4px}
+  .hmap-grid{display:inline-grid;gap:2px;min-width:100%}
+  .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8px;height:26px;cursor:default}
+  .hmap-cell:hover{outline:1px solid rgba(255,255,255,.35)}
+  .hmap-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:4px 2px;display:flex;align-items:center;white-space:nowrap}
+  .legend-item{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+  .legend-dot{width:10px;height:10px;border-radius:2px}
+  @keyframes pulse-border{0%,100%{border-color:rgba(255,85,85,.3)}50%{border-color:rgba(255,85,85,.8)}}
+  .kpi-alert{animation:pulse-border 2s ease-in-out infinite}
+  @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.grid-3{grid-template-columns:1fr 1fr}}
+  @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr}.grid-2,.grid-3,.grid-31{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="logo">DRUKAR<span>ВИРОБНИЧИЙ ДАШБОРД</span></div></div>
+  <div class="header-meta">ДАНІ: ЛИС 2025 — БЕР 2026 (поточний)<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span></div>
+</header>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('overview',this)">Огляд</button>
+  <button class="tab" onclick="switchTab('production',this)">Виробництво</button>
+  <button class="tab" onclick="switchTab('quality',this)">Якість</button>
+  <button class="tab" onclick="switchTab('costs',this)">Фінанси</button>
+  <button class="tab" onclick="switchTab('operators',this)">Оператори</button>
+</div>
+<div class="main">
+
+<!-- OVERVIEW -->
+<div id="tab-overview" class="tab-content active">
+  <div class="kpi-row">
+    <div class="kpi-card" style="--accent-bar:var(--accent2)"><div class="kpi-label">Вир-во PETG · Лют '26</div><div class="kpi-value">25 481</div><div class="kpi-unit">кілограм</div><div class="kpi-delta delta-up">▲ +34.9% vs Січень</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--accent)"><div class="kpi-label">Вир-во PLA · Лют '26</div><div class="kpi-value">6 856</div><div class="kpi-unit">кілограм</div><div class="kpi-delta delta-up">▲ +28.9% vs Січень</div></div>
+    <div class="kpi-card kpi-alert" style="--accent-bar:var(--bad)"><div class="kpi-label">НФ — Аномалія Січ '26</div><div class="kpi-value" style="color:var(--bad)">30.0%</div><div class="kpi-unit">від обсягу виробництва</div><div class="kpi-delta delta-down">▼ норма &lt; 4%</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--good)"><div class="kpi-label">Прибуток · Лют '26</div><div class="kpi-value" style="color:var(--good)">1 994</div><div class="kpi-unit">тис. грн</div><div class="kpi-delta delta-up">▲ Листопад: -69 тис.</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--warn)"><div class="kpi-label">Собів-сть PETG · Лют</div><div class="kpi-value">245.9</div><div class="kpi-unit">грн/кг без ПДВ</div><div class="kpi-delta delta-up">▼ -9.6% vs Січ (272 ₴)</div></div>
+  </div>
+  <div class="grid-31">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Виробництво PETG + PLA по місяцях</div><div class="card-subtitle">кг · пунктир = лінія тренду</div></div><div style="display:flex;gap:6px"><span class="badge badge-blue">PETG</span><span class="badge badge-yellow">PLA</span></div></div>
+      <div class="cw"><canvas id="prodMonthChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Доход vs Витрати</div><div class="card-subtitle">грн по місяцях</div></div></div>
+      <div class="cw"><canvas id="finOverviewChart"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-3">
+    <div class="card"><div class="card-header"><div><div class="card-title">% НФ по місяцях</div><div class="card-subtitle">Напівфабрикат</div></div><span class="badge badge-red">СІЧ: 30%!</span></div><div class="cw-sm"><canvas id="nfOvChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">% Відходів по місяцях</div><div class="card-subtitle">Брак від обсягу</div></div></div><div class="cw-sm"><canvas id="wasteOvChart"></canvas></div></div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Структура витрат</div><div class="card-subtitle">Лютий 2026</div></div></div>
+      <div style="display:flex;align-items:center;height:190px">
+        <div style="width:150px;height:150px;flex-shrink:0;position:relative"><canvas id="costsDonut"></canvas></div>
+        <div style="padding-left:14px;display:flex;flex-direction:column;gap:6px">
+          <div class="legend-item"><div class="legend-dot" style="background:#47b4ff"></div>Сировина<span style="margin-left:auto;padding-left:10px;color:var(--text)">71.4%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e8ff47"></div>Електроенергія<span style="margin-left:auto;padding-left:10px;color:var(--text)">9.0%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff6b47"></div>Адмін/Загал<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.3%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#b47bff"></div>Податки<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.0%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4fffb0"></div>ЗП оператори<span style="margin-left:auto;padding-left:10px;color:var(--text)">3.4%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff9999"></div>Інше<span style="margin-left:auto;padding-left:10px;color:var(--text)">3.9%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTION -->
+<div id="tab-production" class="tab-content">
+  <div class="section-title">Динаміка виробництва</div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд-лінія</div></div></div><div class="cw"><canvas id="petgChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд-лінія</div></div></div><div class="cw"><canvas id="plaChart"></canvas></div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Завантаженість ліній</div><div class="card-subtitle">Загальний кг за весь період · ЛІНІЯ 7 відсутня в даних</div></div></div><div class="cw"><canvas id="lineChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div></div>
+      <div style="display:flex;align-items:center;justify-content:center;height:240px;gap:40px">
+        <div style="text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--accent);line-height:1">70 074</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div><div style="font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--text);margin-top:6px">53.4%</div></div>
+        <div style="width:1px;height:80px;background:var(--border)"></div>
+        <div style="text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--accent2);line-height:1">61 269</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div><div style="font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--text);margin-top:6px">46.6%</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div><div class="card-title">Теплова карта: Лінія × Тиждень</div><div class="card-subtitle">Реальний обсяг з _AllData_Product · кг/тиждень (понеділок–неділя)</div></div>
+      <div style="display:flex;gap:8px;align-items:center"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0 кг</span><div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#47b4ff)"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">~12 800 кг</span></div>
+    </div>
+    <div id="heatmapWrap"></div>
+    <div style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
+      ℹ ЛІНІЯ 5 — з'явилась у даних з 1 грудня 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — з 5 січня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з 2 березня 2026<br>
+      ℹ ЛІНІЯ 7 — відсутня у файлі: жодного запису за весь звітний період (можливо не запущена або дані не вносились)<br>
+      ℹ Порожні клітинки = лінія не працювала або немає записів за цей тиждень &nbsp;|&nbsp; Перший тиждень 27.10 — неповний
+    </div>
+  </div>
+</div>
+
+<!-- QUALITY -->
+<div id="tab-quality" class="tab-content">
+  <div class="section-title">Якість та відходи</div>
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-card" style="--accent-bar:var(--good)"><div class="kpi-label">Брак PETG · Лис 2025</div><div class="kpi-value" style="color:var(--good)">1.51%</div><div class="kpi-unit">від обсягу виробництва</div></div>
+    <div class="kpi-card kpi-alert" style="--accent-bar:var(--bad)"><div class="kpi-label">НФ PLA · Січ 2026 (!)</div><div class="kpi-value" style="color:var(--bad)">63.2%</div><div class="kpi-unit">КРИТИЧНИЙ рівень</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--good)"><div class="kpi-label">Брак PETG · Лют 2026</div><div class="kpi-value" style="color:var(--good)">1.25%</div><div class="kpi-unit">від обсягу виробництва</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--warn)"><div class="kpi-label">НФ PETG · Лют 2026</div><div class="kpi-value" style="color:var(--warn)">1.83%</div><div class="kpi-unit">від обсягу виробництва</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">% НФ по матеріалах</div><div class="card-subtitle">PETG та PLA по місяцях</div></div></div><div class="cw-lg"><canvas id="nfDetailChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">% Відходів по матеріалах</div><div class="card-subtitle">PETG та PLA по місяцях</div></div></div><div class="cw-lg"><canvas id="wasteDetailChart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div><div class="card-title">Зведена таблиця якості</div></div><span class="badge badge-red">! = критично (&gt;10%)</span></div>
+    <table><thead><tr><th>Місяць</th><th>PETG НФ%</th><th>PETG Брак%</th><th>PLA НФ%</th><th>PLA Брак%</th><th>Заг. НФ%</th><th>Заг. Відх.%</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>Листопад 2025</td><td style="color:var(--good)">5.30%</td><td style="color:var(--good)">1.51%</td><td style="color:var(--good)">0.28%</td><td style="color:var(--good)">0.15%</td><td style="color:var(--good)">2.82%</td><td style="color:var(--good)">0.81%</td><td><span class="badge badge-green">НОРМА</span></td></tr>
+      <tr><td>Грудень 2025</td><td>—</td><td>—</td><td>—</td><td>—</td><td style="color:var(--warn)">3.30%</td><td style="color:var(--warn)">3.57%</td><td><span class="badge badge-yellow">ДАНІ НЕПОВНІ</span></td></tr>
+      <tr><td>Січень 2026</td><td style="color:var(--warn)">19.71%</td><td style="color:var(--warn)">2.48%</td><td style="color:var(--bad)">63.18%</td><td style="color:var(--bad)">2.94%</td><td style="color:var(--bad)">29.97%</td><td style="color:var(--warn)">2.64%</td><td><span class="badge badge-red">КРИТИЧНО!</span></td></tr>
+      <tr><td>Лютий 2026</td><td style="color:var(--good)">1.83%</td><td style="color:var(--good)">1.25%</td><td style="color:var(--good)">1.85%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.84%</td><td style="color:var(--good)">1.27%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
+      <tr><td>Березень 2026*</td><td style="color:var(--warn)">2.09%</td><td style="color:var(--good)">1.05%</td><td style="color:var(--warn)">4.27%</td><td style="color:var(--warn)">2.15%</td><td style="color:var(--warn)">6.43%</td><td style="color:var(--warn)">3.20%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<!-- COSTS -->
+<div id="tab-costs" class="tab-content">
+  <div class="section-title">Фінансовий аналіз</div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div><div class="card-title">Структура собівартості · виберіть місяць</div><div class="card-subtitle">Статті витрат у грн та % від загальних витрат</div></div></div>
+    <div class="month-switcher" id="costMonthSwitcher">
+      <button class="month-btn active" onclick="setCostMonth('nov',this)">Листопад 2025</button>
+      <button class="month-btn" onclick="setCostMonth('jan',this)">Січень 2026</button>
+      <button class="month-btn" onclick="setCostMonth('feb',this)">Лютий 2026</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start">
+      <table><thead><tr><th>Стаття витрат</th><th style="text-align:right">Сума, грн</th><th>% від заг.</th></tr></thead><tbody id="costTableBody"></tbody></table>
+      <div style="height:280px;position:relative"><canvas id="costBreakChart"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Доход та Витрати</div><div class="card-subtitle">грн по місяцях · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="incExpChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Собівартість 1 кг</div><div class="card-subtitle">PETG та PLA, грн/кг · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="costPerKgChart"></canvas></div></div>
+  </div>
+</div>
+
+<!-- OPERATORS -->
+<div id="tab-operators" class="tab-content">
+  <div class="section-title">Аналіз операторів</div>
+  <div style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">ФІЛЬТР:</span>
+    <div class="month-switcher" style="margin-bottom:0" id="opMonthSwitcher">
+      <button class="month-btn active" onclick="setOpMonth('all',this)">Всі місяці</button>
+      <button class="month-btn" onclick="setOpMonth('2025-11',this)">Листопад 2025</button>
+      <button class="month-btn" onclick="setOpMonth('2025-12',this)">Грудень 2025</button>
+      <button class="month-btn" onclick="setOpMonth('2026-01',this)">Січень 2026</button>
+      <button class="month-btn" onclick="setOpMonth('2026-02',this)">Лютий 2026</button>
+      <button class="month-btn" onclick="setOpMonth('2026-03',this)">Березень 2026*</button>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Рейтинг операторів</div><div class="card-subtitle" id="opTableTitle">Всі місяці · 20 операторів</div></div></div>
+      <table><thead><tr><th>#</th><th>Оператор</th><th>Обсяг, кг</th><th>Частка</th></tr></thead><tbody id="opTableBody"></tbody></table>
+    </div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Обсяг по операторах</div><div class="card-subtitle" id="opChartTitle">Всі місяці</div></div></div>
+      <div style="height:460px;position:relative"><canvas id="opChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+<script>
+const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26*'];
+const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026*'];
+const PETG=[35454.8,22723.9,18422.8,25480.8,9568.4];
+const PLA=[724.7,3471.3,5209.2,6856.2,3430.9];
+const NF_PCT=[2.82,3.30,29.97,1.84,6.43];
+const WASTE_PCT=[0.81,3.57,2.64,1.27,3.20];
+const NF_PETG=[5.30,null,19.71,1.83,2.09];
+const NF_PLA=[0.28,null,63.18,1.85,4.27];
+const W_PETG=[1.51,null,2.48,1.25,1.05];
+const W_PLA=[0.15,null,2.94,1.35,2.15];
+const CPKG_PETG=[209.5,196,272.1,245.9,null];
+const CPKG_PLA=[236.2,226,446.1,295.1,null];
+const COSTS={
+  nov:{total:5162269,items:[['Сировина',3852332,0.7462],['Електроенергія',367800,0.0712],['Адмін/Загал',426500,0.0826],['Податки',82410,0.0160],['ЗП оператори',184000,0.0356],['Логістика',115000,0.0223],['Пакування',24000,0.0046],['Амортизація',75000,0.0145],['Ремонт',10000,0.0019],['Інші накладні',5227,0.0010],['Реклама',20000,0.0039]]},
+  jan:{total:7510225,items:[['Сировина',5709119,0.7602],['Електроенергія',651843,0.0868],['Адмін/Загал',222540,0.0296],['Податки',497834,0.0663],['ЗП оператори',182680,0.0243],['Логістика',143737,0.0191],['Пакування',40560,0.0054],['Амортизація',16422,0.0022],['Ремонт',6000,0.0008],['Інші накладні',39491,0.0053]]},
+  feb:{total:8288295,items:[['Сировина',5917091,0.7139],['Електроенергія',750000,0.0905],['Адмін/Загал',519421,0.0627],['Податки',497834,0.0601],['ЗП оператори',283260,0.0342],['Логістика',143737,0.0173],['Пакування',97040,0.0117],['Амортизація',16422,0.0020],['Ремонт',24000,0.0029],['Інші накладні',39491,0.0048]]}
+};
+const OP_ALL=[['Макалюк Вікторія',19340.0],['Макалюк Володимир',18969.6],['Щербакова Олена',15485.3],['Бараш Костянтин',14505.3],['Ременчук Юлія',14060.2],['Пивовар Олександр',9098.3],['Степанчук Владислав',8910.3],['Пінчук Олександр',7028.5],['Гарбар Денис',6896.6],['Бондарчук Дмитро',5731.1],['Нужда Олексій',4916.1],['Хімич Богдан',1998.0],['Хоменко Артем',1466.5],['Нестер Сергій',1236.0],['Борисов Дмитро',629.4],['Гарбар Денис *',246.5],['Середа Андрій',222.6],['Кирилюк Олександр',221.1],['Якубенко Владислав',215.0],['Криволапчук Олександр',166.6]];
+const OP_BY_MONTH={
+  '2025-11':[['Макалюк Вікторія',9732.4],['Степанчук Владислав',8910.3],['Макалюк Володимир',6041.1],['Бондарчук Дмитро',3602.5],['Ременчук Юлія',2801.2],['Щербакова Олена',2683.0],['Бараш Костянтин',2227.7],['Борисов Дмитро',181.3]],
+  '2025-12':[['Ременчук Юлія',4472.4],['Макалюк Володимир',4440.4],['Бараш Костянтин',3708.7],['Щербакова Олена',3547.7],['Пінчук Олександр',3137.2],['Пивовар Олександр',2274.2],['Макалюк Вікторія',2240.8],['Бондарчук Дмитро',2128.6],['Борисов Дмитро',245.2]],
+  '2026-01':[['Макалюк Вікторія',3994.1],['Макалюк Володимир',3729.8],['Щербакова Олена',3577.1],['Пивовар Олександр',3175.0],['Ременчук Юлія',2889.5],['Бараш Костянтин',2600.8],['Гарбар Денис',1342.6],['Пінчук Олександр',1185.5],['Нужда Олексій',891.2],['Гарбар Денис *',246.5]],
+  '2026-02':[['Бараш Костянтин',4215.5],['Щербакова Олена',3862.3],['Ременчук Юлія',3727.6],['Гарбар Денис',3585.9],['Макалюк Володимир',3446.1],['Пивовар Олександр',3429.6],['Нужда Олексій',3237.3],['Макалюк Вікторія',3151.5],['Пінчук Олександр',2705.8],['Хімич Богдан',772.6],['Борисов Дмитро',202.9]],
+  '2026-03':[['Гарбар Денис',1968.1],['Щербакова Олена',1815.2],['Бараш Костянтин',1752.6],['Хоменко Артем',1466.5],['Макалюк Володимир',1312.2],['Нестер Сергій',1236.0],['Хімич Богдан',1225.4],['Нужда Олексій',787.6],['Середа Андрій',222.6],['Макалюк Вікторія',221.3],['Кирилюк Олександр',221.1],['Пивовар Олександр',219.5],['Якубенко Владислав',215.0],['Ременчук Юлія',169.5],['Криволапчук Олександр',166.6]]
+};
+const HM_WEEKS=['27.10','03.11','10.11','17.11','24.11','01.12','08.12','15.12','22.12','29.12','05.01','12.01','19.01','26.01','02.02','09.02','16.02','23.02','02.03','09.03'];
+const HM_DATA={'ЛІНІЯ 1':[545,1667,12779,1851,1890,2010,2034,2279,2024,1378,1860,1858,1865,1877,2001,2000,2050,1977,2224,83],'ЛІНІЯ 2':[452,1413,4132,1274,1337,1510,1388,1298,1036,336,0,535,765,0,0,431,1210,1162,1168,307],'ЛІНІЯ 3':[379,1105,1225,1063,1324,1307,1222,1092,0,0,161,0,0,0,271,1378,1279,1255,1074,340],'ЛІНІЯ 4':[200,741,846,945,1010,899,633,257,967,559,926,963,874,1096,1171,1126,1108,742,780,536],'ЛІНІЯ 5':[0,0,0,0,0,48,1205,1672,1639,998,1577,630,565,1558,1746,1811,1791,1550,1855,71],'ЛІНІЯ 6':[0,0,0,0,0,0,0,0,0,0,1122,1569,1580,1580,1788,1821,1353,1584,1752,177],'ЛІНІЯ 8':[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1224,212]};
+
+Chart.defaults.color='#6b7494';Chart.defaults.borderColor='#252a3a';
+Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
+const GR={grid:{color:'#1e2230',drawBorder:false},ticks:{color:'#6b7494'}};
+
+function trendline(data){
+  const pts=data.map((v,i)=>[i,v]).filter(p=>p[1]!==null&&p[1]!==undefined&&!isNaN(p[1]));
+  if(pts.length<2)return data.map(()=>null);
+  const n=pts.length,sx=pts.reduce((s,p)=>s+p[0],0),sy=pts.reduce((s,p)=>s+p[1],0);
+  const sxy=pts.reduce((s,p)=>s+p[0]*p[1],0),sx2=pts.reduce((s,p)=>s+p[0]*p[0],0);
+  const m=(n*sxy-sx*sy)/(n*sx2-sx*sx),b=(sy-m*sx)/n;
+  return data.map((_,i)=>+(m*i+b).toFixed(1));
+}
+
+let opCI=null,costCI=null;
+const rendered={};
+
+function switchTab(id,el){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  el.classList.add('active');
+  if(!rendered[id]){rendered[id]=true;initTab(id);}
+}
+function initTab(id){
+  if(id==='production')initProduction();
+  if(id==='quality')initQuality();
+  if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}
+  if(id==='operators'){setOpMonth('all',document.querySelector('#opMonthSwitcher .month-btn'));}
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  rendered.overview=true;
+  new Chart(document.getElementById('prodMonthChart'),{data:{labels:MS,datasets:[
+    {type:'bar',label:'PETG',data:PETG,backgroundColor:'rgba(71,180,255,.7)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},
+    {type:'bar',label:'PLA',data:PLA,backgroundColor:'rgba(200,180,0,.65)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
+    {type:'line',label:'Тренд',data:trendline(PETG.map((v,i)=>v+PLA[i])),borderColor:'rgba(232,255,71,.55)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+
+  new Chart(document.getElementById('finOverviewChart'),{type:'bar',data:{labels:['Лис 25','Січ 26','Лют 26'],datasets:[{label:'Доход',data:[5093191,7849996,10282323],backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},{label:'Витрати',data:[5162269,7510225,8288295],backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+
+  new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'НФ %',data:NF_PCT,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:NF_PCT.map(v=>v>10?'#ff5555':'#ff6b47'),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+
+  new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'Відходи %',data:WASTE_PCT,borderColor:'#e8ff47',backgroundColor:'rgba(232,255,71,.08)',tension:.3,fill:true,pointBackgroundColor:'#e8ff47',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+
+  new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ff9999'],borderWidth:0}]},options:{responsive:false,cutout:'65%',plugins:{legend:{display:false}}}});
+});
+
+function initProduction(){
+  new Chart(document.getElementById('petgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG кг',data:PETG,backgroundColor:'rgba(71,180,255,.7)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PETG),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  new Chart(document.getElementById('plaChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PLA кг',data:PLA,backgroundColor:'rgba(200,180,0,.65)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PLA),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(1)+'k'}}}}});
+  const lns=[{n:'ЛІНІЯ 1',kg:46252.1},{n:'ЛІНІЯ 2',kg:19755.3},{n:'ЛІНІЯ 5',kg:18716.4},{n:'ЛІНІЯ 4',kg:16380.1},{n:'ЛІНІЯ 3',kg:14475.6},{n:'ЛІНІЯ 6',kg:14327.8},{n:'ЛІНІЯ 8',kg:1435.7}];
+  new Chart(document.getElementById('lineChart'),{type:'bar',data:{labels:lns.map(l=>l.n),datasets:[{label:'кг',data:lns.map(l=>l.kg),backgroundColor:lns.map((_,i)=>`rgba(71,180,255,${0.85-i*0.1})`),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  buildHeatmap();
+}
+
+function buildHeatmap(){
+  const lines=Object.keys(HM_DATA);
+  const maxVal=Math.max(...Object.values(HM_DATA).flat());
+  function cc(v){if(v===0)return'#131720';const r=v/maxVal;if(r<0.05)return'#18202e';if(r<0.15)return'#1a2d48';if(r<0.30)return'#1a4068';if(r<0.55)return'#1a5a8a';if(r<0.80)return'#2080b8';return'#47b4ff';}
+  function tc(v){return v/maxVal>0.45?'rgba(255,255,255,.8)':'rgba(255,255,255,.2)';}
+  let html=`<div class="hmap-grid" style="grid-template-columns:72px repeat(${HM_WEEKS.length},1fr)">`;
+  html+=`<div class="hmap-label" style="font-weight:600;font-size:9px;color:var(--accent)">ЛІНІЯ</div>`;
+  HM_WEEKS.forEach(w=>{html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:8px;height:18px">${w}</div>`;});
+  lines.forEach(ln=>{
+    html+=`<div class="hmap-label">${ln}</div>`;
+    HM_DATA[ln].forEach(v=>{
+      const d=v===0?'':(v>=1000?(v/1000).toFixed(1)+'k':v);
+      html+=`<div class="hmap-cell" style="background:${cc(v)};color:${tc(v)}" title="${ln}: ${v} кг">${d}</div>`;
+    });
+  });
+  html+='</div>';
+  document.getElementById('heatmapWrap').innerHTML=html;
+}
+
+function initQuality(){
+  new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#47b4ff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#e8ff47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+}
+
+function initCosts(){
+  new Chart(document.getElementById('incExpChart'),{data:{labels:['Лис 25','Січ 26','Лют 26'],datasets:[{type:'bar',label:'Доход',data:[5093191,7849996,10282323],backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},{type:'bar',label:'Витрати',data:[5162269,7510225,8288295],backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд Доходу',data:trendline([5093191,7849996,10282323]),borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},{type:'line',label:'Тренд Витрат',data:trendline([5162269,7510225,8288295]),borderColor:'rgba(255,107,71,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+  new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG.filter(Boolean).concat([null])),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA.filter(Boolean).concat([null])),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
+}
+
+function setCostMonth(key,btn){
+  document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const d=COSTS[key];
+  const tbody=document.getElementById('costTableBody');
+  tbody.innerHTML='';
+  d.items.forEach(([name,sum,pct])=>{
+    tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;
+  });
+  tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;
+  if(costCI)costCI.destroy();
+  costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ffb347','#ff9999','#6b7494','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});
+}
+
+function setOpMonth(key,btn){
+  document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const data=key==='all'?OP_ALL:(OP_BY_MONTH[key]||[]);
+  const total=data.reduce((s,[,v])=>s+v,0);
+  const mIdx=['2025-11','2025-12','2026-01','2026-02','2026-03'].indexOf(key);
+  const title=key==='all'?`Всі місяці · ${data.length} операторів`:`${MF[mIdx]} · ${data.length} операторів`;
+  document.getElementById('opTableTitle').textContent=title;
+  document.getElementById('opChartTitle').textContent=title;
+  const tbody=document.getElementById('opTableBody');
+  tbody.innerHTML='';
+  data.forEach(([name,kg],i)=>{
+    const pct=(kg/total*100).toFixed(1);
+    const bw=Math.round(kg/data[0][1]*70);
+    const rc=i===0?'var(--accent)':i===1?'#aaa':i===2?'var(--warn)':'var(--muted)';
+    tbody.innerHTML+=`<tr><td style="color:${rc};font-family:'Bebas Neue',sans-serif;font-size:18px;width:28px;text-align:center">${i+1}</td><td>${name}</td><td style="text-align:right">${kg.toLocaleString('uk-UA',{maximumFractionDigits:0})}</td><td><div style="display:flex;align-items:center;gap:6px"><div style="width:${bw}px;height:4px;border-radius:2px;background:var(--accent2);min-width:2px"></div><span>${pct}%</span></div></td></tr>`;
+  });
+  if(opCI)opCI.destroy();
+  opCI=new Chart(document.getElementById('opChart'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'кг',data:data.map(d=>d[1]),backgroundColor:data.map((_,i)=>`rgba(71,180,255,${Math.max(0.25,0.9-i*0.03)})`),borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}},y:{...GR,ticks:{...GR.ticks,font:{size:10}}}}}});
+}
+</script>
+</body>
+</html>
