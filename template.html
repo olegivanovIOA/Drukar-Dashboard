@@ -509,7 +509,7 @@ const TOTAL_PROD=PETG_PROD.map((v,i)=>v!==null&&PLA_PROD[i]!==null?v+PLA_PROD[i]
 // For chart display (bars with all months including dec)
 const PETG_ALL={{PETG_PROD}};
 const PLA_ALL={{PLA_PROD}};
-const TOTAL_ALL={{TOTAL_PROD}}=>v!==null&&PLA_ALL[i]!==null?+(v+PLA_ALL[i]).toFixed(1):null)=>v+PLA_ALL[i]);
+const TOTAL_ALL={{TOTAL_PROD}};
 const NF_PCT={{NF_PCT}};
 const WASTE_PCT=[0.81,3.57,2.64,1.27,3.20];
 const NF_PETG={{PETG_NF}};
@@ -518,6 +518,9 @@ const W_PETG={{PETG_WASTE}};
 const W_PLA={{PLA_WASTE}};
 const CPKG_PETG={{COST_PETG_KG}};
 const CPKG_PLA={{COST_PLA_KG}};
+const FIN_INCOME={{INCOME}};
+const FIN_EXPENSES={{EXPENSES}};
+const FIN_PROFIT={{PROFIT}};
 const COSTS={
   nov:{total:5162269,items:[['Сировина',3852332,0.7462],['Електроенергія',367800,0.0712],['Адмін/Загал',426500,0.0826],['Податки',82410,0.0160],['ЗП оператори',184000,0.0356],['Логістика',115000,0.0223],['Пакування',24000,0.0046],['Амортизація',75000,0.0145],['Ремонт',10000,0.0019],['Інші накладні',5227,0.0010],['Реклама',20000,0.0039]]},
   jan:{total:7510225,items:[['Сировина',5709119,0.7602],['Електроенергія',651843,0.0868],['Адмін/Загал',222540,0.0296],['Податки',497834,0.0663],['ЗП оператори',182680,0.0243],['Логістика',143737,0.0191],['Пакування',40560,0.0054],['Амортизація',16422,0.0022],['Ремонт',6000,0.0008],['Інші накладні',39491,0.0053]]},
@@ -545,7 +548,15 @@ window.addEventListener('DOMContentLoaded',()=>{
     {type:'bar',label:'PLA',data:PLA_ALL,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
     {type:'line',label:'Тренд Всього',data:trendline(TOTAL_ALL),borderColor:'rgba(232,255,71,.6)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
-  new Chart(document.getElementById('finOverviewChart'),{type:'bar',data:{labels:['Лис 25','Січ 26','Лют 26'],datasets:[{label:'Доход',data:[5093191,7849996,10282323],backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},{label:'Витрати',data:[5162269,7510225,8288295],backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+  (function(){
+    const finLabels=MS.filter((_,i)=>FIN_INCOME[i]!==null);
+    const finInc=FIN_INCOME.filter(v=>v!==null);
+    const finExp=FIN_EXPENSES.filter(v=>v!==null);
+    new Chart(document.getElementById('finOverviewChart'),{type:'bar',data:{labels:finLabels,datasets:[
+      {label:'Доход',data:finInc,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},
+      {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+  })();
   new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'НФ %',data:NF_PCT,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:NF_PCT.map(v=>v>10?'#ff5555':'#ff6b47'),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'Відходи %',data:WASTE_PCT,borderColor:'#e8ff47',backgroundColor:'rgba(232,255,71,.08)',tension:.3,fill:true,pointBackgroundColor:'#e8ff47',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ff9999'],borderWidth:0}]},options:{responsive:false,cutout:'65%',plugins:{legend:{display:false}}}});
@@ -564,7 +575,18 @@ function initQuality(){
   new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
 }
 function initCosts(){
-  new Chart(document.getElementById('incExpChart'),{data:{labels:['Лис 25','Січ 26','Лют 26'],datasets:[{type:'bar',label:'Доход',data:[5093191,7849996,10282323],backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},{type:'bar',label:'Витрати',data:[5162269,7510225,8288295],backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд Доходу',data:trendline([5093191,7849996,10282323]),borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},{type:'line',label:'Тренд Витрат',data:trendline([5162269,7510225,8288295]),borderColor:'rgba(255,107,71,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+  (function(){
+    const fl=MS.filter((_,i)=>FIN_INCOME[i]!==null);
+    const fi=FIN_INCOME.filter(v=>v!==null);
+    const fe=FIN_EXPENSES.filter(v=>v!==null);
+    const td=trendline(fi); const te=trendline(fe);
+    new Chart(document.getElementById('incExpChart'),{data:{labels:fl,datasets:[
+      {type:'bar',label:'Доход',data:fi,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},
+      {type:'bar',label:'Витрати',data:fe,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3},
+      {type:'line',label:'Тренд Доходу',data:td,borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},
+      {type:'line',label:'Тренд Витрат',data:te,borderColor:'rgba(255,107,71,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+  })()
   new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
 }
 function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const d=COSTS[key];const tbody=document.getElementById('costTableBody');tbody.innerHTML='';d.items.forEach(([name,sum,pct])=>{tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;});tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;if(costCI)costCI.destroy();costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ffb347','#ff9999','#6b7494','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});}
