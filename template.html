@@ -91,7 +91,7 @@
 <body>
 <header>
   <div><div class="logo">DRUKAR<span>ВИРОБНИЧИЙ ДАШБОРД</span></div></div>
-  <div class="header-meta">ДАНІ: ЛИС 2025 — БЕР 2026<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span></div>
+  <div class="header-meta">ДАНІ: ОНОВЛЕНО {{UPDATED}}<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span></div>
 </header>
 <div class="tabs">
   <button class="tab active" onclick="switchTab('overview',this)">Огляд</button>
@@ -382,17 +382,17 @@ const PETG_PROD=[19000,null,18881.6,25480.8,8007.3];
 const PLA_PROD=[5000,null,5319.7,6856.2,0];
 const TOTAL_PROD=PETG_PROD.map((v,i)=>v!==null&&PLA_PROD[i]!==null?v+PLA_PROD[i]:null);
 // For chart display (bars with all months including dec)
-const PETG_ALL=[35454.8,22723.9,18422.8,25480.8,9568.4];
-const PLA_ALL=[724.7,3471.3,5209.2,6856.2,3430.9];
-const TOTAL_ALL=PETG_ALL.map((v,i)=>v+PLA_ALL[i]);
-const NF_PCT=[2.82,3.30,29.97,1.84,6.43];
+const PETG_ALL={{PETG_PROD}};
+const PLA_ALL={{PLA_PROD}};
+const TOTAL_ALL={{TOTAL_PROD}};
+const NF_PCT={{NF_PCT}};
 const WASTE_PCT=[0.81,3.57,2.64,1.27,3.20];
-const NF_PETG=[5.30,null,19.71,1.83,2.09];
-const NF_PLA=[0.28,null,63.18,1.85,4.27];
-const W_PETG=[1.51,null,2.48,1.25,1.05];
-const W_PLA=[0.15,null,2.94,1.35,2.15];
-const CPKG_PETG=[209.5,196,272.1,245.9,null];
-const CPKG_PLA=[236.2,226,446.1,295.1,null];
+const NF_PETG={{PETG_NF}};
+const NF_PLA={{PLA_NF}};
+const W_PETG={{PETG_WASTE}};
+const W_PLA={{PLA_WASTE}};
+const CPKG_PETG={{COST_PETG_KG}};
+const CPKG_PLA={{COST_PLA_KG}};
 const COSTS={
   nov:{total:5162269,items:[['Сировина',3852332,0.7462],['Електроенергія',367800,0.0712],['Адмін/Загал',426500,0.0826],['Податки',82410,0.0160],['ЗП оператори',184000,0.0356],['Логістика',115000,0.0223],['Пакування',24000,0.0046],['Амортизація',75000,0.0145],['Ремонт',10000,0.0019],['Інші накладні',5227,0.0010],['Реклама',20000,0.0039]]},
   jan:{total:7510225,items:[['Сировина',5709119,0.7602],['Електроенергія',651843,0.0868],['Адмін/Загал',222540,0.0296],['Податки',497834,0.0663],['ЗП оператори',182680,0.0243],['Логістика',143737,0.0191],['Пакування',40560,0.0054],['Амортизація',16422,0.0022],['Ремонт',6000,0.0008],['Інші накладні',39491,0.0053]]},
