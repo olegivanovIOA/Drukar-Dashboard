@@ -86,11 +86,22 @@
   .scenario-val{color:var(--text)}
   @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.grid-3{grid-template-columns:1fr 1fr}.calc-wrap{grid-template-columns:1fr}}
   @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr}.grid-2,.grid-3,.grid-31,.calc-wrap{grid-template-columns:1fr}.main{padding:14px}.scenarios-grid{grid-template-columns:1fr}}
-  .quote-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 28px;display:flex;align-items:center;gap:10px;overflow:hidden}
-  .quote-icon{font-size:14px;opacity:.5;flex-shrink:0}
-  .quote-text{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
-  .quote-text em{color:var(--accent);font-style:normal}
-  .quote-date{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--border);flex-shrink:0;letter-spacing:1px}
+  .quote-bar{
+    background:linear-gradient(90deg,rgba(232,255,71,.1) 0%,rgba(232,255,71,.04) 50%,transparent 100%);
+    border-bottom:2px solid rgba(232,255,71,.35);
+    border-top:1px solid rgba(232,255,71,.15);
+    padding:11px 28px;display:flex;align-items:center;gap:14px;overflow:hidden;
+    box-shadow:0 2px 20px rgba(232,255,71,.06);
+  }
+  .quote-icon{font-size:20px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite}
+  @keyframes pulse-icon{0%,100%{filter:drop-shadow(0 0 4px rgba(232,255,71,.4))}50%{filter:drop-shadow(0 0 10px rgba(232,255,71,.9))}}
+  .quote-text{font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;
+    color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    flex:1;letter-spacing:.2px}
+  .quote-text em{color:var(--accent);font-style:normal;font-weight:700}
+  .quote-date{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;
+    color:rgba(232,255,71,.6);flex-shrink:0;letter-spacing:2px;
+    border-left:1px solid rgba(232,255,71,.25);padding-left:14px}
 </style>
 </head>
 <body>
@@ -534,7 +545,33 @@ const HM_DATA={'ЛІНІЯ 1':[545,1667,12779,1851,1890,2010,2034,2279,2024,1378
 Chart.defaults.color='#6b7494';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
 const GR={grid:{color:'#1e2230',drawBorder:false},ticks:{color:'#6b7494'}};
-function trendline(data){const pts=data.map((v,i)=>[i,v]).filter(p=>p[1]!==null&&!isNaN(p[1]));if(pts.length<2)return data.map(()=>null);const n=pts.length,sx=pts.reduce((s,p)=>s+p[0],0),sy=pts.reduce((s,p)=>s+p[1],0),sxy=pts.reduce((s,p)=>s+p[0]*p[1],0),sx2=pts.reduce((s,p)=>s+p[0]*p[0],0),m=(n*sxy-sx*sy)/(n*sx2-sx*sx),b=(sy-m*sx)/n;return data.map((_,i)=>+(m*i+b).toFixed(1));}
+function trendline(data){
+  // Only use non-null points; draw curve only between first and last real data point
+  const pts=data.map((v,i)=>({x:i,y:v})).filter(p=>p.y!==null&&!isNaN(p.y));
+  if(pts.length<2)return data.map(()=>null);
+  const xMin=pts[0].x, xMax=pts[pts.length-1].x;
+  const n=pts.length;
+  // Quadratic regression: y = a*x² + b*x + c  (Cramer's rule on 3×3 system)
+  let s0=n,s1=0,s2=0,s3=0,s4=0,r0=0,r1=0,r2=0;
+  pts.forEach(({x,y})=>{s1+=x;s2+=x*x;s3+=x*x*x;s4+=x*x*x*x;r0+=y;r1+=x*y;r2+=x*x*y;});
+  const det=s0*(s2*s4-s3*s3)-s1*(s1*s4-s3*s2)+s2*(s1*s3-s2*s2);
+  let qa,qb,qc;
+  if(Math.abs(det)<1e-8||n<3){
+    // fallback: linear regression
+    const mx=s1/n, my=r0/n;
+    const cov=pts.reduce((s,{x,y})=>s+(x-mx)*(y-my),0);
+    const vx=pts.reduce((s,{x})=>s+(x-mx)*(x-mx),0);
+    qb=vx?cov/vx:0; qa=0; qc=my-qb*mx;
+  } else {
+    qa=(r0*(s2*s4-s3*s3)-s1*(r1*s4-s3*r2)+s2*(r1*s3-s2*r2))/det;
+    qb=(s0*(r1*s4-s3*r2)-r0*(s1*s4-s3*s2)+s2*(s1*r2-r1*s2))/det;
+    qc=(s0*(s2*r2-r1*s3)-s1*(s1*r2-r1*s2)+r0*(s1*s3-s2*s2))/det;
+  }
+  // Return values only within [xMin, xMax], null outside
+  return data.map((_,i)=>
+    i<xMin||i>xMax ? null : +(qa*i*i+qb*i+qc).toFixed(1)
+  );
+}
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}}
