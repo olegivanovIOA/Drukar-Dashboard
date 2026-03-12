@@ -1,7 +1,7 @@
 """
-generate.py — читает данные из Google Sheets и генерирует index.html
-Требует: SHEET_ID (основная таблица) и CALC_SHEET_ID (калькулятор) в GitHub Secrets
-Таблицы должны быть публичными (доступ "Переглядач" для всех з посиланням)
+generate.py — читает Google Sheets → генерирует index.html
+Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
+Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 """
 import os, requests, io, csv
 from datetime import datetime
@@ -9,10 +9,19 @@ from datetime import datetime
 SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
 
+# 14 месяцев: Ноябрь 2025 — Декабрь 2026
+# Позиция в массиве (0-based): Nov25=0, Dec25=1, Jan26=2 ... Dec26=13
+MONTH_COUNT = 14
+MONTH_ORDER = [
+    '2025-11','2025-12',
+    '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06',
+    '2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'
+]
+
 def fetch_csv(sheet_id, sheet_name):
     url = (f"https://docs.google.com/spreadsheets/d/{sheet_id}"
            f"/gviz/tq?tqx=out:csv&sheet={requests.utils.quote(sheet_name)}")
-    print(f"Fetching: {sheet_name} from {sheet_id[:20]}...")
+    print(f"Fetching: {sheet_name}")
     r = requests.get(url, timeout=30)
     r.raise_for_status()
     return list(csv.reader(io.StringIO(r.text)))
@@ -23,11 +32,6 @@ def f(v, default=None):
         return float(s) if s else default
     except:
         return default
-
-def row_vals(row, start=2, count=5):
-    if row is None: return [None]*count
-    cells = [c for c in row[start:] if str(c).strip() not in ('','None')]
-    return [f(cells[i]) if i < len(cells) else None for i in range(count)]
 
 def get_row(rows, keyword):
     kw = keyword.lower()
@@ -40,8 +44,56 @@ def pct(v):
     if v is None: return None
     return round(v*100, 2) if abs(v) <= 1.5 else round(v, 2)
 
+def detect_month_columns(rows):
+    """
+    Определяет маппинг: MONTH_ORDER[i] → col_index в таблице.
+    Ищет строку с заголовками месяцев (ноябрь/листопад, декабрь и т.д.)
+    Возвращает dict {month_key: col_index} и col_start (первый столбец с данными).
+    """
+    month_keywords = {
+        'ноябрь': '2025-11', 'листопад': '2025-11',
+        'декабрь': '2025-12', 'грудень': '2025-12',
+        'январь': '2026-01', 'січень': '2026-01',
+        'февраль': '2026-02', 'лютий': '2026-02',
+        'март':   '2026-03', 'березень': '2026-03',
+        'апрель': '2026-04', 'квітень': '2026-04',
+        'май':    '2026-05', 'травень': '2026-05',
+        'июнь':   '2026-06', 'червень': '2026-06',
+        'июль':   '2026-07', 'липень': '2026-07',
+        'август': '2026-08', 'серпень': '2026-08',
+        'сентябрь':'2026-09','вересень':'2026-09',
+        'октябрь':'2026-10', 'жовтень': '2026-10',
+        'ноябрь 2026':'2026-11','листопад 2026':'2026-11',
+        'декабрь 2026':'2026-12','грудень 2026':'2026-12',
+    }
+    mapping = {}
+    for row in rows[:5]:  # headers in first 5 rows
+        for ci, cell in enumerate(row):
+            cell_l = str(cell).lower().strip()
+            for kw, month_key in month_keywords.items():
+                if kw in cell_l:
+                    if month_key not in mapping:
+                        mapping[month_key] = ci
+    col_start = min(mapping.values()) if mapping else 2
+    print(f"  Month columns detected: {mapping}")
+    return mapping, col_start
+
+def extract_row_by_month(row, col_map):
+    """Извлекает значения по месяцам в порядке MONTH_ORDER (14 элементов)."""
+    result = [None] * MONTH_COUNT
+    for i, month_key in enumerate(MONTH_ORDER):
+        ci = col_map.get(month_key)
+        if ci is not None and ci < len(row):
+            result[i] = f(row[ci])
+    return result
+
 def parse_production(rows):
-    def vals(kw): return row_vals(get_row(rows, kw))
+    col_map, _ = detect_month_columns(rows)
+
+    def vals(kw):
+        row = get_row(rows, kw)
+        return extract_row_by_month(row, col_map) if row else [None]*MONTH_COUNT
+
     petg_prod  = vals('PETG, Продукции, кг')
     pla_prod   = vals('PLA, Продукции, кг')
     petg_nf_kg = vals('PETG, НФ, кг')
@@ -56,22 +108,32 @@ def parse_production(rows):
     petg_w_r   = vals('PETG, Брак, %')
     pla_w_r    = vals('PLA, Брак, %')
 
-    cpkg_petg = [None]*5; cpkg_pla = [None]*5
+    # Себестоимость/кг — строки после заголовка
+    cpkg_petg = [None]*MONTH_COUNT
+    cpkg_pla  = [None]*MONTH_COUNT
     for i, row in enumerate(rows):
         if 'себестоимость 1 кг' in ' '.join(str(c) for c in row).lower():
-            if i+1 < len(rows): cpkg_petg = row_vals(rows[i+1])
-            if i+2 < len(rows): cpkg_pla  = row_vals(rows[i+2])
+            if i+1 < len(rows):
+                cpkg_petg = extract_row_by_month(rows[i+1], col_map)
+            if i+2 < len(rows):
+                cpkg_pla  = extract_row_by_month(rows[i+2], col_map)
             break
 
+    # Суммарный НФ% и Брак%
     nf_pct=[]; waste_pct=[]
-    for i in range(5):
-        pp=(petg_prod[i] or 0)+(pla_prod[i] or 0)
+    for i in range(MONTH_COUNT):
+        pp = (petg_prod[i] or 0) + (pla_prod[i] or 0)
         nf_pct.append(round(((petg_nf_kg[i] or 0)+(pla_nf_kg[i] or 0))/pp*100,2) if pp else None)
         waste_pct.append(round(((petg_w_kg[i] or 0)+(pla_w_kg[i] or 0))/pp*100,2) if pp else None)
 
-    total_prod = [round((petg_prod[i] or 0)+(pla_prod[i] or 0),1)
-                  if petg_prod[i] is not None or pla_prod[i] is not None else None for i in range(5)]
-    return {
+    total_prod = [
+        round((petg_prod[i] or 0)+(pla_prod[i] or 0), 1)
+        if petg_prod[i] is not None or pla_prod[i] is not None else None
+        for i in range(MONTH_COUNT)
+    ]
+
+    data = {
+        "updated":      datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
         "petg_prod":    [round(v,1) if v else None for v in petg_prod],
         "pla_prod":     [round(v,1) if v else None for v in pla_prod],
         "total_prod":   total_prod,
@@ -87,41 +149,42 @@ def parse_production(rows):
         "cost_pla_kg":  [round(v,2) if v else None for v in cpkg_pla],
     }
 
+    # Print summary
+    print(f"\n  PETG prod: {data['petg_prod']}")
+    print(f"  PLA prod:  {data['pla_prod']}")
+    print(f"  Income:    {data['income']}")
+    return data
+
 def parse_calculator(rows):
-    """Читает лист Калькулятор: строки 1-3 = параметры, cols 1,3,5 = база,вар1,вар2"""
-    result = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0, "granule": 112.2}
+    result = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
     try:
-        # Row 1: PETG price (col 1 = база)
         r1 = get_row(rows, 'цена сырья PETG')
         if r1:
-            v = f(r1[1] if len(r1)>1 else None)
+            v = f(r1[1])
             if v: result["petg_price"] = v
-        # Row 2: PLA price
         r2 = get_row(rows, 'цена сырья PLA')
         if r2:
-            v = f(r2[1] if len(r2)>1 else None)
+            v = f(r2[1])
             if v: result["pla_price"] = v
-        # Row 3: waste %
         r3 = get_row(rows, 'Брака и НФ')
         if r3:
-            v = f(r3[1] if len(r3)>1 else None)
+            v = f(r3[1])
             if v: result["waste_pct"] = round(v*100 if v<1 else v, 1)
-        print(f"  Calculator: PETG={result['petg_price']}, PLA={result['pla_price']}, waste={result['waste_pct']}%")
+        print(f"  Calc: PETG={result['petg_price']}, PLA={result['pla_price']}, waste={result['waste_pct']}%")
     except Exception as e:
-        print(f"  Calculator parse error: {e}")
+        print(f"  Calc error: {e}")
     return result
 
 def parse_calc_extended(rows):
-    """Читает лист Расширенный: цена гранулы"""
     result = {"granule": 112.2}
     try:
         r = get_row(rows, 'гранул')
         if r:
-            v = f(r[1] if len(r)>1 else None)
+            v = f(r[1])
             if v: result["granule"] = v
-            print(f"  Extended calc: granule={result['granule']}")
+        print(f"  Extended calc: granule={result['granule']}")
     except Exception as e:
-        print(f"  Extended calc parse error: {e}")
+        print(f"  Extended calc error: {e}")
     return result
 
 def jv(v):
@@ -130,7 +193,7 @@ def jv(v):
     return str(v)
 
 def generate(data, calc, calc_ext):
-    with open('template.html','r',encoding='utf-8') as f:
+    with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     subs = {
         '{{UPDATED}}':         data['updated'],
@@ -152,42 +215,33 @@ def generate(data, calc, calc_ext):
         '{{CALC_WASTE_PCT}}':  str(calc['waste_pct']),
         '{{CALC_EX_GRANULE}}': str(calc_ext['granule']),
     }
-    for k,v in subs.items():
+    for k, v in subs.items():
         html = html.replace(k, v)
     missing = [k for k in subs if k in html]
     if missing: print(f"WARNING unreplaced: {missing}")
     return html
 
 if __name__ == '__main__':
-    # Parse production data
     try:
         prod_rows = fetch_csv(SHEET_ID, "_Drukar_Product")
-        prod_data = parse_production(prod_rows)
-        prod_data['updated'] = datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC')
-        print("\nProduction data OK")
-        for k,v in prod_data.items():
-            if k != 'updated': print(f"  {k}: {v}")
+        data = parse_production(prod_rows)
     except Exception as e:
-        print(f"ERROR reading production data: {e}")
+        print(f"ERROR: {e}")
         import traceback; traceback.print_exc()
         exit(1)
 
-    # Parse calculator (non-fatal)
     calc = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
     calc_ext = {"granule": 112.2}
     try:
-        calc_rows = fetch_csv(CALC_SHEET_ID, "Калькулятор")
-        calc = parse_calculator(calc_rows)
+        calc = parse_calculator(fetch_csv(CALC_SHEET_ID, "Калькулятор"))
     except Exception as e:
-        print(f"WARNING: Could not read calculator sheet: {e}")
+        print(f"WARNING calc: {e}")
     try:
-        ext_rows = fetch_csv(CALC_SHEET_ID, "Расширенный")
-        calc_ext = parse_calc_extended(ext_rows)
+        calc_ext = parse_calc_extended(fetch_csv(CALC_SHEET_ID, "Расширенный"))
     except Exception as e:
-        print(f"WARNING: Could not read extended calculator sheet: {e}")
+        print(f"WARNING calc ext: {e}")
 
-    html = generate(prod_data, calc, calc_ext)
-    with open('index.html','w',encoding='utf-8') as f:
+    html = generate(data, calc, calc_ext)
+    with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
-    print(f"\n✅ index.html generated ({len(html):,} chars)")
-    print(f"   Updated: {prod_data['updated']}")
+    print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")
