@@ -91,7 +91,7 @@
 <body>
 <header>
   <div><div class="logo">DRUKAR<span>ВИРОБНИЧИЙ ДАШБОРД</span></div></div>
-  <div class="header-meta">ДАНІ: ОНОВЛЕНО 12.03.2026 14:54 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span></div>
+  <div class="header-meta">ДАНІ: ОНОВЛЕНО 12.03.2026 16:03 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span></div>
 </header>
 <div class="tabs">
   <button class="tab active" onclick="switchTab('overview',this)">Огляд</button>
@@ -382,10 +382,10 @@ const PETG_PROD=[19000,null,18881.6,25480.8,8007.3];
 const PLA_PROD=[5000,null,5319.7,6856.2,0];
 const TOTAL_PROD=PETG_PROD.map((v,i)=>v!==null&&PLA_PROD[i]!==null?v+PLA_PROD[i]:null);
 // For chart display (bars with all months including dec)
-const PETG_ALL=[19000.0,18881.6,25480.8,42000.0,null];
+const PETG_ALL=[19000.0,18881.6,25480.8,null,null];
 const PLA_ALL=[5000.0,5319.7,6856.2,null,null];
-const TOTAL_ALL=[24000.0,24201.3,32337.0,42000.0,null];
-const NF_PCT=[4.25,29.27,1.84,0.0,null];
+const TOTAL_ALL=[24000.0,24201.3,32337.0,null,null];
+const NF_PCT=[4.25,29.27,1.84,null,null];
 const WASTE_PCT=[0.81,3.57,2.64,1.27,3.20];
 const NF_PETG=[5.3,19.59,2.46,null,null];
 const NF_PLA=[28.0,67.23,2.54,null,null];
