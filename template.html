@@ -57,7 +57,7 @@
   .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8px;height:26px;cursor:default}
   .hmap-cell:hover{outline:1px solid rgba(255,255,255,.35)}
   .hmap-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:4px 2px;display:flex;align-items:center;white-space:nowrap}
-  .legend-item{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+  .legend-item{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap}
   .legend-dot{width:10px;height:10px;border-radius:2px}
   @keyframes pulse-border{0%,100%{border-color:rgba(255,85,85,.3)}50%{border-color:rgba(255,85,85,.8)}}
   .kpi-alert{animation:pulse-border 2s ease-in-out infinite}
@@ -178,9 +178,9 @@
     <div class="card"><div class="card-header"><div><div class="card-title">% Відходів по місяцях</div><div class="card-subtitle">Брак від обсягу</div></div></div><div class="cw-sm"><canvas id="wasteOvChart"></canvas></div></div>
     <div class="card">
       <div class="card-header"><div><div class="card-title">Структура витрат</div><div class="card-subtitle">Лютий 2026</div></div></div>
-      <div style="display:flex;align-items:center;height:180px">
-        <div style="width:140px;height:140px;flex-shrink:0"><canvas id="costsDonut"></canvas></div>
-        <div style="padding-left:14px;display:flex;flex-direction:column;gap:5px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;height:200px;padding:8px 0">
+        <div style="width:160px;height:160px;flex-shrink:0;position:relative"><canvas id="costsDonut"></canvas></div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:140px">
           <div class="legend-item"><div class="legend-dot" style="background:#47b4ff"></div>Сировина<span style="margin-left:auto;padding-left:10px;color:var(--text)">71.4%</span></div>
           <div class="legend-item"><div class="legend-dot" style="background:#e8ff47"></div>Електроенергія<span style="margin-left:auto;padding-left:10px;color:var(--text)">9.0%</span></div>
           <div class="legend-item"><div class="legend-dot" style="background:#ff6b47"></div>Адмін/Загал<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.3%</span></div>
@@ -579,7 +579,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   })();
   new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'НФ %',data:NF_PCT,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:NF_PCT.map(v=>v>10?'#ff5555':'#ff6b47'),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'Відходи %',data:WASTE_PCT,borderColor:'#e8ff47',backgroundColor:'rgba(232,255,71,.08)',tension:.3,fill:true,pointBackgroundColor:'#e8ff47',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
-  new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ff9999'],borderWidth:0}]},options:{responsive:false,cutout:'65%',plugins:{legend:{display:false}}}});
+  new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ff9999'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'60%',plugins:{legend:{display:false}}}});
 });
 
 function initProduction(){
