@@ -275,7 +275,7 @@
         <table><thead><tr><th>#</th><th>Оператор</th><th>Обсяг, кг</th><th>Частка</th></tr></thead><tbody id="opTableBody"></tbody></table>
       </div>
       <div class="card"><div class="card-header"><div><div class="card-title">Обсяг по операторах</div><div class="card-subtitle" id="opChartTitle">Всі місяці</div></div></div>
-        <div style="height:460px;position:relative"><canvas id="opChart"></canvas></div>
+        <div style="height:480px;position:relative"><canvas id="opChart"></canvas></div>
       </div>
     </div>
   </div>
@@ -516,7 +516,7 @@ function trendline(data){const pts=data.map((v,i)=>[i,v]).filter(p=>p[1]!==null&
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){setOpView('total',document.querySelector('#opViewSwitcher .month-btn'));setOpMonth('all',document.querySelector('#opMonthSwitcher .month-btn'));}else if(id==='calculator'){calcUpdate();}}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
@@ -549,7 +549,16 @@ function initCosts(){
   new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
 }
 function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const d=COSTS[key];const tbody=document.getElementById('costTableBody');tbody.innerHTML='';d.items.forEach(([name,sum,pct])=>{tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;});tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;if(costCI)costCI.destroy();costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ffb347','#ff9999','#6b7494','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});}
-function setOpMonth(key,btn){document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const data=key==='all'?OP_ALL:(OP_BY_MONTH[key]||[]);const total=data.reduce((s,[,v])=>s+v,0);const mIdx=['2025-11','2025-12','2026-01','2026-02','2026-03'].indexOf(key);const title=key==='all'?`Всі місяці · ${data.length} операторів`:`${MF[mIdx]} · ${data.length} операторів`;document.getElementById('opTableTitle').textContent=title;document.getElementById('opChartTitle').textContent=title;const tbody=document.getElementById('opTableBody');tbody.innerHTML='';data.forEach(([name,kg],i)=>{const pct=(kg/total*100).toFixed(1);const bw=Math.round(kg/data[0][1]*70);const rc=i===0?'var(--accent)':i===1?'#aaa':i===2?'var(--warn)':'var(--muted)';tbody.innerHTML+=`<tr><td style="color:${rc};font-family:'Bebas Neue',sans-serif;font-size:18px;width:28px;text-align:center">${i+1}</td><td>${name}</td><td style="text-align:right">${kg.toLocaleString('uk-UA',{maximumFractionDigits:0})}</td><td><div style="display:flex;align-items:center;gap:6px"><div style="width:${bw}px;height:4px;border-radius:2px;background:var(--accent2);min-width:2px"></div><span>${pct}%</span></div></td></tr>`;});if(opCI)opCI.destroy();opCI=new Chart(document.getElementById('opChart'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'кг',data:data.map(d=>d[1]),backgroundColor:data.map((_,i)=>`rgba(71,180,255,${Math.max(0.25,0.9-i*0.03)})`),borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}},y:{...GR,ticks:{...GR.ticks,font:{size:10}}}}}});}
+function setOpMonth(key, btn) {
+  document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  curOpMonth = key;
+  if (curOpView === 'shift') {
+    renderShiftView(key);
+  } else {
+    renderOpTotal(key);
+  }
+}
 
 // ── CALCULATOR ──
 function setCalcTab(tab, btn) {
@@ -616,11 +625,12 @@ let opShiftDonutCI = null;
 
 function setOpView(view, btn) {
   document.querySelectorAll('#opViewSwitcher .month-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   curOpView = view;
   document.getElementById('opViewTotal').style.display = view === 'total' ? '' : 'none';
   document.getElementById('opViewShift').style.display  = view === 'shift'  ? '' : 'none';
   if (view === 'shift') renderShiftView(curOpMonth);
+  else renderOpTotal(curOpMonth);
 }
 
 function renderShiftView(key) {
@@ -792,12 +802,54 @@ function calcExtUpdate() {
   document.getElementById('exs3_p').textContent = s2.p;
 }
 
-// Override setOpMonth to also update shift view
-const _origSetOpMonth = setOpMonth;
-function setOpMonth(key, btn) {
-  curOpMonth = key;
-  _origSetOpMonth(key, btn);
-  if (curOpView === 'shift') renderShiftView(key);
+// ── RENDER OPERATOR TOTAL VIEW ──
+function renderOpTotal(key) {
+  const data = key === 'all' ? OP_ALL : (OP_BY_MONTH[key] || []);
+  const total = data.reduce((s, [,v]) => s + v, 0);
+  const mIdx = ['2025-11','2025-12','2026-01','2026-02','2026-03'].indexOf(key);
+  const title = key === 'all'
+    ? `Всі місяці · ${data.length} операторів`
+    : `${MF[mIdx]} · ${data.length} операторів`;
+  document.getElementById('opTableTitle').textContent = title;
+  document.getElementById('opChartTitle').textContent = title;
+
+  const tbody = document.getElementById('opTableBody');
+  tbody.innerHTML = '';
+  data.forEach(([name, kg], i) => {
+    const pct = (kg / total * 100).toFixed(1);
+    const bw  = Math.round(kg / data[0][1] * 70);
+    const rc  = i===0 ? 'var(--accent)' : i===1 ? '#aaa' : i===2 ? 'var(--warn)' : 'var(--muted)';
+    tbody.innerHTML += `<tr>
+      <td style="color:${rc};font-family:'Bebas Neue',sans-serif;font-size:18px;width:28px;text-align:center">${i+1}</td>
+      <td>${name}</td>
+      <td style="text-align:right">${kg.toLocaleString('uk-UA',{maximumFractionDigits:0})}</td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div style="width:${bw}px;height:4px;border-radius:2px;background:var(--accent2);min-width:2px"></div>
+        <span>${pct}%</span>
+      </div></td>
+    </tr>`;
+  });
+
+  if (opCI) opCI.destroy();
+  opCI = new Chart(document.getElementById('opChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d[0]),
+      datasets: [{
+        label: 'кг', data: data.map(d => d[1]),
+        backgroundColor: data.map((_,i) => `rgba(71,180,255,${Math.max(0.25, 0.9-i*0.03)})`),
+        borderWidth: 0, borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ...GR, ticks: { ...GR.ticks, callback: v => (v/1000).toFixed(0)+'k' } },
+        y: { ...GR, ticks: { ...GR.ticks, font: { size: 10 } } }
+      }
+    }
+  });
 }
 </script>
 </body>
