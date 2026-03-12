@@ -252,7 +252,7 @@
 <div id="tab-operators" class="tab-content">
   <div class="section-title">Аналіз операторів</div>
   <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">ФІЛЬТР:</span>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">МІСЯЦЬ:</span>
     <div class="month-switcher" style="margin-bottom:0" id="opMonthSwitcher">
       <button class="month-btn active" onclick="setOpMonth('all',this)">Всі місяці</button>
       <button class="month-btn" onclick="setOpMonth('2025-11',this)">Листопад 2025</button>
@@ -261,13 +261,59 @@
       <button class="month-btn" onclick="setOpMonth('2026-02',this)">Лютий 2026</button>
       <button class="month-btn" onclick="setOpMonth('2026-03',this)">Березень 2026*</button>
     </div>
-  </div>
-  <div class="grid-2">
-    <div class="card"><div class="card-header"><div><div class="card-title">Рейтинг операторів</div><div class="card-subtitle" id="opTableTitle">Всі місяці · 20 операторів</div></div></div>
-      <table><thead><tr><th>#</th><th>Оператор</th><th>Обсяг, кг</th><th>Частка</th></tr></thead><tbody id="opTableBody"></tbody></table>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-left:16px">ВИГЛЯД:</span>
+    <div class="month-switcher" style="margin-bottom:0" id="opViewSwitcher">
+      <button class="month-btn active" onclick="setOpView('total',this)">Загальний</button>
+      <button class="month-btn" onclick="setOpView('shift',this)">По змінах</button>
     </div>
-    <div class="card"><div class="card-header"><div><div class="card-title">Обсяг по операторах</div><div class="card-subtitle" id="opChartTitle">Всі місяці</div></div></div>
-      <div style="height:460px;position:relative"><canvas id="opChart"></canvas></div>
+  </div>
+
+  <!-- VIEW: TOTAL -->
+  <div id="opViewTotal">
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div><div class="card-title">Рейтинг операторів</div><div class="card-subtitle" id="opTableTitle">Всі місяці · 19 операторів</div></div></div>
+        <table><thead><tr><th>#</th><th>Оператор</th><th>Обсяг, кг</th><th>Частка</th></tr></thead><tbody id="opTableBody"></tbody></table>
+      </div>
+      <div class="card"><div class="card-header"><div><div class="card-title">Обсяг по операторах</div><div class="card-subtitle" id="opChartTitle">Всі місяці</div></div></div>
+        <div style="height:460px;position:relative"><canvas id="opChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: SHIFTS -->
+  <div id="opViewShift" style="display:none">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Продуктивність по змінах</div><div class="card-subtitle" id="opShiftTableTitle">Всі місяці · День / Ніч</div></div>
+          <div style="display:flex;gap:6px"><span class="badge badge-yellow">☀ ДЕНЬ</span><span class="badge badge-blue">☾ НІЧ</span></div>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Оператор</th><th>☀ День, кг</th><th>☾ Ніч, кг</th><th>Всього</th><th>День %</th></tr></thead>
+          <tbody id="opShiftTableBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">День vs Ніч по операторах</div><div class="card-subtitle" id="opShiftChartTitle">Всі місяці</div></div></div>
+        <div style="height:500px;position:relative"><canvas id="opShiftChart"></canvas></div>
+      </div>
+    </div>
+    <!-- Day/Night donut summary -->
+    <div class="grid-3" style="margin-top:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Співвідношення змін</div><div class="card-subtitle" id="opShiftDonutTitle">Всі місяці</div></div></div>
+        <div style="display:flex;align-items:center;justify-content:center;height:180px;gap:30px">
+          <div style="width:140px;height:140px;position:relative"><canvas id="opShiftDonut"></canvas></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="legend-item"><div class="legend-dot" style="background:#e8ff47"></div>☀ День<span id="dayPctLabel" style="margin-left:auto;padding-left:14px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:22px">—</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#47b4ff"></div>☾ Ніч<span id="nightPctLabel" style="margin-left:auto;padding-left:14px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:22px">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="grid-column:span 2">
+        <div class="card-header"><div><div class="card-title">Топ-5 денних операторів</div><div class="card-subtitle">Найбільша частка денних змін</div></div></div>
+        <table><thead><tr><th>Оператор</th><th>☀ День, кг</th><th>☾ Ніч, кг</th><th>День %</th></tr></thead>
+        <tbody id="opDayTopBody"></tbody></table>
+      </div>
     </div>
   </div>
 </div>
@@ -275,97 +321,157 @@
 <!-- ══════════════ CALCULATOR ══════════════ -->
 <div id="tab-calculator" class="tab-content">
   <div class="section-title">Калькулятор собівартості</div>
-  <div class="calc-wrap">
-    <!-- Input panel -->
-    <div class="calc-section">
-      <div class="calc-title">⚙ Вхідні параметри</div>
-      <div class="calc-row">
-        <div class="calc-label">Ціна сировини PETG (грн/кг)</div>
-        <input class="calc-input" id="c_petg_price" type="number" value="146.4" step="0.1" oninput="calcUpdate()">
-      </div>
-      <div class="calc-row">
-        <div class="calc-label">Ціна сировини PLA (грн/кг)</div>
-        <input class="calc-input" id="c_pla_price" type="number" value="175.5" step="0.1" oninput="calcUpdate()">
-      </div>
-      <div class="calc-row">
-        <div class="calc-label">Прогноз % Браку та НФ</div>
-        <input class="calc-input" id="c_waste_pct" type="number" value="7.5" step="0.1" oninput="calcUpdate()">
-      </div>
-      <div class="calc-divider"></div>
-      <div class="calc-title" style="margin-top:8px">📌 Постійні витрати (грн/кг)</div>
-      <div class="calc-row">
-        <div class="calc-label">Змінні витрати (пакування, логістика…)</div>
-        <input class="calc-input" id="c_var" type="number" value="24.5" step="0.5" oninput="calcUpdate()">
-      </div>
-      <div class="calc-row">
-        <div class="calc-label">Постійні витрати PETG (ЗП, аморт, ел…)</div>
-        <input class="calc-input" id="c_fix_petg" type="number" value="42.8" step="0.5" oninput="calcUpdate()">
-      </div>
-      <div class="calc-row">
-        <div class="calc-label">Постійні витрати PLA</div>
-        <input class="calc-input" id="c_fix_pla" type="number" value="64.3" step="0.5" oninput="calcUpdate()">
-      </div>
-      <div class="calc-divider"></div>
-      <div class="calc-title" style="margin-top:8px">💰 Ціноутворення</div>
-      <div class="calc-row">
-        <div class="calc-label">Мінімальна маржа PETG (%)</div>
-        <input class="calc-input" id="c_margin_petg" type="number" value="20" step="1" oninput="calcUpdate()">
-      </div>
-      <div class="calc-row">
-        <div class="calc-label">Мінімальна маржа PLA (%)</div>
-        <input class="calc-input" id="c_margin_pla" type="number" value="25" step="1" oninput="calcUpdate()">
-      </div>
-      <div class="calc-note">* Ціна сировини вказується без ПДВ<br>* Собівартість розраховується з урахуванням браку та НФ</div>
-    </div>
 
-    <!-- Results panel -->
-    <div style="display:flex;flex-direction:column;gap:14px">
+  <!-- Sub-tabs -->
+  <div class="month-switcher" style="margin-bottom:16px" id="calcSubTabs">
+    <button class="month-btn active" onclick="setCalcTab('simple',this)">Простий</button>
+    <button class="month-btn" onclick="setCalcTab('extended',this)">Розширений</button>
+  </div>
+
+  <!-- ── SIMPLE CALCULATOR ── -->
+  <div id="calcSimple">
+    <div class="calc-wrap">
       <div class="calc-section">
-        <div class="calc-title">📊 Результат розрахунку</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <!-- PETG -->
-          <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">PETG</div>
-            <div class="calc-result-row"><div class="calc-result-label">Сировина з браком</div><div class="calc-result-val" id="r_petg_raw" style="font-size:18px">—</div></div>
-            <div class="calc-result-row"><div class="calc-result-label">Собівартість без ПДВ</div><div class="calc-result-val highlight" id="r_petg_cost">—</div></div>
-            <div class="calc-result-row"><div class="calc-result-label">Собівартість з ПДВ</div><div class="calc-result-val" id="r_petg_cost_vat" style="font-size:18px;color:var(--muted)">—</div></div>
-            <div class="calc-result-row" style="border-top:1px solid var(--accent2);margin-top:6px"><div class="calc-result-label">Ціна продажу</div><div class="calc-result-val green" id="r_petg_price">—</div></div>
+        <div class="calc-title">⚙ Вхідні параметри</div>
+        <div class="calc-row"><div class="calc-label">Ціна сировини PETG (грн/кг, без ПДВ)</div><input class="calc-input" id="c_petg_price" type="number" value="{{CALC_PETG_PRICE}}" step="0.1" oninput="calcUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">Ціна сировини PLA (грн/кг, без ПДВ)</div><input class="calc-input" id="c_pla_price" type="number" value="{{CALC_PLA_PRICE}}" step="0.1" oninput="calcUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">% Браку та НФ</div><input class="calc-input" id="c_waste_pct" type="number" value="{{CALC_WASTE_PCT}}" step="0.1" oninput="calcUpdate()"></div>
+        <div class="calc-divider"></div>
+        <div class="calc-title" style="margin-top:8px">📌 Витрати на 1 кг (грн)</div>
+        <div class="calc-row"><div class="calc-label">Змінні витрати</div><input class="calc-input" id="c_var" type="number" value="24.5" step="0.5" oninput="calcUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">Постійні витрати PETG</div><input class="calc-input" id="c_fix_petg" type="number" value="42.8" step="0.5" oninput="calcUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">Постійні витрати PLA</div><input class="calc-input" id="c_fix_pla" type="number" value="64.3" step="0.5" oninput="calcUpdate()"></div>
+        <div class="calc-divider"></div>
+        <div class="calc-title" style="margin-top:8px">💰 Маржа</div>
+        <div class="calc-row"><div class="calc-label">Мінімальна маржа PETG (%)</div><input class="calc-input" id="c_margin_petg" type="number" value="20" step="1" oninput="calcUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">Мінімальна маржа PLA (%)</div><input class="calc-input" id="c_margin_pla" type="number" value="25" step="1" oninput="calcUpdate()"></div>
+        <div class="calc-note">* Ціна сировини без ПДВ. Собівартість розраховується з урахуванням браку та НФ</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="calc-section">
+          <div class="calc-title">📊 Результат</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:1px;margin-bottom:8px">PETG</div>
+              <div class="calc-result-row"><div class="calc-result-label">Сировина з браком</div><div class="calc-result-val" id="r_petg_raw" style="font-size:18px">—</div></div>
+              <div class="calc-result-row"><div class="calc-result-label">Собів. без ПДВ</div><div class="calc-result-val highlight" id="r_petg_cost">—</div></div>
+              <div class="calc-result-row"><div class="calc-result-label">Собів. з ПДВ</div><div class="calc-result-val" id="r_petg_cost_vat" style="font-size:18px;color:var(--muted)">—</div></div>
+              <div class="calc-result-row" style="border-top:1px solid var(--accent2);margin-top:6px"><div class="calc-result-label">Ціна продажу</div><div class="calc-result-val green" id="r_petg_price">—</div></div>
+            </div>
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c8b400;letter-spacing:1px;margin-bottom:8px">PLA</div>
+              <div class="calc-result-row"><div class="calc-result-label">Сировина з браком</div><div class="calc-result-val" id="r_pla_raw" style="font-size:18px">—</div></div>
+              <div class="calc-result-row"><div class="calc-result-label">Собів. без ПДВ</div><div class="calc-result-val highlight" id="r_pla_cost">—</div></div>
+              <div class="calc-result-row"><div class="calc-result-label">Собів. з ПДВ</div><div class="calc-result-val" id="r_pla_cost_vat" style="font-size:18px;color:var(--muted)">—</div></div>
+              <div class="calc-result-row" style="border-top:1px solid #c8b400;margin-top:6px"><div class="calc-result-label">Ціна продажу</div><div class="calc-result-val green" id="r_pla_price">—</div></div>
+            </div>
           </div>
-          <!-- PLA -->
-          <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c8b400;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">PLA</div>
-            <div class="calc-result-row"><div class="calc-result-label">Сировина з браком</div><div class="calc-result-val" id="r_pla_raw" style="font-size:18px">—</div></div>
-            <div class="calc-result-row"><div class="calc-result-label">Собівартість без ПДВ</div><div class="calc-result-val highlight" id="r_pla_cost">—</div></div>
-            <div class="calc-result-row"><div class="calc-result-label">Собівартість з ПДВ</div><div class="calc-result-val" id="r_pla_cost_vat" style="font-size:18px;color:var(--muted)">—</div></div>
-            <div class="calc-result-row" style="border-top:1px solid #c8b400;margin-top:6px"><div class="calc-result-label">Ціна продажу</div><div class="calc-result-val green" id="r_pla_price">—</div></div>
+        </div>
+        <div class="calc-section">
+          <div class="calc-title">📋 Сценарії (зафіксовані)</div>
+          <div class="scenarios-grid">
+            <div class="scenario-card">
+              <div class="scenario-title" style="color:var(--good)">База (поточний)</div>
+              <div class="scenario-row"><span class="scenario-key">PETG сир-на</span><span class="scenario-val" id="sc1_petg_p">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">PLA сир-на</span><span class="scenario-val" id="sc1_pla_p">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів. PETG</span><span class="scenario-val" id="sc1_petg_c">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів. PLA</span><span class="scenario-val" id="sc1_pla_c">—</span></div>
+            </div>
+            <div class="scenario-card">
+              <div class="scenario-title" style="color:var(--warn)">Варіант 1 (% браку 10%)</div>
+              <div class="scenario-row"><span class="scenario-key">PETG сир-на</span><span class="scenario-val" id="sc_v1_petg_p">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів. PETG</span><span class="scenario-val" id="sc_v1_petg_c">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">PLA сир-на</span><span class="scenario-val" id="sc_v1_pla_p">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів. PLA</span><span class="scenario-val" id="sc_v1_pla_c">—</span></div>
+            </div>
+            <div class="scenario-card">
+              <div class="scenario-title" style="color:var(--bad)">Варіант 2 (% браку 8%)</div>
+              <div class="scenario-row"><span class="scenario-key">PETG сир-на</span><span class="scenario-val" id="sc_v2_petg_p">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів. PETG</span><span class="scenario-val" id="sc_v2_petg_c">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">PLA сир-на</span><span class="scenario-val" id="sc_v2_pla_p">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів. PLA</span><span class="scenario-val" id="sc_v2_pla_c">—</span></div>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Scenarios -->
+  <!-- ── EXTENDED CALCULATOR ── -->
+  <div id="calcExtended" style="display:none">
+    <div class="calc-wrap">
+      <!-- Recipe inputs -->
       <div class="calc-section">
-        <div class="calc-title">📋 Порівняння сценаріїв</div>
-        <div class="scenarios-grid">
-          <div class="scenario-card">
-            <div class="scenario-title" style="color:var(--good)">▼ Поточний (базовий)</div>
-            <div class="scenario-row"><span class="scenario-key">PETG ціна</span><span class="scenario-val" id="sc1_petg_p">—</span></div>
-            <div class="scenario-row"><span class="scenario-key">PLA ціна</span><span class="scenario-val" id="sc1_pla_p">—</span></div>
-            <div class="scenario-row"><span class="scenario-key">Собів PETG</span><span class="scenario-val" id="sc1_petg_c">—</span></div>
-            <div class="scenario-row"><span class="scenario-key">Собів PLA</span><span class="scenario-val" id="sc1_pla_c">—</span></div>
-          </div>
-          <div class="scenario-card">
-            <div class="scenario-title" style="color:var(--warn)">▶ Варіант 1 (PETG 214/PLA 200)</div>
-            <div class="scenario-row"><span class="scenario-key">PETG сир-на</span><span class="scenario-val">214 ₴</span></div>
-            <div class="scenario-row"><span class="scenario-key">PLA сир-на</span><span class="scenario-val">200 ₴</span></div>
-            <div class="scenario-row"><span class="scenario-key">Собів PETG</span><span class="scenario-val" id="sc2_petg_c">—</span></div>
-            <div class="scenario-row"><span class="scenario-key">Собів PLA</span><span class="scenario-val" id="sc2_pla_c">—</span></div>
-          </div>
-          <div class="scenario-card">
-            <div class="scenario-title" style="color:var(--bad)">▲ Варіант 2 (PETG 223/PLA 245)</div>
-            <div class="scenario-row"><span class="scenario-key">PETG сир-на</span><span class="scenario-val">223 ₴</span></div>
-            <div class="scenario-row"><span class="scenario-key">PLA сир-на</span><span class="scenario-val">245 ₴</span></div>
-            <div class="scenario-row"><span class="scenario-key">Собів PETG</span><span class="scenario-val" id="sc3_petg_c">—</span></div>
-            <div class="scenario-row"><span class="scenario-key">Собів PLA</span><span class="scenario-val" id="sc3_pla_c">—</span></div>
+        <div class="calc-title">📦 Рецептура (витрати на 1 кг продукції)</div>
+        <table style="margin-bottom:10px">
+          <thead><tr><th>Матеріал</th><th style="text-align:right">Ціна за од.</th><th style="text-align:right">Витрати</th><th style="text-align:right">Разом, грн</th></tr></thead>
+          <tbody>
+            <tr><td>Гранула (PETG/PLA)</td><td style="text-align:right"><input class="calc-input" id="ex_granule" type="number" value="{{CALC_EX_GRANULE}}" style="width:80px" oninput="calcExtUpdate()"></td><td style="text-align:right;color:var(--muted)">1 кг</td><td style="text-align:right" id="ex_granule_t">—</td></tr>
+            <tr><td>Пакет</td><td style="text-align:right"><input class="calc-input" id="ex_bag" type="number" value="10.58" style="width:80px" oninput="calcExtUpdate()"></td><td style="text-align:right;color:var(--muted)">1 шт</td><td style="text-align:right" id="ex_bag_t">10.58</td></tr>
+            <tr><td>Коробка (під 3 шт)</td><td style="text-align:right"><input class="calc-input" id="ex_box" type="number" value="17.89" style="width:80px" oninput="calcExtUpdate()"></td><td style="text-align:right;color:var(--muted)">1 шт</td><td style="text-align:right" id="ex_box_t">17.89</td></tr>
+            <tr><td>Силікагель</td><td style="text-align:right"><input class="calc-input" id="ex_sil" type="number" value="1.4" style="width:80px" step="0.1" oninput="calcExtUpdate()"></td><td style="text-align:right;color:var(--muted)">1 шт</td><td style="text-align:right" id="ex_sil_t">1.4</td></tr>
+            <tr><td>Етикетка/Наклейка</td><td style="text-align:right"><input class="calc-input" id="ex_label" type="number" value="0.08" style="width:80px" step="0.01" oninput="calcExtUpdate()"></td><td style="text-align:right;color:var(--muted)">1 шт</td><td style="text-align:right" id="ex_label_t">0.08</td></tr>
+            <tr><td>Котушка (2.5/3 кг)</td><td style="text-align:right"><input class="calc-input" id="ex_spool" type="number" value="35" style="width:80px" oninput="calcExtUpdate()"></td><td style="text-align:right;color:var(--muted)">1 шт</td><td style="text-align:right" id="ex_spool_t">35.00</td></tr>
+            <tr style="border-top:1px solid var(--accent)"><td style="color:var(--accent);font-weight:600">РАЗОМ УПАКОВКА</td><td></td><td></td><td style="text-align:right;color:var(--accent);font-weight:600" id="ex_pack_total">—</td></tr>
+          </tbody>
+        </table>
+        <div class="calc-divider"></div>
+        <div class="calc-title" style="margin-top:10px">⚙ Параметри виробництва</div>
+        <div class="calc-row"><div class="calc-label">% Браку та НФ</div><input class="calc-input" id="ex_waste" type="number" value="5" step="0.1" oninput="calcExtUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">% Втрат матеріалу при виготовленні</div><input class="calc-input" id="ex_loss" type="number" value="2" step="0.1" oninput="calcExtUpdate()"></div>
+        <div class="calc-row"><div class="calc-label">Мінімальна маржа (%)</div><input class="calc-input" id="ex_margin" type="number" value="20" step="1" oninput="calcExtUpdate()"></div>
+      </div>
+
+      <!-- Extended results -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="calc-section">
+          <div class="calc-title">📊 Структура собівартості</div>
+          <table>
+            <thead><tr><th>Стаття</th><th>% від собів.</th><th style="text-align:right">Сума, грн/кг</th></tr></thead>
+            <tbody>
+              <tr><td>Сировина (загалом)</td><td style="color:var(--accent2)">75%</td><td style="text-align:right" id="ex_r_raw">—</td></tr>
+              <tr><td>Пакування</td><td>0.5%</td><td style="text-align:right" id="ex_r_pack">—</td></tr>
+              <tr><td>Електроенергія</td><td>7%</td><td style="text-align:right" id="ex_r_elec">—</td></tr>
+              <tr><td>Логістика</td><td>2.25%</td><td style="text-align:right" id="ex_r_log">—</td></tr>
+              <tr><td>ЗП операторів</td><td>3.5%</td><td style="text-align:right" id="ex_r_zp">—</td></tr>
+              <tr><td>Амортизація</td><td>2%</td><td style="text-align:right" id="ex_r_amor">—</td></tr>
+              <tr><td>Ремонт</td><td>0.25%</td><td style="text-align:right" id="ex_r_rep">—</td></tr>
+              <tr><td>Інші виробничі</td><td>0.1%</td><td style="text-align:right" id="ex_r_other">—</td></tr>
+              <tr><td>Адмін/Загал</td><td>7%</td><td style="text-align:right" id="ex_r_admin">—</td></tr>
+              <tr><td>Податки</td><td>2%</td><td style="text-align:right" id="ex_r_tax">—</td></tr>
+              <tr><td>Реклама</td><td>0.4%</td><td style="text-align:right" id="ex_r_adv">—</td></tr>
+              <tr style="border-top:1px solid var(--accent)"><td style="color:var(--accent);font-weight:600">РАЗОМ без ПДВ</td><td></td><td style="text-align:right;color:var(--accent);font-weight:600" id="ex_r_total">—</td></tr>
+            </tbody>
+          </table>
+          <div class="calc-divider"></div>
+          <div class="calc-result-row"><div class="calc-result-label">Собів. з ПДВ (+20%)</div><div class="calc-result-val highlight" id="ex_r_total_vat">—</div></div>
+          <div class="calc-result-row" style="border-top:1px solid var(--good);margin-top:6px"><div class="calc-result-label">Ціна продажу</div><div class="calc-result-val green" id="ex_r_price">—</div></div>
+        </div>
+
+        <div class="calc-section">
+          <div class="calc-title">📋 3 Сценарії</div>
+          <div class="scenarios-grid">
+            <div class="scenario-card">
+              <div class="scenario-title" style="color:var(--good)">База</div>
+              <div class="scenario-row"><span class="scenario-key">Гранула</span><span class="scenario-val" id="exs1_g">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">% браку</span><span class="scenario-val" id="exs1_w">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів.</span><span class="scenario-val" id="exs1_c">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Ціна</span><span class="scenario-val" id="exs1_p">—</span></div>
+            </div>
+            <div class="scenario-card">
+              <div class="scenario-title" style="color:var(--warn)">Варіант 1 (% браку +5%)</div>
+              <div class="scenario-row"><span class="scenario-key">Гранула</span><span class="scenario-val" id="exs2_g">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">% браку</span><span class="scenario-val" id="exs2_w">5%</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів.</span><span class="scenario-val" id="exs2_c">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Ціна</span><span class="scenario-val" id="exs2_p">—</span></div>
+            </div>
+            <div class="scenario-card">
+              <div class="scenario-title" style="color:var(--bad)">Варіант 2 (% браку +3%)</div>
+              <div class="scenario-row"><span class="scenario-key">Гранула</span><span class="scenario-val" id="exs3_g">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">% браку</span><span class="scenario-val" id="exs3_w">3%</span></div>
+              <div class="scenario-row"><span class="scenario-key">Собів.</span><span class="scenario-val" id="exs3_c">—</span></div>
+              <div class="scenario-row"><span class="scenario-key">Ціна</span><span class="scenario-val" id="exs3_p">—</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -410,7 +516,7 @@ function trendline(data){const pts=data.map((v,i)=>[i,v]).filter(p=>p[1]!==null&
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){setOpMonth('all',document.querySelector('#opMonthSwitcher .month-btn'));}else if(id==='calculator'){calcUpdate();}}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){setOpView('total',document.querySelector('#opViewSwitcher .month-btn'));setOpMonth('all',document.querySelector('#opMonthSwitcher .month-btn'));}else if(id==='calculator'){calcUpdate();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
@@ -446,6 +552,14 @@ function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .mo
 function setOpMonth(key,btn){document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const data=key==='all'?OP_ALL:(OP_BY_MONTH[key]||[]);const total=data.reduce((s,[,v])=>s+v,0);const mIdx=['2025-11','2025-12','2026-01','2026-02','2026-03'].indexOf(key);const title=key==='all'?`Всі місяці · ${data.length} операторів`:`${MF[mIdx]} · ${data.length} операторів`;document.getElementById('opTableTitle').textContent=title;document.getElementById('opChartTitle').textContent=title;const tbody=document.getElementById('opTableBody');tbody.innerHTML='';data.forEach(([name,kg],i)=>{const pct=(kg/total*100).toFixed(1);const bw=Math.round(kg/data[0][1]*70);const rc=i===0?'var(--accent)':i===1?'#aaa':i===2?'var(--warn)':'var(--muted)';tbody.innerHTML+=`<tr><td style="color:${rc};font-family:'Bebas Neue',sans-serif;font-size:18px;width:28px;text-align:center">${i+1}</td><td>${name}</td><td style="text-align:right">${kg.toLocaleString('uk-UA',{maximumFractionDigits:0})}</td><td><div style="display:flex;align-items:center;gap:6px"><div style="width:${bw}px;height:4px;border-radius:2px;background:var(--accent2);min-width:2px"></div><span>${pct}%</span></div></td></tr>`;});if(opCI)opCI.destroy();opCI=new Chart(document.getElementById('opChart'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'кг',data:data.map(d=>d[1]),backgroundColor:data.map((_,i)=>`rgba(71,180,255,${Math.max(0.25,0.9-i*0.03)})`),borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}},y:{...GR,ticks:{...GR.ticks,font:{size:10}}}}}});}
 
 // ── CALCULATOR ──
+function setCalcTab(tab, btn) {
+  document.querySelectorAll('#calcSubTabs .month-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('calcSimple').style.display   = tab === 'simple'   ? '' : 'none';
+  document.getElementById('calcExtended').style.display = tab === 'extended' ? '' : 'none';
+  if (tab === 'extended') calcExtUpdate();
+}
+
 function calcUpdate(){
   const pp=+document.getElementById('c_petg_price').value||0;
   const lp=+document.getElementById('c_pla_price').value||0;
@@ -473,15 +587,217 @@ function calcUpdate(){
   document.getElementById('r_pla_cost_vat').textContent=fmt(L.costVat);
   document.getElementById('r_pla_price').textContent=fmt(L.sellPrice);
   // Scenarios
-  document.getElementById('sc1_petg_p').textContent=pp+' ₴';
-  document.getElementById('sc1_pla_p').textContent=lp+' ₴';
+  document.getElementById('sc1_petg_p').textContent=pp+' ₴'; document.getElementById('sc_v1_petg_p').textContent=pp+' ₴'; document.getElementById('sc_v2_petg_p').textContent=pp+' ₴';
+  document.getElementById('sc1_pla_p').textContent=lp+' ₴'; document.getElementById('sc_v1_pla_p').textContent=lp+' ₴'; document.getElementById('sc_v2_pla_p').textContent=lp+' ₴';
   document.getElementById('sc1_petg_c').textContent=fmt(P.cost);
   document.getElementById('sc1_pla_c').textContent=fmt(L.cost);
   function calcCost(price,fix){return price*(1+wp)+vr+fix;}
-  document.getElementById('sc2_petg_c').textContent=fmt(calcCost(214,fp));
-  document.getElementById('sc2_pla_c').textContent=fmt(calcCost(200,fl));
-  document.getElementById('sc3_petg_c').textContent=fmt(calcCost(223,fp));
-  document.getElementById('sc3_pla_c').textContent=fmt(calcCost(245,fl));
+  document.getElementById('sc_v1_petg_c').textContent=fmt(calcCost(214,fp));
+  document.getElementById('sc_v1_pla_c').textContent=fmt(calcCost(200,fl));
+  document.getElementById('sc_v2_petg_c').textContent=fmt(calcCost(223,fp));
+  document.getElementById('sc_v2_pla_c').textContent=fmt(calcCost(245,fl));
+
+}
+
+// ═══════════════════════ SHIFT DATA ═══════════════════════
+const OP_SHIFT = {
+  'all':     [["Макалюк Вікторія",12862.6,6477.4,19340.0],["Макалюк Володимир",10030.8,8938.8,18969.6],["Щербакова Олена",0,15485.3,15485.3],["Бараш Костянтин",7540.3,6965.0,14505.3],["Ременчук Юлія",7350.7,6709.5,14060.2],["Пивовар Олександр",3803.2,5295.1,9098.3],["Степанчук Владислав",8910.3,0,8910.3],["Пінчук Олександр",4156.4,2872.1,7028.5],["Гарбар Денис",5501.9,246.5,5748.4],["Бондарчук Дмитро",2419.1,3312.0,5731.1],["Нужда Олексій",3668.7,1247.4,4916.1],["Хімич Богдан",1045.8,952.1,1997.9],["Хоменко Артем",909.9,556.6,1466.5],["Нестер Сергій",863.1,372.9,1236.0],["Борисов Дмитро",629.4,0,629.4],["Середа Андрій",54.5,168.1,222.6],["Кирилюк Олександр",112.0,109.1,221.1],["Якубенко Владислав",215.0,0,215.0],["Криволапчук Олександр",0.0,166.6,166.6]],
+  '2025-11': [["Макалюк Вікторія",7349.8,2382.7,9732.5],["Степанчук Владислав",8910.3,0,8910.3],["Макалюк Володимир",3562.7,2478.4,6041.1],["Бондарчук Дмитро",1468.2,2134.4,3602.6],["Ременчук Юлія",1245.7,1555.5,2801.2],["Щербакова Олена",0,2683.0,2683.0],["Бараш Костянтин",1291.9,935.8,2227.7],["Борисов Дмитро",181.3,0,181.3]],
+  '2025-12': [["Ременчук Юлія",2449.8,2022.5,4472.3],["Макалюк Володимир",2520.4,1920.0,4440.4],["Бараш Костянтин",1786.7,1922.0,3708.7],["Щербакова Олена",0,3547.7,3547.7],["Пінчук Олександр",2443.8,693.4,3137.2],["Пивовар Олександр",919.3,1354.9,2274.2],["Макалюк Вікторія",1028.5,1212.3,2240.8],["Бондарчук Дмитро",951.0,1177.7,2128.7],["Борисов Дмитро",245.2,0,245.2]],
+  '2026-01': [["Макалюк Вікторія",2499.9,1494.1,3994.0],["Макалюк Володимир",1688.5,2041.3,3729.8],["Щербакова Олена",0,3577.1,3577.1],["Пивовар Олександр",1236.9,1938.1,3175.0],["Ременчук Юлія",1595.4,1294.1,2889.5],["Бараш Костянтин",1529.8,1071.0,2600.8],["Гарбар Денис",1107.2,246.5,1353.7],["Пінчук Олександр",360.3,825.2,1185.5],["Нужда Олексій",891.2,0,891.2]],
+  '2026-02': [["Бараш Костянтин",1989.7,2225.8,4215.5],["Щербакова Олена",0,3862.3,3862.3],["Ременчук Юлія",2003.8,1723.8,3727.6],["Гарбар Денис",2626.9,959.0,3585.9],["Макалюк Володимир",1628.0,1818.1,3446.1],["Пивовар Олександр",1485.2,1944.4,3429.6],["Нужда Олексій",2175.6,1061.7,3237.3],["Макалюк Вікторія",1929.9,1221.6,3151.5],["Пінчук Олександр",1352.3,1353.5,2705.8],["Хімич Богдан",374.4,398.2,772.6],["Борисов Дмитро",202.9,0,202.9]],
+  '2026-03': [["Гарбар Денис",1767.8,200.3,1968.1],["Щербакова Олена",0,1815.2,1815.2],["Бараш Костянтин",942.3,810.3,1752.6],["Хоменко Артем",909.9,556.6,1466.5],["Макалюк Володимир",631.2,681.0,1312.2],["Нестер Сергій",863.1,372.9,1236.0],["Хімич Богдан",671.4,554.0,1225.4],["Нужда Олексій",601.8,185.7,787.5],["Середа Андрій",54.5,168.1,222.6],["Макалюк Вікторія",54.6,166.7,221.3],["Кирилюк Олександр",112.0,109.1,221.1],["Пивовар Олександр",161.9,57.7,219.6],["Якубенко Владислав",215.0,0,215.0],["Ременчук Юлія",56.0,113.5,169.5],["Криволапчук Олександр",0.0,166.6,166.6]]
+};
+
+let curOpMonth = 'all';
+let curOpView  = 'total';
+let opShiftCI  = null;
+let opShiftDonutCI = null;
+
+function setOpView(view, btn) {
+  document.querySelectorAll('#opViewSwitcher .month-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  curOpView = view;
+  document.getElementById('opViewTotal').style.display = view === 'total' ? '' : 'none';
+  document.getElementById('opViewShift').style.display  = view === 'shift'  ? '' : 'none';
+  if (view === 'shift') renderShiftView(curOpMonth);
+}
+
+function renderShiftView(key) {
+  const data = OP_SHIFT[key] || OP_SHIFT['all'];
+  const mIdx = ['2025-11','2025-12','2026-01','2026-02','2026-03'].indexOf(key);
+  const title = key === 'all' ? `Всі місяці · ${data.length} операторів` : `${MF[mIdx]} · ${data.length} операторів`;
+  document.getElementById('opShiftTableTitle').textContent = title;
+  document.getElementById('opShiftChartTitle').textContent = title;
+  document.getElementById('opShiftDonutTitle').textContent = title;
+
+  const totalDay   = data.reduce((s, r) => s + r[1], 0);
+  const totalNight = data.reduce((s, r) => s + r[2], 0);
+  const grandTotal = totalDay + totalNight;
+  const dayPct   = grandTotal ? (totalDay / grandTotal * 100).toFixed(1) : 0;
+  const nightPct = grandTotal ? (totalNight / grandTotal * 100).toFixed(1) : 0;
+  document.getElementById('dayPctLabel').textContent   = dayPct + '%';
+  document.getElementById('nightPctLabel').textContent = nightPct + '%';
+
+  // Donut
+  if (opShiftDonutCI) opShiftDonutCI.destroy();
+  opShiftDonutCI = new Chart(document.getElementById('opShiftDonut'), {
+    type: 'doughnut',
+    data: { labels: ['День','Ніч'], datasets: [{ data: [totalDay, totalNight], backgroundColor: ['#e8ff47','#47b4ff'], borderWidth: 0 }] },
+    options: { responsive: false, cutout: '65%', plugins: { legend: { display: false } } }
+  });
+
+  // Table
+  const tbody = document.getElementById('opShiftTableBody');
+  tbody.innerHTML = '';
+  data.forEach(([name, day, night, total], i) => {
+    const dp = total ? (day / total * 100).toFixed(0) : 0;
+    const np = 100 - +dp;
+    const rc = i===0?'var(--accent)':i===1?'#aaa':i===2?'var(--warn)':'var(--muted)';
+    tbody.innerHTML += `<tr>
+      <td style="color:${rc};font-family:'Bebas Neue',sans-serif;font-size:18px;width:28px;text-align:center">${i+1}</td>
+      <td>${name}</td>
+      <td style="color:var(--accent)">${day.toLocaleString('uk-UA', {maximumFractionDigits:0})}</td>
+      <td style="color:var(--accent2)">${night.toLocaleString('uk-UA', {maximumFractionDigits:0})}</td>
+      <td style="font-weight:600">${total.toLocaleString('uk-UA', {maximumFractionDigits:0})}</td>
+      <td><div style="min-width:80px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-bottom:2px">${dp}% / ${np}%</div>
+        <div class="shift-bar-wrap" style="width:80px">
+          <div class="shift-bar-day" style="width:${dp}%"></div>
+          <div class="shift-bar-night" style="width:${np}%"></div>
+        </div>
+      </div></td>
+    </tr>`;
+  });
+
+  // Day-top table
+  const dayTop = [...data].sort((a, b) => {
+    const pa = a[3] ? a[1]/a[3] : 0;
+    const pb = b[3] ? b[1]/b[3] : 0;
+    return pb - pa;
+  }).slice(0, 5);
+  const tbody2 = document.getElementById('opDayTopBody');
+  tbody2.innerHTML = '';
+  dayTop.forEach(([name, day, night, total]) => {
+    const dp = total ? (day / total * 100).toFixed(1) : 0;
+    tbody2.innerHTML += `<tr>
+      <td>${name}</td>
+      <td style="color:var(--accent)">${day.toLocaleString('uk-UA',{maximumFractionDigits:0})}</td>
+      <td style="color:var(--accent2)">${night.toLocaleString('uk-UA',{maximumFractionDigits:0})}</td>
+      <td><div class="shift-bar-wrap" style="width:70px;display:inline-flex;vertical-align:middle;margin-right:6px">
+        <div class="shift-bar-day" style="width:${dp}%"></div>
+        <div class="shift-bar-night" style="width:${100-+dp}%"></div>
+      </div>${dp}%</td>
+    </tr>`;
+  });
+
+  // Stacked bar chart
+  if (opShiftCI) opShiftCI.destroy();
+  opShiftCI = new Chart(document.getElementById('opShiftChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d[0]),
+      datasets: [
+        { label: '☀ День', data: data.map(d => d[1]), backgroundColor: 'rgba(232,255,71,.75)', borderWidth: 0, borderRadius: 2 },
+        { label: '☾ Ніч',  data: data.map(d => d[2]), backgroundColor: 'rgba(71,180,255,.75)', borderWidth: 0, borderRadius: 2 }
+      ]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 10 } } },
+      scales: {
+        x: { ...GR, stacked: true, ticks: { ...GR.ticks, callback: v => (v/1000).toFixed(0)+'k' } },
+        y: { ...GR, stacked: true, ticks: { ...GR.ticks, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ── EXTENDED CALCULATOR ──
+function calcExtUpdate() {
+  const granule = +document.getElementById('ex_granule').value || 0;
+  const bag     = +document.getElementById('ex_bag').value     || 0;
+  const box     = +document.getElementById('ex_box').value     || 0;
+  const sil     = +document.getElementById('ex_sil').value     || 0;
+  const label   = +document.getElementById('ex_label').value   || 0;
+  const spool   = +document.getElementById('ex_spool').value   || 0;
+  const waste   = (+document.getElementById('ex_waste').value  || 0) / 100;
+  const loss    = (+document.getElementById('ex_loss').value   || 0) / 100;
+  const margin  = (+document.getElementById('ex_margin').value || 0) / 100;
+
+  const packTotal = bag + box + sil + label + spool;
+  const granuleWithLoss = granule * (1 + loss);
+  const rawWithWaste = granuleWithLoss * (1 + waste);
+
+  // Cost items as % of total cost
+  // Raw is the base, others are % of total (from расширенный sheet)
+  const PCTS = { pack:0.005, elec:0.07, log:0.0225, zp:0.035, amor:0.02, rep:0.0025, other:0.001, admin:0.07, tax:0.02, adv:0.004 };
+  const pctSum = Object.values(PCTS).reduce((s,v)=>s+v, 0); // ~0.325
+  // If raw = (1 - pctSum) of total, then total = raw / (1 - pctSum)
+  const rawPct = 1 - pctSum; // 0.675
+  const totalCost = rawWithWaste / rawPct;
+
+  const fmt = v => v.toFixed(2) + ' ₴';
+  document.getElementById('ex_granule_t').textContent = granuleWithLoss.toFixed(2);
+  document.getElementById('ex_bag_t').textContent     = bag.toFixed(2);
+  document.getElementById('ex_box_t').textContent     = box.toFixed(2);
+  document.getElementById('ex_sil_t').textContent     = sil.toFixed(2);
+  document.getElementById('ex_label_t').textContent   = label.toFixed(2);
+  document.getElementById('ex_spool_t').textContent   = spool.toFixed(2);
+  document.getElementById('ex_pack_total').textContent = fmt(packTotal);
+
+  document.getElementById('ex_r_raw').textContent   = fmt(rawWithWaste);
+  document.getElementById('ex_r_pack').textContent  = fmt(totalCost * PCTS.pack);
+  document.getElementById('ex_r_elec').textContent  = fmt(totalCost * PCTS.elec);
+  document.getElementById('ex_r_log').textContent   = fmt(totalCost * PCTS.log);
+  document.getElementById('ex_r_zp').textContent    = fmt(totalCost * PCTS.zp);
+  document.getElementById('ex_r_amor').textContent  = fmt(totalCost * PCTS.amor);
+  document.getElementById('ex_r_rep').textContent   = fmt(totalCost * PCTS.rep);
+  document.getElementById('ex_r_other').textContent = fmt(totalCost * PCTS.other);
+  document.getElementById('ex_r_admin').textContent = fmt(totalCost * PCTS.admin);
+  document.getElementById('ex_r_tax').textContent   = fmt(totalCost * PCTS.tax);
+  document.getElementById('ex_r_adv').textContent   = fmt(totalCost * PCTS.adv);
+  document.getElementById('ex_r_total').textContent = fmt(totalCost);
+
+  const costVat = totalCost * 1.2;
+  const sellPrice = costVat / (1 - margin);
+  document.getElementById('ex_r_total_vat').textContent = fmt(costVat);
+  document.getElementById('ex_r_price').textContent = fmt(sellPrice);
+
+  // Scenarios: base / +5% waste / +3% waste
+  function calcScenario(w) {
+    const r = granuleWithLoss * (1 + w/100);
+    const t = r / rawPct;
+    const tv = t * 1.2;
+    const sp = tv / (1 - margin);
+    return { c: fmt(t), p: fmt(sp) };
+  }
+  const base = calcScenario(waste*100);
+  const s1   = calcScenario(waste*100 + 5);
+  const s2   = calcScenario(waste*100 + 3);
+
+  document.getElementById('exs1_g').textContent = fmt(granule);
+  document.getElementById('exs1_w').textContent = (waste*100).toFixed(1) + '%';
+  document.getElementById('exs1_c').textContent = base.c;
+  document.getElementById('exs1_p').textContent = base.p;
+
+  document.getElementById('exs2_g').textContent = fmt(granule);
+  document.getElementById('exs2_w').textContent = (waste*100+5).toFixed(1) + '%';
+  document.getElementById('exs2_c').textContent = s1.c;
+  document.getElementById('exs2_p').textContent = s1.p;
+
+  document.getElementById('exs3_g').textContent = fmt(granule);
+  document.getElementById('exs3_w').textContent = (waste*100+3).toFixed(1) + '%';
+  document.getElementById('exs3_c').textContent = s2.c;
+  document.getElementById('exs3_p').textContent = s2.p;
+}
+
+// Override setOpMonth to also update shift view
+const _origSetOpMonth = setOpMonth;
+function setOpMonth(key, btn) {
+  curOpMonth = key;
+  _origSetOpMonth(key, btn);
+  if (curOpView === 'shift') renderShiftView(key);
 }
 </script>
 </body>
