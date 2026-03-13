@@ -62,6 +62,49 @@
   @keyframes pulse-border{0%,100%{border-color:rgba(255,85,85,.3)}50%{border-color:rgba(255,85,85,.8)}}
   .kpi-alert{animation:pulse-border 2s ease-in-out infinite}
 
+
+  /* ── LINES TAB ── */
+  .lines-controls{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1.5fr auto;gap:16px;align-items:end}
+  .lines-field{display:flex;flex-direction:column;gap:6px}
+  .lines-field label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .lines-input{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;transition:border-color .2s}
+  .lines-input:focus{border-color:var(--accent)}
+  .lines-select{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7494' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer;transition:border-color .2s}
+  .lines-select:focus{border-color:var(--accent)}
+  .lines-btn{background:var(--accent);color:#000;border:none;border-radius:4px;padding:8px 22px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;height:36px}
+  .lines-btn:hover{background:#f5ff7a}
+  .lines-btn:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
+  .lines-topn{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .lines-topn span{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .topn-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .15s}
+  .topn-btn:hover{color:var(--text);border-color:var(--accent2)}
+  .topn-btn.active{border-color:var(--accent);background:rgba(232,255,71,.08);color:var(--accent)}
+  .lines-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  .lines-stat{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;position:relative}
+  .lines-stat::after{content:'';position:absolute;bottom:0;left:0;width:35%;height:2px;background:var(--accent);border-radius:0 0 0 6px}
+  .lines-stat-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+  .lines-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);line-height:1}
+  .line-block{margin-bottom:16px}
+  .line-block-hdr{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;margin-bottom:1px}
+  .line-block-hdr .lname{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--text)}
+  .lb{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;letter-spacing:1px;text-transform:uppercase}
+  .lb-loc1{color:var(--accent2);border:1px solid rgba(71,180,255,.35);background:rgba(71,180,255,.07)}
+  .lb-loc2{color:#c084fc;border:1px solid rgba(192,132,252,.35);background:rgba(192,132,252,.07)}
+  .lines-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px;gap:14px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px}
+  .lines-spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lspin .7s linear infinite}
+  @keyframes lspin{to{transform:rotate(360deg)}}
+  .lines-err{background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.25);border-radius:6px;padding:14px 18px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--bad);margin-bottom:12px}
+  .lines-err strong{display:block;margin-bottom:4px}
+  .lines-empty{text-align:center;padding:50px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .lines-config{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-top:20px}
+  .lines-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .lines-config-row{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:9px 12px}
+  .lines-config-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;min-width:90px}
+  .lines-config-inp{flex:1;background:transparent;border:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;min-width:0}
+  .lines-config-inp:focus{color:var(--accent)}
+  @media(max-width:900px){.lines-controls{grid-template-columns:1fr 1fr}.lines-summary{grid-template-columns:1fr 1fr}.lines-config-grid{grid-template-columns:1fr}}
+  @media(max-width:600px){.lines-controls{grid-template-columns:1fr}}
+
   /* ── CALCULATOR ── */
   .calc-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .calc-section{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
@@ -96,7 +139,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 13.03.2026 13:09 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 13.03.2026 14:24 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -106,6 +149,7 @@
   <button class="tab" onclick="switchTab('costs',this)">Фінанси</button>
   <button class="tab" onclick="switchTab('operators',this)">Оператори</button>
   <button class="tab" onclick="switchTab('calculator',this)">🧮 Калькулятор</button>
+  <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
 </div>
 <div class="main">
 
@@ -333,6 +377,74 @@
   </div>
 </div>
 
+<!-- ══════════════ LINES RECORDS ══════════════ -->
+<div id="tab-lines" class="tab-content">
+  <div class="section-title">Рекорди продуктивності ліній</div>
+
+  <div class="lines-controls">
+    <div class="lines-field">
+      <label>Дата початку</label>
+      <input type="date" id="lDateFrom" class="lines-input">
+    </div>
+    <div class="lines-field">
+      <label>Дата кінця</label>
+      <input type="date" id="lDateTo" class="lines-input">
+    </div>
+    <div class="lines-field">
+      <label>Вид продукції</label>
+      <select id="lVid" class="lines-select">
+        <option value="ALL">— Всі види —</option>
+        <option value="PETG">PETG (всі)</option>
+        <option value="PLA">PLA (всі)</option>
+        <option value="PETG 2.5">PETG 2.5</option>
+        <option value="PETG 3.0">PETG 3.0</option>
+        <option value="PETG 3.0 RED">PETG 3.0 RED</option>
+        <option value="PLA 2.5">PLA 2.5</option>
+        <option value="PLA 3.0">PLA 3.0</option>
+      </select>
+    </div>
+    <button class="lines-btn" id="lBtnRun" onclick="lRunAnalysis()">▶ АНАЛІЗ</button>
+  </div>
+
+  <div class="lines-topn">
+    <span>Топ на лінію:</span>
+    <button class="topn-btn active" onclick="lSetTopN(1,this)">ТОП-1</button>
+    <button class="topn-btn" onclick="lSetTopN(3,this)">ТОП-3</button>
+    <button class="topn-btn" onclick="lSetTopN(5,this)">ТОП-5</button>
+    <button class="topn-btn" onclick="lSetTopN(10,this)">ТОП-10</button>
+  </div>
+
+  <div id="lResults">
+    <div class="lines-empty">Оберіть параметри і натисніть <strong style="color:var(--accent)">▶ АНАЛІЗ</strong></div>
+  </div>
+
+  <div class="lines-config">
+    <div class="section-title" style="margin-bottom:0">Джерела даних (Google Sheets)</div>
+    <div class="lines-config-grid">
+      <div class="lines-config-row">
+        <span class="lines-config-lbl">Локація 1 ID</span>
+        <input class="lines-config-inp" id="lCfgId1" value="1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4">
+      </div>
+      <div class="lines-config-row">
+        <span class="lines-config-lbl">Локація 2 ID</span>
+        <input class="lines-config-inp" id="lCfgId2" value="1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI">
+      </div>
+      <div class="lines-config-row">
+        <span class="lines-config-lbl">Лист (_AllData)</span>
+        <input class="lines-config-inp" id="lCfgSheet" value="_AllData">
+      </div>
+      <div class="lines-config-row">
+        <span class="lines-config-lbl">Назва Лок.1</span>
+        <input class="lines-config-inp" id="lCfgName1" value="Локація 1">
+      </div>
+    </div>
+    <p style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px">
+      ⚠ Таблиці мають бути публічними: Поділитися → Всі з посиланням → Переглядач
+    </p>
+  </div>
+</div>
+
+
 <!-- ══════════════ CALCULATOR ══════════════ -->
 <div id="tab-calculator" class="tab-content">
   <div class="section-title">Калькулятор собівартості</div>
@@ -543,7 +655,7 @@ function trendline(data){
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
@@ -956,6 +1068,227 @@ function renderOpTotal(key) {
     }
   });
 }
+// ══════════════ LINES RECORDS JS ══════════════
+(function(){
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const fmt = d => d.toISOString().split('T')[0];
+  // will be set on tab init
+  window._lInited = false;
+  window.lInitTab = function() {
+    if (!window._lInited) {
+      document.getElementById('lDateFrom').value = fmt(firstDay);
+      document.getElementById('lDateTo').value   = fmt(today);
+      window._lInited = true;
+    }
+  };
+})();
+
+let lAllData = [], lTopN = 1, lLoading = false;
+
+function lSetTopN(n, btn) {
+  lTopN = n;
+  document.querySelectorAll('.topn-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (lAllData.length) lRender();
+}
+
+function lExcelDate(n) {
+  const ms = (parseFloat(n) - 25569) * 86400 * 1000;
+  return new Date(ms).toISOString().split('T')[0];
+}
+
+function lParseCSV(text) {
+  const rows = []; let inQ = false, row = [], cell = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') { if (inQ && text[i+1] === '"') { cell += '"'; i++; } else inQ = !inQ; }
+    else if (ch === ',' && !inQ) { row.push(cell); cell = ''; }
+    else if ((ch === '\n' || ch === '\r') && !inQ) {
+      if (ch === '\r' && text[i+1] === '\n') i++;
+      row.push(cell); cell = ''; rows.push(row); row = [];
+    } else cell += ch;
+  }
+  row.push(cell); if (row.some(c=>c)) rows.push(row);
+  return rows;
+}
+
+async function lFetchSheet(id, sheet, label) {
+  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status} — ${label}`);
+  const txt = await r.text();
+  if (txt.includes('<html') || txt.includes('Sign in'))
+    throw new Error(`"${label}" не публічна. Відкрийте доступ: Поділитися → Всі з посиланням → Переглядач`);
+  const rows = lParseCSV(txt);
+  return lParseAllData(rows, label);
+}
+
+function lParseDate(raw) {
+  if (!raw) return null;
+  const n = parseFloat(raw.replace(',','.'));
+  if (!isNaN(n) && n > 40000 && n < 60000) return lExcelDate(n);
+  const c = raw.replace(/\./g,'-').replace(/\//g,'-');
+  let m = c.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m = c.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return null;
+}
+
+function lFindCol(headers, kws) {
+  for (const kw of kws) { const i = headers.findIndex(h => h.includes(kw)); if (i>=0) return i; }
+  return -1;
+}
+
+function lParseAllData(rows, label) {
+  let hi = 0;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const j = rows[i].join(' ').toLowerCase();
+    if (j.includes('дата') || j.includes('лінія') || j.includes('линия')) { hi = i; break; }
+  }
+  const hdr = rows[hi].map(h => h.trim().toLowerCase());
+  const ci = {
+    date:    lFindCol(hdr, ['дата','date']),
+    shift:   lFindCol(hdr, ['смена','зміна','shift']),
+    line:    lFindCol(hdr, ['лінія','линия','line']),
+    vid:     lFindCol(hdr, ['вид']),
+    weight:  lFindCol(hdr, ['вес кг (вклад)','вага кг']),
+    contrib: lFindCol(hdr, ['вклад %','вклад%','% вклад','вклад']),
+    ops:     lFindCol(hdr, ['оператор','operator']),
+  };
+  const out = [];
+  for (let i = hi+1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.every(c => !c.trim())) continue;
+    const g = idx => (idx >= 0 && idx < row.length) ? row[idx].trim() : '';
+    const dStr = lParseDate(g(ci.date));
+    if (!dStr) continue;
+    const wRaw = parseFloat(g(ci.weight).replace(',','.'));
+    if (isNaN(wRaw) || wRaw <= 0) continue;
+    let contrib = parseFloat((g(ci.contrib)||'1').replace(',','.'));
+    if (isNaN(contrib) || contrib <= 0) contrib = 1;
+    if (contrib > 1.5) contrib = contrib / 100;
+    const wReal = Math.round(wRaw / contrib * 100) / 100;
+    out.push({
+      date: dStr, shift: g(ci.shift)||'?',
+      line: (g(ci.line)||'?').toUpperCase().replace('ЛИНИЯ','ЛІНІЯ'),
+      vid:  g(ci.vid)||'?',
+      weight: wReal, contrib: Math.round(contrib*100),
+      loc: label, ops: g(ci.ops)||''
+    });
+  }
+  return out;
+}
+
+async function lRunAnalysis() {
+  if (lLoading) return;
+  lLoading = true;
+  const btn = document.getElementById('lBtnRun');
+  btn.disabled = true; btn.textContent = '⟳ ЗАВАНТ...';
+  document.getElementById('lResults').innerHTML = '<div class="lines-loading"><div class="lines-spinner"></div><span>ЗАВАНТАЖЕННЯ З GOOGLE SHEETS...</span></div>';
+  const id1 = document.getElementById('lCfgId1').value.trim();
+  const id2 = document.getElementById('lCfgId2').value.trim();
+  const sheet = document.getElementById('lCfgSheet').value.trim() || '_AllData';
+  const name1 = document.getElementById('lCfgName1').value.trim() || 'Локація 1';
+  const dateFrom = document.getElementById('lDateFrom').value;
+  const dateTo   = document.getElementById('lDateTo').value;
+  const vid      = document.getElementById('lVid').value;
+  const errors = [];
+  let d1=[], d2=[];
+  try { d1 = await lFetchSheet(id1, sheet, name1); } catch(e) { errors.push(e.message); }
+  try { d2 = await lFetchSheet(id2, sheet, 'Локація 2'); } catch(e) { errors.push(e.message); }
+  lAllData = [...d1, ...d2];
+  const filtered = lAllData.filter(r => {
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo   && r.date > dateTo)   return false;
+    if (vid === 'ALL') return true;
+    if (vid === 'PETG') return r.vid.toUpperCase().startsWith('PETG');
+    if (vid === 'PLA')  return r.vid.toUpperCase().startsWith('PLA');
+    return r.vid.toUpperCase() === vid.toUpperCase();
+  });
+  lLoading = false;
+  btn.disabled = false; btn.textContent = '▶ АНАЛІЗ';
+  lRenderResults(filtered, errors);
+}
+
+function lRender() {
+  const dateFrom = document.getElementById('lDateFrom').value;
+  const dateTo   = document.getElementById('lDateTo').value;
+  const vid      = document.getElementById('lVid').value;
+  const filtered = lAllData.filter(r => {
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo   && r.date > dateTo)   return false;
+    if (vid === 'ALL') return true;
+    if (vid === 'PETG') return r.vid.toUpperCase().startsWith('PETG');
+    if (vid === 'PLA')  return r.vid.toUpperCase().startsWith('PLA');
+    return r.vid.toUpperCase() === vid.toUpperCase();
+  });
+  lRenderResults(filtered, []);
+}
+
+function lRenderResults(filtered, errors) {
+  const el = document.getElementById('lResults');
+  let html = errors.map(e => `<div class="lines-err"><strong>⚠ Помилка завантаження</strong>${e}</div>`).join('');
+  if (!filtered.length) {
+    el.innerHTML = html + '<div class="lines-empty">Немає даних для обраних фільтрів</div>';
+    return;
+  }
+  const byLine = {};
+  for (const r of filtered) {
+    const k = r.line + '|' + r.loc;
+    if (!byLine[k]) byLine[k] = {line:r.line, loc:r.loc, records:[]};
+    byLine[k].records.push(r);
+  }
+  const keys = Object.keys(byLine).sort((a,b)=>{
+    const [la,loca]=a.split('|'), [lb,locb]=b.split('|');
+    return la!==lb ? la.localeCompare(lb,'uk') : loca.localeCompare(locb,'uk');
+  });
+  const maxR = filtered.reduce((m,r)=>r.weight>m.weight?r:m, filtered[0]);
+  html += `<div class="lines-summary">
+    <div class="lines-stat"><div class="lines-stat-label">Записів</div><div class="lines-stat-val">${filtered.length}</div></div>
+    <div class="lines-stat"><div class="lines-stat-label">Ліній</div><div class="lines-stat-val">${keys.length}</div></div>
+    <div class="lines-stat"><div class="lines-stat-label">Робочих днів</div><div class="lines-stat-val">${new Set(filtered.map(r=>r.date)).size}</div></div>
+    <div class="lines-stat"><div class="lines-stat-label">Абс. рекорд</div><div class="lines-stat-val" style="font-size:22px">${maxR.weight.toFixed(1)} кг</div></div>
+  </div>
+  <div class="section-title" style="margin-bottom:10px">Рекорди по лініях — Топ-${lTopN} на лінію</div>`;
+  for (const k of keys) {
+    const {line,loc,records} = byLine[k];
+    const sorted = [...records].sort((a,b)=>b.weight-a.weight).slice(0,lTopN);
+    const lc = loc.includes('1') ? 'loc1' : 'loc2';
+    html += `<div class="line-block">
+      <div class="line-block-hdr">
+        <span class="lname">${line}</span>
+        <span class="lb lb-${lc}">${loc}</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">${records.length} змін · max ${sorted[0].weight.toFixed(1)} кг</span>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:36px">#</th>
+          <th style="text-align:right">Маса лінії, кг</th>
+          <th>Дата</th><th>Зміна</th><th>Вид</th>
+          <th style="text-align:right">Вклад</th><th>Оператор(и)</th>
+        </tr></thead>
+        <tbody>`;
+    const medals = ['🥇','🥈','🥉'];
+    for (let i=0; i<sorted.length; i++) {
+      const r = sorted[i];
+      const m = medals[i] || String(i+1);
+      html += `<tr>
+        <td style="text-align:center;font-size:14px">${m}</td>
+        <td style="text-align:right;color:var(--good);font-weight:600">${r.weight.toFixed(2)}</td>
+        <td style="color:var(--muted)">${r.date}</td>
+        <td style="color:var(--muted)">${r.shift}</td>
+        <td style="color:var(--warn)">${r.vid}</td>
+        <td style="text-align:right;color:var(--muted)">${r.contrib}%</td>
+        <td style="color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.ops}">${r.ops||'—'}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div>';
+  }
+  el.innerHTML = html;
+}
+
 </script>
 </body>
 </html>
