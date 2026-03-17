@@ -187,12 +187,114 @@ def parse_calc_extended(rows):
         print(f"  Extended calc error: {e}")
     return result
 
+def parse_sales(rows):
+    """
+    Парсит продажи из листа _AllData_$ — выторг по каналам по месяцам,
+    топ продуктов и средние цены PETG/PLA.
+    """
+    from collections import defaultdict
+    import re
+
+    # Пропускаем строки-заголовки (первые 2)
+    data_rows = []
+    for row in rows[1:]:
+        if len(row) < 10: continue
+        date_raw = str(row[0]).strip()
+        if not date_raw or date_raw in ('Дата', 'NaN', 'nan', ''): continue
+        # Дата
+        try:
+            from datetime import datetime as dt
+            # разные форматы
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y'):
+                try: d = dt.strptime(date_raw[:10], fmt[:len(fmt)]); break
+                except: pass
+            else: continue
+        except: continue
+        channel = str(row[10]).strip() if len(row) > 10 else ''
+        if channel not in ('Опт', 'Розница'): continue
+        product = str(row[1]).strip()
+        plastic  = str(row[9]).strip()
+        try: revenue = float(str(row[5]).replace(',','.').replace(' ','').replace('\xa0','')) if row[5] else 0
+        except: revenue = 0
+        try: kg = float(str(row[4]).replace(',','.').replace(' ','').replace('\xa0','')) if row[4] else 0
+        except: kg = 0
+        if revenue <= 0: continue
+        ym = d.strftime('%Y-%m')
+        data_rows.append({'ym':ym, 'channel':channel, 'product':product, 'plastic':plastic, 'revenue':revenue, 'kg':kg})
+
+    if not data_rows:
+        print("  WARNING: no sales data parsed")
+        return {}
+
+    # Sort months
+    months_sorted = sorted(set(r['ym'] for r in data_rows))
+
+    # Monthly by channel
+    monthly_opt = defaultdict(float)
+    monthly_ret = defaultdict(float)
+    for r in data_rows:
+        if r['channel'] == 'Опт':     monthly_opt[r['ym']] += r['revenue']
+        elif r['channel'] == 'Розница': monthly_ret[r['ym']] += r['revenue']
+
+    def mk_labels(months):
+        UA_SHORT = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+        out = []
+        for m in months:
+            y, mo = m.split('-')
+            out.append(f"{UA_SHORT[mo]} {y[2:]}")
+        return out
+
+    labels = mk_labels(months_sorted)
+    sales_opt = [round(monthly_opt.get(m, 0)) for m in months_sorted]
+    sales_ret = [round(monthly_ret.get(m, 0)) for m in months_sorted]
+
+    # Top-10 products
+    prod_rev = defaultdict(float)
+    for r in data_rows: prod_rev[r['product']] += r['revenue']
+    top10 = sorted(prod_rev.items(), key=lambda x: -x[1])[:10]
+
+    # Avg price per kg per plastic per month
+    petg_rev = defaultdict(float); petg_kg = defaultdict(float)
+    pla_rev  = defaultdict(float); pla_kg  = defaultdict(float)
+    for r in data_rows:
+        if r['plastic'] == 'PETG' and r['kg'] > 0:
+            petg_rev[r['ym']] += r['revenue']; petg_kg[r['ym']] += r['kg']
+        elif r['plastic'] == 'PLA' and r['kg'] > 0:
+            pla_rev[r['ym']] += r['revenue']; pla_kg[r['ym']] += r['kg']
+
+    petg_months = sorted(m for m in months_sorted if petg_kg.get(m, 0) > 0)
+    pla_months  = sorted(m for m in months_sorted if pla_kg.get(m, 0) > 0)
+
+    petg_price = [round(petg_rev[m]/petg_kg[m], 2) for m in petg_months]
+    pla_price  = [round(pla_rev[m]/pla_kg[m], 2)  for m in pla_months]
+
+    total_opt = sum(monthly_opt.values())
+    total_ret = sum(monthly_ret.values())
+
+    result = {
+        'sales_labels':      labels,
+        'sales_opt':         sales_opt,
+        'sales_ret':         sales_ret,
+        'top_labels':        [x[0] for x in top10],
+        'top_data':          [round(x[1]) for x in top10],
+        'petg_price_labels': mk_labels(petg_months),
+        'petg_avg_price':    petg_price,
+        'pla_price_labels':  mk_labels(pla_months),
+        'pla_avg_price':     pla_price,
+        'total_opt':         round(total_opt),
+        'total_ret':         round(total_ret),
+    }
+    print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
+    return result
+
+
 def jv(v):
     if v is None: return 'null'
     if isinstance(v, list): return '['+','.join(jv(x) for x in v)+']'
+    if isinstance(v, str): return '"'+v.replace('"', '\\"')+'"'
     return str(v)
 
-def generate(data, calc, calc_ext):
+def generate(data, calc, calc_ext, sales=None):
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     subs = {
@@ -215,6 +317,20 @@ def generate(data, calc, calc_ext):
         '{{CALC_WASTE_PCT}}':  str(calc['waste_pct']),
         '{{CALC_EX_GRANULE}}': str(calc_ext['granule']),
     }
+    if sales:
+        subs.update({
+            '{{SALES_LABELS}}':       jv(sales['sales_labels']),
+            '{{SALES_OPT}}':          jv(sales['sales_opt']),
+            '{{SALES_RET}}':          jv(sales['sales_ret']),
+            '{{TOP_PRODUCTS_LABELS}}':jv(sales['top_labels']),
+            '{{TOP_PRODUCTS_DATA}}':  jv(sales['top_data']),
+            '{{PETG_PRICE_LABELS}}':  jv(sales['petg_price_labels']),
+            '{{PETG_AVG_PRICE}}':     jv(sales['petg_avg_price']),
+            '{{PLA_PRICE_LABELS}}':   jv(sales['pla_price_labels']),
+            '{{PLA_AVG_PRICE}}':      jv(sales['pla_avg_price']),
+            '{{SALES_TOTAL_OPT}}':    str(sales['total_opt']),
+            '{{SALES_TOTAL_RET}}':    str(sales['total_ret']),
+        })
     for k, v in subs.items():
         html = html.replace(k, v)
     missing = [k for k in subs if k in html]
@@ -232,6 +348,7 @@ if __name__ == '__main__':
 
     calc = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
     calc_ext = {"granule": 112.2}
+    sales = None
     try:
         calc = parse_calculator(fetch_csv(CALC_SHEET_ID, "Калькулятор"))
     except Exception as e:
@@ -240,8 +357,12 @@ if __name__ == '__main__':
         calc_ext = parse_calc_extended(fetch_csv(CALC_SHEET_ID, "Расширенный"))
     except Exception as e:
         print(f"WARNING calc ext: {e}")
+    try:
+        sales = parse_sales(fetch_csv(SHEET_ID, "_AllData_$"))
+    except Exception as e:
+        print(f"WARNING sales: {e}")
 
-    html = generate(data, calc, calc_ext)
+    html = generate(data, calc, calc_ext, sales)
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")
