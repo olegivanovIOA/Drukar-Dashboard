@@ -747,11 +747,18 @@ function trendline(data){
 }
 let opCI=null,costCI=null;
 const rendered={};
-function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}}
+function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}location.hash=id;}
 function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
+  // Restore active tab from URL hash
+  const hash=location.hash.replace('#','');
+  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales'];
+  if(hash&&validTabs.includes(hash)){
+    const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
+    if(btn){switchTab(hash,btn);}
+  }
   // Production chart: stacked bar PETG+PLA + total trend line
   new Chart(document.getElementById('prodMonthChart'),{data:{labels:MS,datasets:[
     {type:'bar',label:'PETG',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},
