@@ -139,7 +139,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 17.03.2026 20:57 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 17.03.2026 21:05 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -747,11 +747,18 @@ function trendline(data){
 }
 let opCI=null,costCI=null;
 const rendered={};
-function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}}
+function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}location.hash=id;}
 function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
+  // Restore active tab from URL hash
+  const hash=location.hash.replace('#','');
+  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales'];
+  if(hash&&validTabs.includes(hash)){
+    const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
+    if(btn){switchTab(hash,btn);}
+  }
   // Production chart: stacked bar PETG+PLA + total trend line
   new Chart(document.getElementById('prodMonthChart'),{data:{labels:MS,datasets:[
     {type:'bar',label:'PETG',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},
