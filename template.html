@@ -694,17 +694,34 @@
 <div id="tab-okr" class="tab-content">
   <div class="section-title">Стратегічні цілі 2026 — OKR Трекінг</div>
 
-  <!-- Big company number -->
-  <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px 28px;margin-bottom:16px">
-    <div style="text-align:center;padding-right:28px;border-right:1px solid var(--border)">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Загальний прогрес компанії</div>
-      <div id="okrCompanyPct" style="font-family:'Bebas Neue',sans-serif;font-size:72px;line-height:1;color:var(--accent);letter-spacing:2px">—%</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px">до цілей 2026</div>
-    </div>
-    <div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Прогрес по OKR</div>
+  <!-- Top OKR block: left = company % + bars, right = stats -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+
+    <!-- Left: company % + OKR bars -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px">
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div style="text-align:center;flex-shrink:0">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Прогрес компанії</div>
+          <div id="okrCompanyPct" style="font-family:'Bebas Neue',sans-serif;font-size:56px;line-height:1;color:var(--accent);letter-spacing:2px">—%</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);margin-top:3px">до цілей 2026</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div id="okrCompanyBar" style="background:var(--surface2);border-radius:4px;height:10px;overflow:hidden;margin-bottom:6px">
+            <div id="okrCompanyBarFill" style="height:100%;background:var(--accent);border-radius:4px;transition:width .8s ease;width:0%"></div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">Зважена сума прогресів по 8 OKR</div>
+        </div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Прогрес по OKR</div>
       <div id="okrBarsOverview"></div>
     </div>
+
+    <!-- Right: stats -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:14px">Статистика виконання</div>
+      <div id="okrStats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    </div>
+
   </div>
 
   <!-- OKR cards grid -->
@@ -1532,23 +1549,50 @@ function initOkr() {
   document.getElementById('okrCompanyPct').textContent = OKR_COMPANY_PCT + '%';
   const pct = parseFloat(OKR_COMPANY_PCT);
   const companyEl = document.getElementById('okrCompanyPct');
-  companyEl.style.color = pct >= 75 ? 'var(--good)' : pct >= 25 ? 'var(--accent)' : 'var(--warn)';
+  const mainColor = pct >= 75 ? 'var(--good)' : pct >= 25 ? 'var(--accent)' : 'var(--warn)';
+  companyEl.style.color = mainColor;
+  // Company progress bar
+  const barFill = document.getElementById('okrCompanyBarFill');
+  if (barFill) { barFill.style.width = pct + '%'; barFill.style.background = mainColor; }
 
-  // ── Overview bars ──
+  // ── Overview bars (left panel) ──
   const barsEl = document.getElementById('okrBarsOverview');
   barsEl.innerHTML = OKR_DATA.map(o => {
     const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
-    return `<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:6px;min-width:0">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent);background:rgba(232,255,71,.08);border:1px solid rgba(232,255,71,.2);border-radius:2px;padding:1px 5px;white-space:nowrap;flex-shrink:0">${o.weight_pct}%</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.name}">${o.short}</span>
+    return `<div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--accent);background:rgba(232,255,71,.08);border:1px solid rgba(232,255,71,.2);border-radius:2px;padding:1px 5px;white-space:nowrap;min-width:36px;text-align:center">${o.weight_pct}%</span>
+      <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.name}">${o.short}</div>
+        <div style="background:var(--surface2);border-radius:2px;height:5px;overflow:hidden">
+          <div style="width:${o.pct}%;height:100%;background:${color};border-radius:2px;transition:width .6s ease"></div>
+        </div>
       </div>
-      <div style="width:160px;background:var(--surface2);border-radius:3px;height:8px;overflow:hidden;flex-shrink:0">
-        <div style="width:${o.pct}%;height:100%;background:${color};border-radius:3px;transition:width .6s ease"></div>
-      </div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:${color};text-align:right;width:44px;flex-shrink:0">${o.pct}%</div>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:${color};white-space:nowrap;min-width:36px;text-align:right">${o.pct}%</span>
     </div>`;
   }).join('');
+
+  // ── Stats (right panel) ──
+  const allKrs = OKR_KR_DATA.length;
+  const krsInProgress = OKR_KR_DATA.filter(k => k.pct > 0 && k.pct < 100).length;
+  const krsDone       = OKR_KR_DATA.filter(k => k.pct >= 100).length;
+  const okrsInProgress = OKR_DATA.filter(o => o.pct > 0 && o.pct < 100).length;
+  const okrsDone       = OKR_DATA.filter(o => o.pct >= 100).length;
+  // Tasks: count from people contributions (entries with task)
+  const totalTasks = OKR_KR_DATA.length; // proxy: use KR count as base
+
+  function statCard(label, value, sub, color) {
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 16px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">${label}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;color:${color || 'var(--text)'}">${value}</div>
+      ${sub ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px">${sub}</div>` : ''}
+    </div>`;
+  }
+
+  document.getElementById('okrStats').innerHTML =
+    statCard('OKR в роботі', okrsInProgress, `з ${OKR_DATA.length} всього · виконано: ${okrsDone}`, 'var(--accent2)') +
+    statCard('KR в роботі', krsInProgress,   `з ${allKrs} всього · виконано: ${krsDone}`, 'var(--accent)') +
+    statCard('OKR з прогресом', OKR_DATA.filter(o=>o.pct>0).length, `від загалу 8 OKR`, 'var(--good)') +
+    statCard('Середній прогрес KR', (OKR_KR_DATA.reduce((s,k)=>s+k.pct,0)/allKrs).toFixed(1)+'%', 'по всіх KR з урахуванням нульових', 'var(--warn)');
 
   // ── OKR cards ──
   const cardsEl = document.getElementById('okrCardsGrid');
