@@ -173,14 +173,20 @@ def parse_main_sheet(xl):
         task_name = str(r.get('Проект / Задача', '')).strip()
         if task_name == 'nan': task_name = None
 
-        # Прогресс: проверяем "Выполнено" в статусе, задаче или колонке помогающих
+        # Прогресс: сначала читаем "Прогресс" (col I — ручной ввод),
+        # потом "Progress" (col O — вычисляемая формула), потом "Выполнено"
+        raw_progress = r.get('Прогресс')
+        raw_progress_calc = r.get('Progress')
         status_raw   = str(r.get('Статус/комментарий', '') or '')
         task_raw     = str(r.get('Проект / Задача',    '') or '')
         helpers_raw2 = str(r.get('Кто помогает',       '') or '').strip()
+
         if is_done_status(status_raw) or is_done_status(task_raw) or is_done_status(helpers_raw2):
             progress = 1.0
+        elif to_progress(raw_progress) is not None:
+            progress = to_progress(raw_progress)       # колонка I — приоритет
         else:
-            progress = to_progress(r.get('Progress'))
+            progress = to_progress(raw_progress_calc)  # колонка O — фолбек
 
         rows.append({
             'type':        r['_type'],
@@ -199,7 +205,45 @@ def parse_person_sheets(xl):
     """
     Читает OKR_<Имя> листы → dict person → list of {okr, kr, task, role}
     role: 'Ответственный' | 'Помогаю'
+    Если OKR/KR не указаны — определяем по задаче или KR через словари из OKR_2026.
     """
+    # Строим словари из главного листа с forward-fill
+    kr_to_okr  = {}   # kr_name → okr_name
+    task_to_kr = {}   # task_name → kr_name
+    task_to_okr = {}  # task_name → okr_name
+    try:
+        main_raw = xl.parse('OKR_2026', header=None)
+        cur_okr = None
+        cur_kr  = None
+        for _, row in main_raw.iterrows():
+            okr_val  = str(row.iloc[0]).strip()
+            kr_val   = str(row.iloc[1]).strip()
+            task_val = str(row.iloc[3]).strip() if len(row) > 3 else ''
+            if okr_val.startswith('ОКР') and okr_val != 'nan':
+                cur_okr = okr_val
+            if kr_val.startswith('КР') and kr_val != 'nan':
+                cur_kr = kr_val
+                if cur_okr:
+                    kr_to_okr[cur_kr] = cur_okr
+            if task_val and task_val != 'nan' and cur_kr:
+                task_to_kr[task_val]  = cur_kr
+                task_to_okr[task_val] = cur_okr
+    except Exception as e:
+        print(f"  WARNING lookup build: {e}")
+
+    def find_okr_kr(task):
+        """Ищет OKR и KR по началу названия задачи."""
+        if not task or task == 'nan':
+            return None, None
+        # Точное совпадение
+        if task in task_to_kr:
+            return task_to_okr.get(task), task_to_kr.get(task)
+        # По префиксу (первые 20 символов)
+        for k, v in task_to_kr.items():
+            if task[:20] in k or k[:20] in task:
+                return task_to_okr.get(k), v
+        return None, None
+
     person_map = {}
     for sheet in xl.sheet_names:
         if not sheet.startswith('OKR_') or sheet == 'OKR_2026':
@@ -214,13 +258,28 @@ def parse_person_sheets(xl):
             kr   = str(row.iloc[1]).strip()
             role = str(row.iloc[2]).strip()
             task = str(row.iloc[3]).strip() if len(row) > 3 else ''
-            if okr.startswith('ОКР') and okr != 'nan': cur_okr = okr
-            if kr.startswith('КР')  and kr  != 'nan':  cur_kr  = kr
-            if role in ('Ответственный', 'Помогаю') and cur_okr:
+            task = task if task != 'nan' else ''
+
+            if okr.startswith('ОКР') and okr != 'nan':
+                cur_okr = okr
+            if kr.startswith('КР') and kr != 'nan':
+                cur_kr = kr
+                if not cur_okr or cur_okr == 'nan':
+                    cur_okr = kr_to_okr.get(kr)
+
+            # Если OKR/KR всё ещё неизвестны — ищем по задаче
+            eff_okr = cur_okr
+            eff_kr  = cur_kr
+            if (not eff_okr or not eff_kr) and task:
+                lkp_okr, lkp_kr = find_okr_kr(task)
+                eff_okr = eff_okr or lkp_okr
+                eff_kr  = eff_kr  or lkp_kr
+
+            if role in ('Ответственный', 'Помогаю') and eff_okr:
                 entries.append({
-                    'okr':  cur_okr,
-                    'kr':   cur_kr,
-                    'task': task if task not in ('nan', '') else None,
+                    'okr':  eff_okr,
+                    'kr':   eff_kr,
+                    'task': task or None,
                     'role': role,
                 })
         if entries:
