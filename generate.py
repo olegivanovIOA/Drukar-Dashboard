@@ -220,6 +220,7 @@ def parse_sales(rows):
         except: kg = 0
         if revenue <= 0: continue
         ym = d.strftime('%Y-%m')
+        if ym < '2025-11': continue  # данные проверены только с ноября 2025
         data_rows.append({'ym':ym, 'channel':channel, 'product':product, 'plastic':plastic, 'revenue':revenue, 'kg':kg})
 
     if not data_rows:
