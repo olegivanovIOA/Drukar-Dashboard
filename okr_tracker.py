@@ -173,20 +173,18 @@ def parse_main_sheet(xl):
         task_name = str(r.get('Проект / Задача', '')).strip()
         if task_name == 'nan': task_name = None
 
-        # Прогресс: сначала читаем "Прогресс" (col I — ручной ввод),
-        # потом "Progress" (col O — вычисляемая формула), потом "Выполнено"
-        raw_progress = r.get('Прогресс')
-        raw_progress_calc = r.get('Progress')
+        # Прогресс: пробуем все возможные имена колонки
+        raw_progress = (r.get('Прогресс, %')        # текущее имя в файле
+                     or r.get('Прогресс')            # старое имя
+                     or r.get('Progress'))           # вычисляемая формула
         status_raw   = str(r.get('Статус/комментарий', '') or '')
         task_raw     = str(r.get('Проект / Задача',    '') or '')
         helpers_raw2 = str(r.get('Кто помогает',       '') or '').strip()
 
         if is_done_status(status_raw) or is_done_status(task_raw) or is_done_status(helpers_raw2):
             progress = 1.0
-        elif to_progress(raw_progress) is not None:
-            progress = to_progress(raw_progress)       # колонка I — приоритет
         else:
-            progress = to_progress(raw_progress_calc)  # колонка O — фолбек
+            progress = to_progress(raw_progress)
 
         rows.append({
             'type':        r['_type'],
