@@ -151,6 +151,7 @@
   <button class="tab" onclick="switchTab('calculator',this)">🧮 Калькулятор</button>
   <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
   <button class="tab" onclick="switchTab('sales',this)">💰 Продажі</button>
+  <button class="tab" onclick="switchTab('okr',this)">🎯 OKR 2026</button>
 </div>
 <div class="main">
 
@@ -689,6 +690,47 @@
   </div>
 </div>
 
+<!-- ══════════════ OKR 2026 ══════════════ -->
+<div id="tab-okr" class="tab-content">
+  <div class="section-title">Стратегічні цілі 2026 — OKR Трекінг</div>
+
+  <!-- Big company number -->
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px 28px;margin-bottom:16px">
+    <div style="text-align:center;padding-right:28px;border-right:1px solid var(--border)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Загальний прогрес компанії</div>
+      <div id="okrCompanyPct" style="font-family:'Bebas Neue',sans-serif;font-size:72px;line-height:1;color:var(--accent);letter-spacing:2px">—%</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px">до цілей 2026</div>
+    </div>
+    <div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Прогрес по OKR</div>
+      <div id="okrBarsOverview"></div>
+    </div>
+  </div>
+
+  <!-- OKR cards grid -->
+  <div id="okrCardsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
+
+  <!-- KR detail: shown on OKR click -->
+  <div id="okrKrDetail" style="display:none;margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title" id="okrKrTitle">Ключові результати</div></div>
+        <button onclick="document.getElementById('okrKrDetail').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;padding:4px 10px;border-radius:3px;cursor:pointer">✕ закрити</button>
+      </div>
+      <div id="okrKrList"></div>
+    </div>
+  </div>
+
+  <!-- People rating -->
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Рейтинг вкладу команди</div><div class="card-subtitle">% реалізованого потенціалу кожного учасника</div></div>
+      <span class="badge badge-yellow">Ліди × 0.7 · Саппорти × коеф</span>
+    </div>
+    <div id="okrPeopleList"></div>
+  </div>
+</div>
+
 </div><!-- /main -->
 <script>
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];
@@ -712,6 +754,11 @@ const CPKG_PLA={{COST_PLA_KG}};
 const FIN_INCOME={{INCOME}};
 const FIN_EXPENSES={{EXPENSES}};
 const FIN_PROFIT={{PROFIT}};
+// ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
+const OKR_COMPANY_PCT={{OKR_COMPANY_PCT}};
+const OKR_DATA={{OKR_DATA}};
+const OKR_KR_DATA={{OKR_KR_DATA}};
+const OKR_PEOPLE={{OKR_PEOPLE}};
 // ── SALES DATA (from _AllData_$ sheet) ──
 const SALES_LABELS={{SALES_LABELS}};
 const SALES_OPT={{SALES_OPT}};
@@ -748,13 +795,13 @@ function trendline(data){
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}location.hash=id;}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}else if(id==='okr'){initOkr();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
   // Restore active tab from URL hash
   const hash=location.hash.replace('#','');
-  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales'];
+  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales','okr'];
   if(hash&&validTabs.includes(hash)){
     const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
     if(btn){switchTab(hash,btn);}
@@ -1478,6 +1525,91 @@ function initSales() {
       }
     }
   });
+}
+
+function initOkr() {
+  // ── Company % ──
+  document.getElementById('okrCompanyPct').textContent = OKR_COMPANY_PCT + '%';
+  const pct = parseFloat(OKR_COMPANY_PCT);
+  const companyEl = document.getElementById('okrCompanyPct');
+  companyEl.style.color = pct >= 75 ? 'var(--good)' : pct >= 25 ? 'var(--accent)' : 'var(--warn)';
+
+  // ── Overview bars ──
+  const barsEl = document.getElementById('okrBarsOverview');
+  barsEl.innerHTML = OKR_DATA.map(o => {
+    const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+    return `<div style="display:grid;grid-template-columns:220px 1fr 48px;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.name}">${o.short}</div>
+      <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+        <div style="width:${o.pct}%;height:100%;background:${color};border-radius:3px;transition:width .6s ease"></div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:${color};text-align:right">${o.pct}%</div>
+    </div>`;
+  }).join('');
+
+  // ── OKR cards ──
+  const cardsEl = document.getElementById('okrCardsGrid');
+  cardsEl.innerHTML = OKR_DATA.map((o, i) => {
+    const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+    const okrNum = i + 1;
+    return `<div class="kpi-card" style="--accent-bar:${color};cursor:pointer" onclick="okrShowKr('${o.name.replace(/'/g,"\\'")}','${o.short.replace(/'/g,"\\'")}')">
+      <div class="kpi-label">ОКР${okrNum} · вес ${o.weight_pct}%</div>
+      <div class="kpi-value" style="font-size:36px;color:${color}">${o.pct}%</div>
+      <div class="kpi-unit" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.short}</div>
+      <div style="margin-top:8px;background:var(--surface2);border-radius:2px;height:5px;overflow:hidden">
+        <div style="width:${o.pct}%;height:100%;background:${color};border-radius:2px"></div>
+      </div>
+      <div class="kpi-delta" style="color:var(--muted);margin-top:4px">▼ натисни для KR</div>
+    </div>`;
+  }).join('');
+
+  // ── People ──
+  const peopleEl = document.getElementById('okrPeopleList');
+  if (!OKR_PEOPLE.length) {
+    peopleEl.innerHTML = '<div style="padding:20px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted)">Немає даних по людях</div>';
+    return;
+  }
+  const maxRealized = Math.max(...OKR_PEOPLE.map(p => p.realized_pct), 1);
+  peopleEl.innerHTML = `<table><thead><tr>
+    <th>#</th><th>Учасник</th><th>Реаліз. потенціалу</th><th style="text-align:right">%</th><th style="text-align:right">Абс. вклад</th>
+  </tr></thead><tbody>` +
+  OKR_PEOPLE.map((p, i) => {
+    const color = p.realized_pct >= 75 ? 'var(--good)' : p.realized_pct >= 25 ? 'var(--accent)' : 'var(--muted)';
+    const barW = maxRealized > 0 ? (p.realized_pct / maxRealized * 100).toFixed(1) : 0;
+    return `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="color:var(--text);font-weight:600">${p.name}</td>
+      <td style="min-width:160px">
+        <div style="background:var(--surface2);border-radius:2px;height:8px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${color};border-radius:2px;transition:width .6s ease"></div>
+        </div>
+      </td>
+      <td style="text-align:right;color:${color};font-family:'Bebas Neue',sans-serif;font-size:18px">${p.realized_pct}%</td>
+      <td style="text-align:right;color:var(--muted)">${p.score.toFixed(3)}</td>
+    </tr>`;
+  }).join('') + '</tbody></table>';
+}
+
+function okrShowKr(okrName, okrShort) {
+  const krs = OKR_KR_DATA.filter(k => k.okr === okrName);
+  document.getElementById('okrKrTitle').textContent = okrShort + ' — Ключові результати';
+  const el = document.getElementById('okrKrList');
+  if (!krs.length) {
+    el.innerHTML = '<div style="padding:16px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted)">Немає KR у даних</div>';
+  } else {
+    el.innerHTML = '<div style="padding:8px 0">' + krs.map(k => {
+      const color = k.pct >= 75 ? 'var(--good)' : k.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+      return `<div style="display:grid;grid-template-columns:1fr 180px 52px;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)">${k.kr}</div>
+        <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+          <div style="width:${k.pct}%;height:100%;background:${color};border-radius:3px"></div>
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${color};text-align:right">${k.pct}%</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  document.getElementById('okrKrDetail').style.display = '';
+  document.getElementById('okrKrDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 </script>

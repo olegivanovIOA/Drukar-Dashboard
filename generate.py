@@ -8,6 +8,8 @@ from datetime import datetime
 
 SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
+STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
+STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
 
 # 14 месяцев: Ноябрь 2025 — Декабрь 2026
 # Позиция в массиве (0-based): Nov25=0, Dec25=1, Jan26=2 ... Dec26=13
@@ -25,6 +27,16 @@ def fetch_csv(sheet_id, sheet_name):
     r = requests.get(url, timeout=30)
     r.raise_for_status()
     return list(csv.reader(io.StringIO(r.text)))
+
+def fetch_xlsx(sheet_id, dest_path):
+    """Скачивает Google Sheets как .xlsx файл."""
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    print(f"Fetching xlsx: {sheet_id}")
+    r = requests.get(url, timeout=60)
+    r.raise_for_status()
+    with open(dest_path, 'wb') as f:
+        f.write(r.content)
+    print(f"  Saved {len(r.content):,} bytes → {dest_path}")
 
 def f(v, default=None):
     try:
@@ -220,7 +232,6 @@ def parse_sales(rows):
         except: kg = 0
         if revenue <= 0: continue
         ym = d.strftime('%Y-%m')
-        if ym < '2025-11': continue  # данные проверены только с ноября 2025
         data_rows.append({'ym':ym, 'channel':channel, 'product':product, 'plastic':plastic, 'revenue':revenue, 'kg':kg})
 
     if not data_rows:
@@ -295,7 +306,7 @@ def jv(v):
     if isinstance(v, str): return '"'+v.replace('"', '\\"')+'"'
     return str(v)
 
-def generate(data, calc, calc_ext, sales=None):
+def generate(data, calc, calc_ext, sales=None, okr=None):
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     subs = {
@@ -332,6 +343,13 @@ def generate(data, calc, calc_ext, sales=None):
             '{{SALES_TOTAL_OPT}}':    str(sales['total_opt']),
             '{{SALES_TOTAL_RET}}':    str(sales['total_ret']),
         })
+    if okr:
+        subs.update({
+            '{{OKR_COMPANY_PCT}}':   str(round(okr['company_pct'] * 100, 1)),
+            '{{OKR_DATA}}':          okr['okr_data_json'],
+            '{{OKR_PEOPLE}}':        okr['people_json'],
+            '{{OKR_KR_DATA}}':       okr['kr_data_json'],
+        })
     for k, v in subs.items():
         html = html.replace(k, v)
     missing = [k for k in subs if k in html]
@@ -350,6 +368,7 @@ if __name__ == '__main__':
     calc = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
     calc_ext = {"granule": 112.2}
     sales = None
+    okr   = None
     try:
         calc = parse_calculator(fetch_csv(CALC_SHEET_ID, "Калькулятор"))
     except Exception as e:
@@ -362,8 +381,16 @@ if __name__ == '__main__':
         sales = parse_sales(fetch_csv(SHEET_ID, "_AllData_$"))
     except Exception as e:
         print(f"WARNING sales: {e}")
+    try:
+        fetch_xlsx(STRATEGY_SHEET_ID, STRATEGY_FILE)
+        import okr_tracker
+        okr_result = okr_tracker.run(STRATEGY_FILE)
+        okr = okr_tracker.to_dashboard_json(okr_result)
+    except Exception as e:
+        print(f"WARNING okr: {e}")
+        import traceback; traceback.print_exc()
 
-    html = generate(data, calc, calc_ext, sales)
+    html = generate(data, calc, calc_ext, sales, okr)
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")

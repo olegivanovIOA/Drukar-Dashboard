@@ -139,7 +139,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 18.03.2026 10:03 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 18.03.2026 00:00 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -151,6 +151,7 @@
   <button class="tab" onclick="switchTab('calculator',this)">🧮 Калькулятор</button>
   <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
   <button class="tab" onclick="switchTab('sales',this)">💰 Продажі</button>
+  <button class="tab" onclick="switchTab('okr',this)">🎯 OKR 2026</button>
 </div>
 <div class="main">
 
@@ -689,6 +690,47 @@
   </div>
 </div>
 
+<!-- ══════════════ OKR 2026 ══════════════ -->
+<div id="tab-okr" class="tab-content">
+  <div class="section-title">Стратегічні цілі 2026 — OKR Трекінг</div>
+
+  <!-- Big company number -->
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px 28px;margin-bottom:16px">
+    <div style="text-align:center;padding-right:28px;border-right:1px solid var(--border)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Загальний прогрес компанії</div>
+      <div id="okrCompanyPct" style="font-family:'Bebas Neue',sans-serif;font-size:72px;line-height:1;color:var(--accent);letter-spacing:2px">—%</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px">до цілей 2026</div>
+    </div>
+    <div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Прогрес по OKR</div>
+      <div id="okrBarsOverview"></div>
+    </div>
+  </div>
+
+  <!-- OKR cards grid -->
+  <div id="okrCardsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
+
+  <!-- KR detail: shown on OKR click -->
+  <div id="okrKrDetail" style="display:none;margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title" id="okrKrTitle">Ключові результати</div></div>
+        <button onclick="document.getElementById('okrKrDetail').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;padding:4px 10px;border-radius:3px;cursor:pointer">✕ закрити</button>
+      </div>
+      <div id="okrKrList"></div>
+    </div>
+  </div>
+
+  <!-- People rating -->
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Рейтинг вкладу команди</div><div class="card-subtitle">% реалізованого потенціалу кожного учасника</div></div>
+      <span class="badge badge-yellow">Ліди × 0.7 · Саппорти × коеф</span>
+    </div>
+    <div id="okrPeopleList"></div>
+  </div>
+</div>
+
 </div><!-- /main -->
 <script>
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];
@@ -698,20 +740,25 @@ const PETG_PROD=[19000,null,18881.6,25480.8,8007.3];
 const PLA_PROD=[5000,null,5319.7,6856.2,0];
 const TOTAL_PROD=PETG_PROD.map((v,i)=>v!==null&&PLA_PROD[i]!==null?v+PLA_PROD[i]:null);
 // For chart display (bars with all months including dec)
-const PETG_ALL=[19000.0,null,18881.6,25480.8,14004.0,null,null,null,null,null,null,null,null,null];
-const PLA_ALL=[5000.0,null,5319.7,6856.2,null,null,null,null,null,null,null,null,null,null];
-const TOTAL_ALL=[24000.0,null,24201.3,32337.0,14004.0,null,null,null,null,null,null,null,null,null];
-const NF_PCT=[4.25,null,29.27,1.84,7.53,null,null,null,null,null,null,null,null,null];
-const NF_PETG=[5.3,null,19.71,1.83,4.62,null,null,null,null,null,null,null,null,null];
-const NF_PLA=[28.0,null,63.19,1.85,0.0,null,null,null,null,null,null,null,null,null];
-const W_PETG=[1.51,null,2.48,125.0,2.54,null,null,null,null,null,null,null,null,null];
-const W_PLA=[15.0,null,2.94,135.0,0.0,null,null,null,null,null,null,null,null,null];
+const PETG_ALL=[19000,null,18881.6,25480.8,13304.2,null,null,null,null,null,null,null,null,null];
+const PLA_ALL=[5000,null,5319.7,6856.2,0,null,null,null,null,null,null,null,null,null];
+const TOTAL_ALL=[24000,null,24201.3,32337,13304.2,null,null,null,null,null,null,null,null,null];
+const NF_PCT=[2.82,3.3,29.97,1.84,6.43,null,null,null,null,null,null,null,null,null];
+const NF_PETG=[5.3,null,19.71,1.83,2.09,null,null,null,null,null,null,null,null,null];
+const NF_PLA=[0.28,null,63.18,1.85,4.27,null,null,null,null,null,null,null,null,null];
+const W_PETG=[1.51,null,2.48,1.25,1.05,null,null,null,null,null,null,null,null,null];
+const W_PLA=[0.15,null,2.94,1.35,2.15,null,null,null,null,null,null,null,null,null];
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
-const CPKG_PETG=[209.54,null,272.08,245.89,null,null,null,null,null,null,null,null,null,null];
-const CPKG_PLA=[236.19,null,446.05,295.05,null,null,null,null,null,null,null,null,null,null];
-const FIN_INCOME=[5093191,null,7849996,10282323,null,null,null,null,null,null,null,null,null,null];
-const FIN_EXPENSES=[5162269,null,7510225,8288295,null,null,null,null,null,null,null,null,null,null];
-const FIN_PROFIT=[-69079,null,339771,1994028,null,null,null,null,null,null,null,null,null,null];
+const CPKG_PETG=[146.4,null,169.3,245.9,null,null,null,null,null,null,null,null,null,null];
+const CPKG_PLA=[175.5,null,204.1,null,null,null,null,null,null,null,null,null,null,null];
+const FIN_INCOME=[null,null,null,10282000,null,null,null,null,null,null,null,null,null,null];
+const FIN_EXPENSES=[null,null,null,8288000,null,null,null,null,null,null,null,null,null,null];
+const FIN_PROFIT=[null,null,null,1994000,null,null,null,null,null,null,null,null,null,null];
+// ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
+const OKR_COMPANY_PCT=1.9;
+const OKR_DATA=[{"name": "ОКР1. Лидерство в Украине", "short": "Лидерство в Украине", "pct": 0.0, "weight": 18, "weight_pct": 12.7}, {"name": "ОКР2. Маркетинг и продажи", "short": "Маркетинг и продажи", "pct": 0.0, "weight": 21, "weight_pct": 14.8}, {"name": "ОКР3. Эффективность процессов", "short": "Эффективность процессов", "pct": 0.0, "weight": 28, "weight_pct": 19.7}, {"name": "ОКР4. Mature Team", "short": "Mature Team", "pct": 0.0, "weight": 27, "weight_pct": 19.0}, {"name": "ОКР5. Эффективная система планирования", "short": "Эффективная система планирования", "pct": 0.0, "weight": 15, "weight_pct": 10.6}, {"name": "ОКР6. Безопасность / Устойчивость", "short": "Безопасность / Устойчивость", "pct": 33.3, "weight": 8, "weight_pct": 5.6}, {"name": "ОКР7. Глобальная экспансия", "short": "Глобальная экспансия", "pct": 0.0, "weight": 11, "weight_pct": 7.7}, {"name": "ОКР8. Новые продукты", "short": "Новые продукты", "pct": 0.0, "weight": 14, "weight_pct": 9.9}];
+const OKR_KR_DATA=[{"okr": "ОКР1. Лидерство в Украине", "okr_short": "Лидерство в Украине", "kr": "КР1.1. Производство и реализация 320 тонн/мес", "pct": 0.0}, {"okr": "ОКР1. Лидерство в Украине", "okr_short": "Лидерство в Украине", "kr": "КР1.2. Продан весь объем продукции", "pct": 0.0}, {"okr": "ОКР1. Лидерство в Украине", "okr_short": "Лидерство в Украине", "kr": "КР1.3. Пиковая выручка 112 млн/мес", "pct": 0.0}, {"okr": "ОКР1. Лидерство в Украине", "okr_short": "Лидерство в Украине", "kr": "КР1.4. Годовая выручка 723 млн", "pct": 0.0}, {"okr": "ОКР1. Лидерство в Украине", "okr_short": "Лидерство в Украине", "kr": "КР1.5. Эксплуатация 16 линий производства", "pct": 0.0}, {"okr": "ОКР2. Маркетинг и продажи", "okr_short": "Маркетинг и продажи", "kr": "КР2.1. Рост средней стоимости кг на 20%", "pct": 0.0}, {"okr": "ОКР2. Маркетинг и продажи", "okr_short": "Маркетинг и продажи", "kr": "КР2.2. Сегментация: VIP 70%, средний 20%, розница 10%", "pct": 0.0}, {"okr": "ОКР2. Маркетинг и продажи", "okr_short": "Маркетинг и продажи", "kr": "КР2.3. 30% клиентов — не милитари сектор", "pct": 0.0}, {"okr": "ОКР2. Маркетинг и продажи", "okr_short": "Маркетинг и продажи", "kr": "КР2.4. 50% клиентов — экспортеры", "pct": 0.0}, {"okr": "ОКР2. Маркетинг и продажи", "okr_short": "Маркетинг и продажи", "kr": "КР2.5. Реализация 320 тонн продукции в месяц", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.1. Система метрик для всех ролей и процессов", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.2. 98% реализации при макс. нагрузке без потери качества", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.3. Онлайн-система мониторинга метрик", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.4. Увеличение производительности линий на 100%", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.5. Минимум 80% ресурсов работают без перебоев", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.6. Минимизация брака и неформата до нуля", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.7. Производительность в тоннах на линию товара, который спосбен быть проданым = 20 т/месяц", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.8. Полное описание линии производства", "pct": 0.0}, {"okr": "ОКР3. Эффективность процессов", "okr_short": "Эффективность процессов", "kr": "КР3.9. Создание тех-инжинирингового отдела", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.1. Качественный найм и вовлеченность", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.2. Внедрение ТОП-состава (институция)", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.3. Система аккумуляции и передачи знаний", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.4. Мотивация, привязанная к метрикам и OKR", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.5. Есть орг.структура, описанная система ролей", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.6. Плановый штат Друкаря быстро заполняется кадрами", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.7. Индустриализация HR-процессов(Уточнить у Саши и Макса = о чем речь :))", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.8. сертификация навыков, управление эффективностью", "pct": 0.0}, {"okr": "ОКР4. Mature Team", "okr_short": "Mature Team", "kr": "КР4.9. Разработка системы Compensation and Benefits", "pct": 0.0}, {"okr": "ОКР5. Эффективная система планирования", "okr_short": "Эффективная система планирования", "kr": "КР5.1. Внедрение проектного менеджмента", "pct": 0.0}, {"okr": "ОКР5. Эффективная система планирования", "okr_short": "Эффективная система планирования", "kr": "КР5.2. Каждый сотрудник знает свои задачи, привязанные к срокам", "pct": 0.0}, {"okr": "ОКР5. Эффективная система планирования", "okr_short": "Эффективная система планирования", "kr": "КР5.3. Внедрена и работает система OKR", "pct": 0.0}, {"okr": "ОКР5. Эффективная система планирования", "okr_short": "Эффективная система планирования", "kr": "КР5.4. Описание организационной структуры", "pct": 0.0}, {"okr": "ОКР5. Эффективная система планирования", "okr_short": "Эффективная система планирования", "kr": "КР5.5. План на год в разрезе проектов и функций", "pct": 0.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.1. Система метрик состояний, процессов", "pct": 0.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.2. Энергоустойчивость (автономная генерация)", "pct": 0.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.3. Фин. модель и считаемая система показателей", "pct": 0.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.4. Бронирование 100% сотрудников", "pct": 100.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.5. Перевод бухгалтерии на аутсорс", "pct": 100.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.6. Юридическая защита бизнеса", "pct": 100.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.7. Стратегический резерв оборудования и материалов", "pct": 0.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.8. Меры антивоенной безопасности (типа полиграф скрининг)", "pct": 0.0}, {"okr": "ОКР6. Безопасность / Устойчивость", "okr_short": "Безопасность / Устойчивость", "kr": "КР6.9. Норма линий на локации", "pct": 0.0}, {"okr": "ОКР7. Глобальная экспансия", "okr_short": "Глобальная экспансия", "kr": "КР7.1. Производство в США (прототип)", "pct": 0.0}, {"okr": "ОКР7. Глобальная экспансия", "okr_short": "Глобальная экспансия", "kr": "КР7.2. Продажи на 10-20 тонн (США)", "pct": 0.0}, {"okr": "ОКР7. Глобальная экспансия", "okr_short": "Глобальная экспансия", "kr": "КР7.3. Масштабируемый кластер на 4 линии (США)", "pct": 0.0}, {"okr": "ОКР7. Глобальная экспансия", "okr_short": "Глобальная экспансия", "kr": "КР7.4. Изучение рынка Египта", "pct": 0.0}, {"okr": "ОКР7. Глобальная экспансия", "okr_short": "Глобальная экспансия", "kr": "КР7.5. Изучение рынков Южной Америки", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.1. Кастомные продукты (для экспансии)", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.2. Наполненные материалы", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.3. Околостроительные продукты", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.4. Автономный энергетический продукт (коллаборация)", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.5. общепит ?", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.6. купим кого-то полезного ?", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.7. купить \"чужой\" отдел продаж + база клиентов ?", "pct": 0.0}, {"okr": "ОКР8. Новые продукты", "okr_short": "Новые продукты", "kr": "КР8.8. \"Производство под ключ\" (обсудить, изучить)", "pct": 0.0}];
+const OKR_PEOPLE=[{"name": "Валерий", "realized_pct": 3.6, "score": 0.1183, "max": 3.2789}, {"name": "Олег", "realized_pct": 0.0, "score": 0.0, "max": 1.1683}, {"name": "Алекс", "realized_pct": 0.0, "score": 0.0, "max": 2.8394}, {"name": "Максим", "realized_pct": 0.0, "score": 0.0, "max": 1.0627}, {"name": "Анна", "realized_pct": 0.0, "score": 0.0, "max": 0.9222}, {"name": "Александр", "realized_pct": 0.0, "score": 0.0, "max": 1.8146}];
 // ── SALES DATA (from _AllData_$ sheet) ──
 const SALES_LABELS=["Лис 25","Гру 25","Січ 26","Лют 26","Бер 26"];
 const SALES_OPT=[1987157,4940311,5010929,7879126,3935088];
@@ -748,13 +795,13 @@ function trendline(data){
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}location.hash=id;}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}else if(id==='okr'){initOkr();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
   // Restore active tab from URL hash
   const hash=location.hash.replace('#','');
-  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales'];
+  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales','okr'];
   if(hash&&validTabs.includes(hash)){
     const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
     if(btn){switchTab(hash,btn);}
@@ -1478,6 +1525,91 @@ function initSales() {
       }
     }
   });
+}
+
+function initOkr() {
+  // ── Company % ──
+  document.getElementById('okrCompanyPct').textContent = OKR_COMPANY_PCT + '%';
+  const pct = parseFloat(OKR_COMPANY_PCT);
+  const companyEl = document.getElementById('okrCompanyPct');
+  companyEl.style.color = pct >= 75 ? 'var(--good)' : pct >= 25 ? 'var(--accent)' : 'var(--warn)';
+
+  // ── Overview bars ──
+  const barsEl = document.getElementById('okrBarsOverview');
+  barsEl.innerHTML = OKR_DATA.map(o => {
+    const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+    return `<div style="display:grid;grid-template-columns:220px 1fr 48px;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.name}">${o.short}</div>
+      <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+        <div style="width:${o.pct}%;height:100%;background:${color};border-radius:3px;transition:width .6s ease"></div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:${color};text-align:right">${o.pct}%</div>
+    </div>`;
+  }).join('');
+
+  // ── OKR cards ──
+  const cardsEl = document.getElementById('okrCardsGrid');
+  cardsEl.innerHTML = OKR_DATA.map((o, i) => {
+    const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+    const okrNum = i + 1;
+    return `<div class="kpi-card" style="--accent-bar:${color};cursor:pointer" onclick="okrShowKr('${o.name.replace(/'/g,"\\'")}','${o.short.replace(/'/g,"\\'")}')">
+      <div class="kpi-label">ОКР${okrNum} · вес ${o.weight_pct}%</div>
+      <div class="kpi-value" style="font-size:36px;color:${color}">${o.pct}%</div>
+      <div class="kpi-unit" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.short}</div>
+      <div style="margin-top:8px;background:var(--surface2);border-radius:2px;height:5px;overflow:hidden">
+        <div style="width:${o.pct}%;height:100%;background:${color};border-radius:2px"></div>
+      </div>
+      <div class="kpi-delta" style="color:var(--muted);margin-top:4px">▼ натисни для KR</div>
+    </div>`;
+  }).join('');
+
+  // ── People ──
+  const peopleEl = document.getElementById('okrPeopleList');
+  if (!OKR_PEOPLE.length) {
+    peopleEl.innerHTML = '<div style="padding:20px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted)">Немає даних по людях</div>';
+    return;
+  }
+  const maxRealized = Math.max(...OKR_PEOPLE.map(p => p.realized_pct), 1);
+  peopleEl.innerHTML = `<table><thead><tr>
+    <th>#</th><th>Учасник</th><th>Реаліз. потенціалу</th><th style="text-align:right">%</th><th style="text-align:right">Абс. вклад</th>
+  </tr></thead><tbody>` +
+  OKR_PEOPLE.map((p, i) => {
+    const color = p.realized_pct >= 75 ? 'var(--good)' : p.realized_pct >= 25 ? 'var(--accent)' : 'var(--muted)';
+    const barW = maxRealized > 0 ? (p.realized_pct / maxRealized * 100).toFixed(1) : 0;
+    return `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="color:var(--text);font-weight:600">${p.name}</td>
+      <td style="min-width:160px">
+        <div style="background:var(--surface2);border-radius:2px;height:8px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${color};border-radius:2px;transition:width .6s ease"></div>
+        </div>
+      </td>
+      <td style="text-align:right;color:${color};font-family:'Bebas Neue',sans-serif;font-size:18px">${p.realized_pct}%</td>
+      <td style="text-align:right;color:var(--muted)">${p.score.toFixed(3)}</td>
+    </tr>`;
+  }).join('') + '</tbody></table>';
+}
+
+function okrShowKr(okrName, okrShort) {
+  const krs = OKR_KR_DATA.filter(k => k.okr === okrName);
+  document.getElementById('okrKrTitle').textContent = okrShort + ' — Ключові результати';
+  const el = document.getElementById('okrKrList');
+  if (!krs.length) {
+    el.innerHTML = '<div style="padding:16px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted)">Немає KR у даних</div>';
+  } else {
+    el.innerHTML = '<div style="padding:8px 0">' + krs.map(k => {
+      const color = k.pct >= 75 ? 'var(--good)' : k.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+      return `<div style="display:grid;grid-template-columns:1fr 180px 52px;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)">${k.kr}</div>
+        <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+          <div style="width:${k.pct}%;height:100%;background:${color};border-radius:3px"></div>
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${color};text-align:right">${k.pct}%</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  document.getElementById('okrKrDetail').style.display = '';
+  document.getElementById('okrKrDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 </script>

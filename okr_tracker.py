@@ -405,6 +405,67 @@ def run(filepath=None):
     }
 
 
+def to_dashboard_json(result):
+    """
+    Преобразует результат run() в JSON-строки для подстановки в template.html.
+    Возвращает dict с ключами okr_data_json, people_json, kr_data_json, company_pct.
+    """
+    import json
+
+    okr_weights    = result['okr_weights']
+    okr_results    = result['okr_results']
+    person_contribs = result['person_contribs']
+    rows           = result['rows']
+    total_w        = sum(okr_weights.values())
+
+    # OKR list: [{name, short, pct, weight, weight_pct}]
+    okr_data = []
+    for name, weight in okr_weights.items():
+        pct = round((okr_results.get(name, 0.0)) * 100, 1)
+        # short name: убираем "ОКР1. " префикс
+        short = name.split('. ', 1)[1] if '. ' in name else name
+        okr_data.append({
+            'name':       name,
+            'short':      short,
+            'pct':        pct,
+            'weight':     weight,
+            'weight_pct': round(weight / total_w * 100, 1),
+        })
+
+    # KR list: [{okr_name, kr_name, pct}]
+    kr_data = []
+    seen = set()
+    for r in rows:
+        if r['type'] == 'KR' and r['kr']:
+            key = (r['okr'], r['kr'])
+            if key not in seen:
+                seen.add(key)
+                p = calc_kr_progress(rows, r['okr'], r['kr'])
+                # Find OKR short name
+                okr_short = r['okr'].split('. ', 1)[1] if '. ' in r['okr'] else r['okr']
+                kr_data.append({
+                    'okr':  r['okr'],
+                    'okr_short': okr_short,
+                    'kr':   r['kr'],
+                    'pct':  round(p * 100, 1),
+                })
+
+    # People list: [{name, realized_pct, score, max}]
+    people = sorted(
+        [{'name': p, 'realized_pct': round(d['realized'] * 100, 1),
+          'score': round(d['score'], 4), 'max': round(d['max'], 4)}
+         for p, d in person_contribs.items()],
+        key=lambda x: -x['realized_pct']
+    )
+
+    return {
+        'company_pct':   result['company_pct'],
+        'okr_data_json': json.dumps(okr_data,  ensure_ascii=False),
+        'kr_data_json':  json.dumps(kr_data,   ensure_ascii=False),
+        'people_json':   json.dumps(people,    ensure_ascii=False),
+    }
+
+
 if __name__ == '__main__':
     filepath = sys.argv[1] if len(sys.argv) > 1 else None
     run(filepath)
