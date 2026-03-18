@@ -1538,12 +1538,15 @@ function initOkr() {
   const barsEl = document.getElementById('okrBarsOverview');
   barsEl.innerHTML = OKR_DATA.map(o => {
     const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
-    return `<div style="display:grid;grid-template-columns:220px 1fr 48px;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.name}">${o.short}</div>
-      <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+    return `<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--accent);background:rgba(232,255,71,.08);border:1px solid rgba(232,255,71,.2);border-radius:2px;padding:1px 5px;white-space:nowrap;flex-shrink:0">${o.weight_pct}%</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.name}">${o.short}</span>
+      </div>
+      <div style="width:160px;background:var(--surface2);border-radius:3px;height:8px;overflow:hidden;flex-shrink:0">
         <div style="width:${o.pct}%;height:100%;background:${color};border-radius:3px;transition:width .6s ease"></div>
       </div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:${color};text-align:right">${o.pct}%</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:${color};text-align:right;width:44px;flex-shrink:0">${o.pct}%</div>
     </div>`;
   }).join('');
 
