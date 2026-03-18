@@ -338,19 +338,26 @@ def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
     """Вклад каждого человека: прогресс × коэф × вес_OKR/total."""
     total_w = sum(okr_weights.values())
 
-    # Кешируем прогресс KR
+    # Кешируем прогресс KR — по (okr, kr) И по одному kr-имени
     kr_cache = {}
+    kr_by_name = {}  # kr_name → progress, для случаев когда OKR в личном листе неточный
     for r in rows:
         if r['type'] == 'KR':
             key = (r['okr'], r['kr'])
             if key not in kr_cache:
-                kr_cache[key] = calc_kr_progress(rows, r['okr'], r['kr'])
+                p = calc_kr_progress(rows, r['okr'], r['kr'])
+                kr_cache[key] = p
+                if r['kr']:
+                    kr_by_name[r['kr']] = p
 
-    # Кешируем прогресс задач
+    # Кешируем прогресс задач — по (okr, kr, task) И по task-имени отдельно
     task_cache = {}
+    task_by_name = {}  # task_name → progress
     for r in rows:
-        if r['type'] == 'TASK':
-            task_cache[(r['okr'], r['kr'], r['task'])] = safe_float(r['progress'])
+        if r['type'] == 'TASK' and r['task']:
+            p = safe_float(r['progress'])
+            task_cache[(r['okr'], r['kr'], r['task'])] = p
+            task_by_name[r['task']] = p
 
     def get_okr_w(okr_name):
         w = okr_weights.get(okr_name, 0)
@@ -360,6 +367,24 @@ def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
                     return v
         return w
 
+    def get_prog(okr, kr, task):
+        """Ищет прогресс с каскадными фолбеками."""
+        if task:
+            # 1) точный ключ (okr, kr, task)
+            p = task_cache.get((okr, kr, task))
+            if p is not None: return p
+            # 2) только по имени задачи
+            p = task_by_name.get(task)
+            if p is not None: return p
+        # 3) точный ключ KR
+        p = kr_cache.get((okr, kr))
+        if p is not None: return p
+        # 4) только по имени KR (OKR в личном листе мог быть неточный)
+        if kr:
+            p = kr_by_name.get(kr)
+            if p is not None: return p
+        return 0.0
+
     result = {}
     for person, entries in person_map.items():
         score = max_possible = 0.0
@@ -368,8 +393,7 @@ def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
             w_norm = get_okr_w(okr) / total_w if total_w else 0
             coeff  = LEAD_COEFF if role == 'Ответственный' else \
                      get_support_coeff(support_coeffs, okr, kr, task)
-            prog   = (task_cache.get((okr, kr, task)) if task else None) \
-                     or kr_cache.get((okr, kr), 0.0)
+            prog   = get_prog(okr, kr, task)
             score        += safe_float(prog) * coeff * w_norm
             max_possible += coeff * w_norm
 
