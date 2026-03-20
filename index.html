@@ -139,7 +139,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 20.03.2026 05:11 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 20.03.2026 05:20 UTC<br>7 ЛІНІЙ · 20 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -763,7 +763,7 @@ const TOTAL_ALL=[24000.0,null,24201.3,32337.0,15117.2,null,null,null,null,null,n
 const NF_PCT=[4.25,null,29.27,1.84,7.2,null,null,null,null,null,null,null,null,null];
 const NF_PETG=[5.3,null,19.71,1.83,4.38,null,null,null,null,null,null,null,null,null];
 const NF_PLA=[28.0,null,63.19,1.85,0.0,null,null,null,null,null,null,null,null,null];
-const W_PETG=[1.51,null,2.48,125.0,2.76,null,null,null,null,null,null,null,null,null];
+const W_PETG=[1.51,null,2.48,125.0,2.79,null,null,null,null,null,null,null,null,null];
 const W_PLA=[15.0,null,2.94,135.0,0.0,null,null,null,null,null,null,null,null,null];
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[209.54,null,272.08,245.89,null,null,null,null,null,null,null,null,null,null];
@@ -791,10 +791,10 @@ const COSTS={
   jan:{total:7510225,items:[['Сировина',5709119,0.7602],['Електроенергія',651843,0.0868],['Адмін/Загал',222540,0.0296],['Податки',497834,0.0663],['ЗП оператори',182680,0.0243],['Логістика',143737,0.0191],['Пакування',40560,0.0054],['Амортизація',16422,0.0022],['Ремонт',6000,0.0008],['Інші накладні',39491,0.0053]]},
   feb:{total:8288295,items:[['Сировина',5917091,0.7139],['Електроенергія',750000,0.0905],['Адмін/Загал',519421,0.0627],['Податки',497834,0.0601],['ЗП оператори',283260,0.0342],['Логістика',143737,0.0173],['Пакування',97040,0.0117],['Амортизація',16422,0.0020],['Ремонт',24000,0.0029],['Інші накладні',39491,0.0048]]}
 };
-const OP_ALL=[['Макалюк Вікторія',19340.0],['Макалюк Володимир',18969.6],['Щербакова Олена',15485.3],['Бараш Костянтин',14505.3],['Ременчук Юлія',14060.2],['Пивовар Олександр',9098.3],['Степанчук Владислав',8910.3],['Пінчук Олександр',7028.5],['Гарбар Денис',6896.6],['Бондарчук Дмитро',5731.1],['Нужда Олексій',4916.1],['Хімич Богдан',1998.0],['Хоменко Артем',1466.5],['Нестер Сергій',1236.0],['Борисов Дмитро',629.4],['Гарбар Денис *',246.5],['Середа Андрій',222.6],['Кирилюк Олександр',221.1],['Якубенко Владислав',215.0],['Криволапчук Олександр',166.6]];
-const OP_BY_MONTH={'2025-11':[['Макалюк Вікторія',9732.4],['Степанчук Владислав',8910.3],['Макалюк Володимир',6041.1],['Бондарчук Дмитро',3602.5],['Ременчук Юлія',2801.2],['Щербакова Олена',2683.0],['Бараш Костянтин',2227.7],['Борисов Дмитро',181.3]],'2025-12':[['Ременчук Юлія',4472.4],['Макалюк Володимир',4440.4],['Бараш Костянтин',3708.7],['Щербакова Олена',3547.7],['Пінчук Олександр',3137.2],['Пивовар Олександр',2274.2],['Макалюк Вікторія',2240.8],['Бондарчук Дмитро',2128.6],['Борисов Дмитро',245.2]],'2026-01':[['Макалюк Вікторія',3994.1],['Макалюк Володимир',3729.8],['Щербакова Олена',3577.1],['Пивовар Олександр',3175.0],['Ременчук Юлія',2889.5],['Бараш Костянтин',2600.8],['Гарбар Денис',1342.6],['Пінчук Олександр',1185.5],['Нужда Олексій',891.2],['Гарбар Денис *',246.5]],'2026-02':[['Бараш Костянтин',4215.5],['Щербакова Олена',3862.3],['Ременчук Юлія',3727.6],['Гарбар Денис',3585.9],['Макалюк Володимир',3446.1],['Пивовар Олександр',3429.6],['Нужда Олексій',3237.3],['Макалюк Вікторія',3151.5],['Пінчук Олександр',2705.8],['Хімич Богдан',772.6],['Борисов Дмитро',202.9]],'2026-03':[['Гарбар Денис',1968.1],['Щербакова Олена',1815.2],['Бараш Костянтин',1752.6],['Хоменко Артем',1466.5],['Макалюк Володимир',1312.2],['Нестер Сергій',1236.0],['Хімич Богдан',1225.4],['Нужда Олексій',787.6],['Середа Андрій',222.6],['Макалюк Вікторія',221.3],['Кирилюк Олександр',221.1],['Пивовар Олександр',219.5],['Якубенко Владислав',215.0],['Ременчук Юлія',169.5],['Криволапчук Олександр',166.6]]};
-const HM_WEEKS=['27.10','03.11','10.11','17.11','24.11','01.12','08.12','15.12','22.12','29.12','05.01','12.01','19.01','26.01','02.02','09.02','16.02','23.02','02.03','09.03'];
-const HM_DATA={'ЛІНІЯ 1':[545,1667,12779,1851,1890,2010,2034,2279,2024,1378,1860,1858,1865,1877,2001,2000,2050,1977,2224,83],'ЛІНІЯ 2':[452,1413,4132,1274,1337,1510,1388,1298,1036,336,0,535,765,0,0,431,1210,1162,1168,307],'ЛІНІЯ 3':[379,1105,1225,1063,1324,1307,1222,1092,0,0,161,0,0,0,271,1378,1279,1255,1074,340],'ЛІНІЯ 4':[200,741,846,945,1010,899,633,257,967,559,926,963,874,1096,1171,1126,1108,742,780,536],'ЛІНІЯ 5':[0,0,0,0,0,48,1205,1672,1639,998,1577,630,565,1558,1746,1811,1791,1550,1855,71],'ЛІНІЯ 6':[0,0,0,0,0,0,0,0,0,0,1122,1569,1580,1580,1788,1821,1353,1584,1752,177],'ЛІНІЯ 8':[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1224,212]};
+const OP_ALL=[];
+const OP_BY_MONTH={};
+const HM_WEEKS=[];
+const HM_DATA={};
 
 Chart.defaults.color='#6b7494';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
@@ -846,7 +846,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 function initProduction(){
   new Chart(document.getElementById('petgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG кг',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PETG_ALL),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   new Chart(document.getElementById('plaChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PLA кг',data:PLA_ALL,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PLA_ALL),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(1)+'k'}}}}});
-  const lns=[{n:'ЛІНІЯ 1',kg:46252.1},{n:'ЛІНІЯ 2',kg:19755.3},{n:'ЛІНІЯ 5',kg:18716.4},{n:'ЛІНІЯ 4',kg:16380.1},{n:'ЛІНІЯ 3',kg:14475.6},{n:'ЛІНІЯ 6',kg:14327.8},{n:'ЛІНІЯ 8',kg:1435.7}];
+  const lns=[];
   new Chart(document.getElementById('lineChart'),{type:'bar',data:{labels:lns.map(l=>l.n),datasets:[{label:'кг',data:lns.map(l=>l.kg),backgroundColor:lns.map((_,i)=>`rgba(71,180,255,${0.85-i*0.1})`),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   buildHeatmap();
 }
