@@ -475,8 +475,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, lines_ops_data=None):
         })
 
     # ── Lines + Operators (from _AllData_Product)
-    lines_ops = lines_ops_data or {}
-    if lines_ops:
+    lines_ops = lines_ops_data
+    if lines_ops is not None:
         def js_hm(hm):
             inner = ','.join('"'+str(k)+'"'+':'+jv(v) for k, v in hm.items())
             return '{' + inner + '}'
@@ -539,14 +539,14 @@ if __name__ == '__main__':
         rows1, rows2 = [], []
         try:
             rows1 = fetch_csv(SHEET_ID, "Аналіз вкладів")
-            print(f"  Loc1 journal: {len(rows1)} rows")
+            print(f"  Loc1 journal: {len(rows1)} rows, sample: {rows1[1][:5] if len(rows1)>1 else 'empty'}")
         except Exception as e:
-            print(f"WARNING Loc1 journal: {e}")
+            print(f"WARNING Loc1 journal FAILED: {type(e).__name__}: {e}")
         try:
             rows2 = fetch_csv(SHEET_ID_2, "Аналіз вкладів")
-            print(f"  Loc2 journal: {len(rows2)} rows")
+            print(f"  Loc2 journal: {len(rows2)} rows, sample: {rows2[1][:5] if len(rows2)>1 else 'empty'}")
         except Exception as e:
-            print(f"WARNING Loc2 journal: {e}")
+            print(f"WARNING Loc2 journal FAILED: {type(e).__name__}: {e}")
         # Merge: keep header from rows1, append data rows from rows2
         if rows1 and rows2 and len(rows2) > 1:
             combined = rows1 + rows2[1:]
@@ -559,8 +559,11 @@ if __name__ == '__main__':
         print(f"  Combined: {len(combined)} rows total")
         if combined:
             lines_ops = parse_lines_operators(combined)
+            print(f"  parse result: lns={len(lines_ops.get('lns',[]))}, hm_lines={list(lines_ops.get('hm_data',{}).keys())}")
+        else:
+            print("  WARNING: combined is empty, lines_ops stays None")
     except Exception as e:
-        print(f"WARNING lines_ops: {e}")
+        print(f"WARNING lines_ops EXCEPTION: {type(e).__name__}: {e}")
         import traceback; traceback.print_exc()
 
     html = generate(data, calc, calc_ext, sales, okr, lines_ops)
