@@ -311,6 +311,40 @@ def jv(v):
     return str(v)
 
 
+
+def normalize_loc1_rows(rows):
+    """
+    Converts Журнал.Локация1 CSV (2 header rows, different columns) 
+    to standard Аналіз вкладів format for parse_lines_operators.
+    Loc1 columns: 0=date, 4=operator, 5=shift, 6=line, 7=vid, 8=qty, 9=weight, 10=nf, 11=waste
+    Contrib=1 (each row = full operator contribution, not split).
+    """
+    result = [['Дата','Смена','Оператор','Вклад %','Линия','Вид',
+               'Кол-во шт (вклад)','Вес кг (вклад)','Н/Ф Вес кг (вклад)','Отход кг (вклад)']]
+    for row in rows[2:]:  # skip 2 header rows
+        if not row or not row[0] or str(row[0]).strip() == '':
+            continue
+        try:
+            line = str(row[6]).strip() if len(row) > 6 else ''
+            if not (line.upper().startswith('ЛІН') or line.upper().startswith('ЛИН')):
+                continue
+            result.append([
+                str(row[0]).strip(),           # date
+                str(row[5]).strip() if len(row) > 5 else '',   # shift
+                str(row[4]).strip() if len(row) > 4 else '',   # operator
+                '1',                           # contrib = 100%
+                line,                          # line
+                str(row[7]).strip() if len(row) > 7 else '',   # vid
+                str(row[8]).strip() if len(row) > 8 else '0',  # qty
+                str(row[9]).strip() if len(row) > 9 else '0',  # weight kg
+                str(row[10]).strip() if len(row) > 10 else '0', # nf kg
+                str(row[11]).strip() if len(row) > 11 else '0', # waste kg
+            ])
+        except:
+            continue
+    print(f"  Loc1 normalized: {len(result)-1} rows")
+    return result
+
 def parse_lines_operators(rows):
     """
     Парсит _AllData_Product (журнал всіх ліній) →
@@ -538,16 +572,19 @@ if __name__ == '__main__':
         JOURNAL_SHEET = "%D0%90%D0%BD%D0%B0%D0%BB%D1%96%D0%B7+%D0%B2%D0%BA%D0%BB%D0%B0%D0%B4%D1%96%D0%B2"  # "Аналіз вкладів" URL-encoded
         rows1, rows2 = [], []
         try:
-            rows1 = fetch_csv(SHEET_ID, "Аналіз вкладів")
-            print(f"  Loc1 journal: {len(rows1)} rows, sample: {rows1[1][:5] if len(rows1)>1 else 'empty'}")
+            raw1 = fetch_csv(SHEET_ID, "Журнал.Локация1")
+            rows1 = normalize_loc1_rows(raw1)
+            print(f"  Loc1 journal: {len(raw1)} raw → {len(rows1)-1} normalized rows")
         except Exception as e:
+            rows1 = []
             print(f"WARNING Loc1 journal FAILED: {type(e).__name__}: {e}")
         try:
             rows2 = fetch_csv(SHEET_ID_2, "Аналіз вкладів")
             print(f"  Loc2 journal: {len(rows2)} rows, sample: {rows2[1][:5] if len(rows2)>1 else 'empty'}")
         except Exception as e:
+            rows2 = []
             print(f"WARNING Loc2 journal FAILED: {type(e).__name__}: {e}")
-        # Merge: keep header from rows1, append data rows from rows2
+        # Merge: rows1 already has header, append Loc2 data rows (skip header)
         if rows1 and rows2 and len(rows2) > 1:
             combined = rows1 + rows2[1:]
         elif rows1:
