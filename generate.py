@@ -302,8 +302,12 @@ def parse_sales(rows):
 
 def jv(v):
     if v is None: return 'null'
+    if isinstance(v, bool): return 'true' if v else 'false'
     if isinstance(v, list): return '['+','.join(jv(x) for x in v)+']'
-    if isinstance(v, str): return '"'+v.replace('"', '\\"')+'"'
+    if isinstance(v, dict):
+        inner = ','.join('"'+str(k)+'"'+':'+jv(val) for k, val in v.items())
+        return '{' + inner + '}'
+    if isinstance(v, str): return '"'+v.replace('\\', '\\\\').replace('"', '\\"')+'"'
     return str(v)
 
 
@@ -474,7 +478,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, lines_ops_data=None):
     lines_ops = lines_ops_data or {}
     if lines_ops:
         def js_hm(hm):
-            inner = ','.join(f"'{k}':{jv(v)}" for k, v in hm.items())
+            inner = ','.join('"'+str(k)+'"'+':'+jv(v) for k, v in hm.items())
             return '{' + inner + '}'
         subs.update({
             '{{HM_WEEKS}}':    jv(lines_ops['hm_weeks']),
@@ -482,6 +486,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, lines_ops_data=None):
             '{{LNS_DATA}}':    jv(lines_ops['lns']),
             '{{OP_ALL}}':      jv(lines_ops['op_all']),
             '{{OP_BY_MONTH}}': js_hm(lines_ops['op_by_month']),
+            '{{LINE_COUNT}}':  str(len(lines_ops['hm_data'])),
+            '{{OP_COUNT}}':    str(len(lines_ops['op_all'])),
         })
 
     for k, v in subs.items():
