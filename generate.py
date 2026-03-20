@@ -306,7 +306,126 @@ def jv(v):
     if isinstance(v, str): return '"'+v.replace('"', '\\"')+'"'
     return str(v)
 
-def generate(data, calc, calc_ext, sales=None, okr=None):
+
+def parse_lines_operators(rows):
+    """
+    Парсит _AllData_Product (журнал всіх ліній) →
+    повертає дані для:
+      - HM_WEEKS / HM_DATA (теплова карта)
+      - lns (бар-чарт завантаженості ліній)
+      - OP_ALL / OP_BY_MONTH (оператори)
+    """
+    from collections import defaultdict
+    from datetime import datetime, timedelta
+
+    def exval(cell):
+        import re
+        s = str(cell)
+        if 'COMPUTED_VALUE' in s or 'DUMMYFUNCTION' in s:
+            m = re.search(r'\),(.+)\)$', s)
+            if m:
+                return m.group(1).strip().strip('"')
+        return cell
+
+    line_week_kg  = defaultdict(lambda: defaultdict(float))
+    line_total_kg = defaultdict(float)
+    op_month_kg   = defaultdict(lambda: defaultdict(float))
+    op_total_kg   = defaultdict(float)
+
+    header_row = 0
+    for i, row in enumerate(rows[:5]):
+        joined = ' '.join(str(c).lower() for c in row)
+        if 'лін' in joined or 'лин' in joined or 'дата' in joined:
+            header_row = i
+            break
+
+    for row in rows[header_row + 1:]:
+        vals = [exval(c) for c in row]
+        if not vals[0]:
+            continue
+        try:
+            date_serial = float(str(vals[0]))
+            d = datetime.fromordinal(datetime(1899, 12, 30).toordinal() + int(date_serial))
+        except:
+            try:
+                # Try dd.mm.yyyy format
+                d = datetime.strptime(str(vals[0])[:10], '%d.%m.%Y')
+            except:
+                continue
+
+        line = str(vals[4]).strip() if len(vals) > 4 and vals[4] else ''
+        if not line.upper().startswith('ЛІН') and not line.upper().startswith('ЛИН'):
+            continue
+
+        line = line.upper().replace('ЛИНИЯ', 'ЛІНІЯ')
+        operator = str(vals[2]).strip() if len(vals) > 2 and vals[2] else ''
+
+        try:
+            weight_raw = float(str(vals[7])) if len(vals) > 7 and vals[7] else 0
+            contrib = float(str(vals[3])) if len(vals) > 3 and vals[3] else 0.5
+            if contrib > 1.5: contrib = contrib / 100
+            if contrib <= 0: contrib = 0.5
+            weight_real = round(weight_raw / contrib, 2)
+        except:
+            weight_real = 0
+
+        if weight_real <= 0:
+            continue
+
+        day_of_week = d.weekday()
+        week_start = d - timedelta(days=day_of_week)
+        week_key = week_start.strftime('%d.%m')
+        ym = d.strftime('%Y-%m')
+
+        line_week_kg[line][week_key] += weight_real
+        line_total_kg[line]          += weight_real
+        op_month_kg[ym][operator]    += weight_real
+        op_total_kg[operator]        += weight_real
+
+    # Sort weeks chronologically
+    def week_sort_key(w):
+        dd, mm = w.split('.')
+        yy = '2025' if int(mm) >= 10 else '2026'
+        return datetime.strptime(f'{dd}.{mm}.{yy}', '%d.%m.%Y')
+
+    all_weeks = sorted(
+        set(wk for lw in line_week_kg.values() for wk in lw.keys()),
+        key=week_sort_key
+    )
+
+    lines_order = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4',
+                   'ЛІНІЯ 5','ЛІНІЯ 6','ЛІНІЯ 7','ЛІНІЯ 8']
+    hm_data = {}
+    for line in lines_order:
+        if line in line_week_kg:
+            hm_data[line] = [round(line_week_kg[line].get(wk, 0)) for wk in all_weeks]
+
+    lns = sorted(
+        [{'n': line, 'kg': round(line_total_kg[line], 1)} for line in line_total_kg],
+        key=lambda x: -x['kg']
+    )
+
+    op_all = sorted(
+        [[op, round(kg, 1)] for op, kg in op_total_kg.items()],
+        key=lambda x: -x[1]
+    )
+    op_by_month = {
+        ym: sorted([[op, round(kg, 1)] for op, kg in ops.items()], key=lambda x: -x[1])
+        for ym, ops in sorted(op_month_kg.items())
+    }
+
+    print(f"  Lines: {sorted(line_total_kg.keys())}")
+    print(f"  Weeks: {len(all_weeks)}, ops: {len(op_total_kg)}")
+
+    return {
+        'hm_weeks': all_weeks,
+        'hm_data':  hm_data,
+        'lns':      lns,
+        'op_all':   op_all,
+        'op_by_month': op_by_month,
+    }
+
+def generate(data, calc, calc_ext, sales=None, okr=None, lines_ops_data=None):
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     subs = {
@@ -350,6 +469,21 @@ def generate(data, calc, calc_ext, sales=None, okr=None):
             '{{OKR_PEOPLE}}':        okr['people_json'],
             '{{OKR_KR_DATA}}':       okr['kr_data_json'],
         })
+
+    # ── Lines + Operators (from _AllData_Product)
+    lines_ops = lines_ops_data or {}
+    if lines_ops:
+        def js_hm(hm):
+            inner = ','.join(f"'{k}':{jv(v)}" for k, v in hm.items())
+            return '{' + inner + '}'
+        subs.update({
+            '{{HM_WEEKS}}':    jv(lines_ops['hm_weeks']),
+            '{{HM_DATA}}':     js_hm(lines_ops['hm_data']),
+            '{{LNS_DATA}}':    jv(lines_ops['lns']),
+            '{{OP_ALL}}':      jv(lines_ops['op_all']),
+            '{{OP_BY_MONTH}}': js_hm(lines_ops['op_by_month']),
+        })
+
     for k, v in subs.items():
         html = html.replace(k, v)
     missing = [k for k in subs if k in html]
@@ -390,7 +524,14 @@ if __name__ == '__main__':
         print(f"WARNING okr: {e}")
         import traceback; traceback.print_exc()
 
-    html = generate(data, calc, calc_ext, sales, okr)
+    lines_ops = None
+    try:
+        alldata_rows = fetch_csv(SHEET_ID, "_AllData_Product")
+        lines_ops = parse_lines_operators(alldata_rows)
+    except Exception as e:
+        print(f"WARNING _AllData_Product: {e}")
+
+    html = generate(data, calc, calc_ext, sales, okr, lines_ops)
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")
