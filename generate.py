@@ -532,20 +532,21 @@ if __name__ == '__main__':
 
     lines_ops = None
     try:
-        # _AllData_Product uses IMPORTRANGE formulas that don't export via gviz CSV.
-        # Instead, read _AllData directly from both locations (same approach as the browser widget).
+        # Both _AllData sheets use IMPORTRANGE — not exportable via gviz CSV.
+        # Read "Аналіз вкладів" sheet from each location — it has raw entered data.
         SHEET_ID_2 = "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI"
+        JOURNAL_SHEET = "%D0%90%D0%BD%D0%B0%D0%BB%D1%96%D0%B7+%D0%B2%D0%BA%D0%BB%D0%B0%D0%B4%D1%96%D0%B2"  # "Аналіз вкладів" URL-encoded
         rows1, rows2 = [], []
         try:
-            rows1 = fetch_csv(SHEET_ID, "_AllData")
-            print(f"  Loc1 _AllData: {len(rows1)} rows")
+            rows1 = fetch_csv(SHEET_ID, "Аналіз вкладів")
+            print(f"  Loc1 journal: {len(rows1)} rows")
         except Exception as e:
-            print(f"WARNING Loc1 _AllData: {e}")
+            print(f"WARNING Loc1 journal: {e}")
         try:
-            rows2 = fetch_csv(SHEET_ID_2, "_AllData")
-            print(f"  Loc2 _AllData: {len(rows2)} rows")
+            rows2 = fetch_csv(SHEET_ID_2, "Аналіз вкладів")
+            print(f"  Loc2 journal: {len(rows2)} rows")
         except Exception as e:
-            print(f"WARNING Loc2 _AllData: {e}")
+            print(f"WARNING Loc2 journal: {e}")
         # Merge: keep header from rows1, append data rows from rows2
         if rows1 and rows2 and len(rows2) > 1:
             combined = rows1 + rows2[1:]
@@ -555,6 +556,7 @@ if __name__ == '__main__':
             combined = rows2
         else:
             combined = []
+        print(f"  Combined: {len(combined)} rows total")
         if combined:
             lines_ops = parse_lines_operators(combined)
     except Exception as e:
