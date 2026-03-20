@@ -532,10 +532,34 @@ if __name__ == '__main__':
 
     lines_ops = None
     try:
-        alldata_rows = fetch_csv(SHEET_ID, "_AllData_Product")
-        lines_ops = parse_lines_operators(alldata_rows)
+        # _AllData_Product uses IMPORTRANGE formulas that don't export via gviz CSV.
+        # Instead, read _AllData directly from both locations (same approach as the browser widget).
+        SHEET_ID_2 = "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI"
+        rows1, rows2 = [], []
+        try:
+            rows1 = fetch_csv(SHEET_ID, "_AllData")
+            print(f"  Loc1 _AllData: {len(rows1)} rows")
+        except Exception as e:
+            print(f"WARNING Loc1 _AllData: {e}")
+        try:
+            rows2 = fetch_csv(SHEET_ID_2, "_AllData")
+            print(f"  Loc2 _AllData: {len(rows2)} rows")
+        except Exception as e:
+            print(f"WARNING Loc2 _AllData: {e}")
+        # Merge: keep header from rows1, append data rows from rows2
+        if rows1 and rows2 and len(rows2) > 1:
+            combined = rows1 + rows2[1:]
+        elif rows1:
+            combined = rows1
+        elif rows2:
+            combined = rows2
+        else:
+            combined = []
+        if combined:
+            lines_ops = parse_lines_operators(combined)
     except Exception as e:
-        print(f"WARNING _AllData_Product: {e}")
+        print(f"WARNING lines_ops: {e}")
+        import traceback; traceback.print_exc()
 
     html = generate(data, calc, calc_ext, sales, okr, lines_ops)
     with open('index.html', 'w', encoding='utf-8') as f:
