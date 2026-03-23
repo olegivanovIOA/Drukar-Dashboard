@@ -139,7 +139,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 23.03.2026 20:41 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 23.03.2026 21:08 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -152,6 +152,7 @@
   <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
   <button class="tab" onclick="switchTab('sales',this)">💰 Продажі</button>
   <button class="tab" onclick="switchTab('okr',this)">🎯 OKR 2026</button>
+  <button class="tab" onclick="switchTab('inventory',this)">📦 Склад</button>
 </div>
 <div class="main">
 
@@ -748,6 +749,62 @@
   </div>
 </div>
 
+
+<!-- ══════════════ INVENTORY ══════════════ -->
+<div id="tab-inventory" class="tab-content">
+  <div class="section-title">Залишки на складах · Bitrix24 Inventory</div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase">Bitrix24 Webhook</label>
+      <input id="inv_webhook" type="text" value="https://b24-733cj8.bitrix24.eu/rest/2517/b3o0tvnjddwqj2ep/"
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 12px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;width:400px;outline:none"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+    </div>
+    <button onclick="invLoad()" id="invLoadBtn" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:9px 20px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;height:36px">▶ ЗАВАНТАЖИТИ</button>
+    <button onclick="invLoad()" id="invRefreshBtn" style="display:none;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:9px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;height:36px">↻ ОНОВИТИ</button>
+    <button onclick="invToggleThr()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:9px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;height:36px">⚙ ПОРОГИ</button>
+    <span id="invUpdated" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);align-self:center"></span>
+  </div>
+
+  <div id="invErr" style="display:none;background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.25);border-radius:6px;padding:12px 16px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--bad);margin-bottom:14px"></div>
+  <div id="invAlert" style="display:none;background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.3);border-radius:6px;padding:12px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;margin-bottom:14px"></div>
+
+  <div id="invKpi" style="display:none;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px">
+    <div class="kpi-card" style="--accent-bar:var(--accent)"><div class="kpi-label">Всього позицій</div><div class="kpi-value" id="inv_kTotal">—</div><div class="kpi-unit">найменувань</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--bad)"><div class="kpi-label">🔴 Критично</div><div class="kpi-value" id="inv_kDanger" style="color:var(--bad)">—</div><div class="kpi-unit">нижче мінімуму</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--warn)"><div class="kpi-label">🟡 Попередження</div><div class="kpi-value" id="inv_kWarn" style="color:var(--warn)">—</div><div class="kpi-unit">наближаються</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--good)"><div class="kpi-label">🟢 В нормі</div><div class="kpi-value" id="inv_kOk" style="color:var(--good)">—</div><div class="kpi-unit">вище порогу</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--accent2)"><div class="kpi-label">Моніториться</div><div class="kpi-value" id="inv_kMon" style="color:var(--accent2)">—</div><div class="kpi-unit">з налаштованим порогом</div></div>
+  </div>
+
+  <div id="invThrPanel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:16px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">⚠ Мінімальні пороги сигналізації</div>
+    <div id="invThrGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px"><div style="color:var(--muted);font-size:12px;font-family:'IBM Plex Mono',monospace">Завантажте дані щоб налаштувати пороги</div></div>
+  </div>
+
+  <div id="invFilters" style="display:none;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="month-btn active" onclick="invSetTab('all',this)">Всі</button>
+    <button class="month-btn" onclick="invSetTab('danger',this)">🔴 Критично</button>
+    <button class="month-btn" onclick="invSetTab('warn',this)">🟡 Попередження</button>
+    <button class="month-btn" onclick="invSetTab('ok',this)">🟢 Норма</button>
+    <span style="width:1px;height:18px;background:var(--border);margin:0 4px;display:inline-block"></span>
+    <button class="month-btn active" id="invWhAll" onclick="invSetWh('all',this)">Всі склади</button>
+    <button class="month-btn" id="invWh0" onclick="invSetWh(0,this)">Склад 1</button>
+    <button class="month-btn" id="invWh1" onclick="invSetWh(1,this)">Склад 2</button>
+    <input type="text" id="invSearch" placeholder="Пошук товару..." oninput="invRender()"
+      style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:5px 12px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;outline:none;width:200px">
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+    <div id="invTableWrap">
+      <div style="text-align:center;padding:50px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px">
+        <div style="font-size:32px;margin-bottom:12px">📦</div>Натисніть ▶ ЗАВАНТАЖИТИ щоб отримати залишки зі складів Bitrix24
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ══════════════ /INVENTORY ══════════════ -->
 </div><!-- /main -->
 <script>
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];
@@ -1658,6 +1715,171 @@ function okrShowKr(okrName, okrShort) {
   document.getElementById('okrKrDetail').style.display = '';
   document.getElementById('okrKrDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
+// ══════════════ INVENTORY MODULE ══════════════
+(function(){
+  var invProducts=[], invStores=[], invSpMap={}, invThresholds={};
+  var invTab='all', invWh='all';
+
+  function invUrl(){
+    var el=document.getElementById('inv_webhook');
+    return (el?el.value:'').trim().replace(/\/+$/,'')+'/';
+  }
+
+  async function invB24(method,params){
+    params=params||{};
+    var q=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
+    var r=await fetch(invUrl()+method+(q?'?'+q:''));
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    if(d.error)throw new Error(d.error_description||d.error);
+    return d;
+  }
+
+  async function invAll(method,key,params){
+    var start=0,out=[];
+    while(true){
+      var p=Object.assign({},params||{},{start:start});
+      var d=await invB24(method,p);
+      var items=d.result&&d.result[key]?d.result[key]:d.result||[];
+      if(!Array.isArray(items))items=Object.values(items);
+      out=out.concat(items);
+      if(start+50>=(d.total||0))break;
+      start+=50;
+    }
+    return out;
+  }
+
+  window.invLoad=async function(){
+    var btn=document.getElementById('invLoadBtn');
+    btn.disabled=true; btn.textContent='⏳ ЗАВАНТАЖЕННЯ...';
+    invShowErr('');
+    document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:50px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px"><div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lspin .7s linear infinite;margin:0 auto 12px"></div>Отримую дані зі складів...</div>';
+    try{
+      var stD=await invB24('catalog.store.list',{'select[0]':'ID','select[1]':'TITLE'});
+      invStores=(stD.result&&stD.result.stores?stD.result.stores:[]).map(function(s){return {id:String(s.id),title:s.title};});
+      if(invStores[0])document.getElementById('invWh0').textContent=invStores[0].title;
+      if(invStores[1])document.getElementById('invWh1').textContent=invStores[1].title;
+
+      invProducts=await invAll('catalog.product.list','products',{'select[0]':'ID','select[1]':'NAME','select[2]':'QUANTITY'});
+      invProducts.forEach(function(p){if(!(p.id in invThresholds))invThresholds[p.id]=0;});
+
+      var spList=await invAll('catalog.storeproduct.list','storeProducts',{'select[0]':'PRODUCT_ID','select[1]':'STORE_ID','select[2]':'AMOUNT','select[3]':'QUANTITY_RESERVED'});
+      invSpMap={};
+      spList.forEach(function(sp){
+        var pid=String(sp.productId),sid=String(sp.storeId);
+        if(!invSpMap[pid])invSpMap[pid]={};
+        invSpMap[pid][sid]={amount:parseFloat(sp.amount||0),reserved:parseFloat(sp.quantityReserved||0)};
+      });
+
+      document.getElementById('invKpi').style.display='grid';
+      document.getElementById('invFilters').style.display='flex';
+      document.getElementById('invRefreshBtn').style.display='inline-block';
+      document.getElementById('invUpdated').textContent='↻ '+new Date().toLocaleTimeString('uk');
+      invBuildThr();
+      invRender();
+    }catch(e){
+      invShowErr('Помилка: '+e.message+'. Перевірте вебхук та право catalog.');
+      document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">⚠️ Не вдалось завантажити дані</div>';
+    }
+    btn.disabled=false; btn.textContent='▶ ЗАВАНТАЖИТИ';
+  };
+
+  function invStatus(pid){
+    var t=invThresholds[pid]||0;
+    var tot=invStores.reduce(function(s,st){return s+(invSpMap[pid]&&invSpMap[pid][st.id]?invSpMap[pid][st.id].amount:0);},0);
+    if(t<=0)return 'ok';
+    if(tot<=0)return 'danger';
+    if(tot<t)return 'warn';
+    return 'ok';
+  }
+
+  window.invRender=function(){
+    var search=(document.getElementById('invSearch')||{value:''}).value.toLowerCase();
+    var list=invProducts.filter(function(p){
+      if(search&&p.name.toLowerCase().indexOf(search)<0)return false;
+      if(invTab!=='all'&&invStatus(p.id)!==invTab)return false;
+      if(invWh!=='all'){
+        var st=invStores[invWh];
+        if(st&&!(invSpMap[p.id]&&invSpMap[p.id][st.id]&&invSpMap[p.id][st.id].amount>0))return false;
+      }
+      return true;
+    });
+    var ord={danger:0,warn:1,ok:2};
+    list.sort(function(a,b){return ord[invStatus(a.id)]-ord[invStatus(b.id)]||a.name.localeCompare(b.name,'uk');});
+
+    var c={danger:0,warn:0,ok:0},mon=0;
+    invProducts.forEach(function(p){c[invStatus(p.id)]++;if((invThresholds[p.id]||0)>0)mon++;});
+    document.getElementById('inv_kTotal').textContent=invProducts.length;
+    document.getElementById('inv_kDanger').textContent=c.danger;
+    document.getElementById('inv_kWarn').textContent=c.warn;
+    document.getElementById('inv_kOk').textContent=c.ok;
+    document.getElementById('inv_kMon').textContent=mon;
+
+    var al=document.getElementById('invAlert');
+    if(c.danger>0){
+      var names=invProducts.filter(function(p){return invStatus(p.id)==='danger';}).slice(0,3).map(function(p){return p.name;}).join(', ');
+      al.innerHTML='<strong style="color:var(--bad)">🔴 КРИТИЧНО:</strong> '+c.danger+' позицій нижче мінімуму — '+names+(c.danger>3?' та ін.':'');
+      al.style.display='block';
+    } else if(c.warn>0){
+      al.innerHTML='<strong style="color:var(--warn)">🟡 УВАГА:</strong> '+c.warn+' позицій наближаються до мінімуму';
+      al.style.display='block';
+    } else al.style.display='none';
+
+    if(!list.length){
+      document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">🔍 Нічого не знайдено</div>';
+      return;
+    }
+
+    var whCols=invStores.map(function(s){return '<th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left">'+invEsc(s.title)+'</th>';}).join('');
+    var smap={ok:'НОРМА',warn:'МАЛО',danger:'КРИТИЧНО'};
+    var bcls={ok:'badge-green',warn:'badge-yellow',danger:'badge-red'};
+
+    var rows=list.map(function(p){
+      var st=invStatus(p.id),thr=invThresholds[p.id]||0;
+      var whTds=invStores.map(function(s){
+        var sp=invSpMap[p.id]&&invSpMap[p.id][s.id]?invSpMap[p.id][s.id]:null;
+        var amt=sp?sp.amount:0,res=sp?sp.reserved:0;
+        var col=amt<=0?'var(--border)':thr>0&&amt<thr?'var(--bad)':thr>0?'var(--good)':'var(--text)';
+        return '<td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:600;color:'+col+'">'+(amt>0?invFmt(amt):'—')+'</span>'+(res>0?'<br><span style="font-size:9px;color:var(--muted)">рез: '+invFmt(res)+'</span>':'')+'</td>';
+      }).join('');
+      return '<tr><td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><span style="font-size:12px;font-weight:500">'+invEsc(p.name)+'</span><br><span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted)">ID: '+p.id+'</span></td>'+whTds+'<td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><span class="'+bcls[st]+'" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;padding:3px 8px;border-radius:3px">'+smap[st]+'</span></td><td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><input type="number" min="0" value="'+thr+'" onchange="invSetThr(\''+p.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:3px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;width:80px;text-align:center;outline:none"></td></tr>';
+    }).join('');
+
+    document.getElementById('invTableWrap').innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)"><th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left">Товар</th>'+whCols+'<th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px">Статус</th><th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px" title="Мінімальний поріг">⚠ Мін. поріг</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  };
+
+  window.invSetThr=function(pid,val){invThresholds[pid]=parseFloat(val)||0;invBuildThr();invRender();};
+
+  function invBuildThr(){
+    var g=document.getElementById('invThrGrid');
+    if(!invProducts.length)return;
+    g.innerHTML=invProducts.map(function(p){
+      return '<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:8px 12px"><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+invEsc(p.name)+'">'+invEsc(p.name)+'</span><span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted)">ID:'+p.id+'</span><input type="number" min="0" value="'+(invThresholds[p.id]||0)+'" onchange="invSetThr(\''+p.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:3px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;width:80px;text-align:center;outline:none"></div>';
+    }).join('');
+  }
+
+  window.invSetTab=function(tab,el){
+    invTab=tab;
+    document.querySelectorAll('#tab-inventory .month-btn').forEach(function(b){b.classList.remove('active');});
+    el.classList.add('active');
+    invRender();
+  };
+  window.invSetWh=function(wh,el){
+    invWh=wh;
+    ['invWhAll','invWh0','invWh1'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('active');});
+    el.classList.add('active');
+    invRender();
+  };
+  window.invToggleThr=function(){
+    var p=document.getElementById('invThrPanel');
+    p.style.display=p.style.display==='none'?'block':'none';
+  };
+  function invShowErr(msg){var b=document.getElementById('invErr');if(msg){b.textContent=msg;b.style.display='block';}else b.style.display='none';}
+  function invFmt(v){return Number(v).toLocaleString('uk',{maximumFractionDigits:2});}
+  function invEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+})();
+// ══════════════ /INVENTORY MODULE ══════════════
 
 </script>
 </body>
