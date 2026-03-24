@@ -240,16 +240,34 @@ def parse_lines_heatmap(rows_list):
                 data_start = hi + 1
                 break
 
+        # Detect if this is "Аналіз вкладів" (has contrib col) or "Журнал" (no contrib, forward-fill date)
+        ci_contrib = -1
+        for hi2 in range(min(3, len(rows))):
+            hdr2 = [str(c).lower().strip() if c else '' for c in rows[hi2]]
+            for i, h in enumerate(hdr2):
+                if 'вклад %' in h or h == 'вклад%':
+                    ci_contrib = i
+                    break
+            if ci_contrib >= 0:
+                break
+        is_analiz = ci_contrib >= 0
+        print(f"  Lines HM: source={'Аналіз вкладів' if is_analiz else 'Журнал'}, cols: date={ci_date} line={ci_line} weight={ci_weight} contrib={ci_contrib}")
+
         current_date = None
         for row in rows[data_start:]:
             if not row: continue
-            # Forward-fill date
+            # Forward-fill date (needed for Журнал where date only on first row of shift block)
             d = row[ci_date] if ci_date < len(row) else None
             if d is not None and hasattr(d, 'strftime'):
                 current_date = d
-            elif isinstance(d, (int, float)) and 40000 < d < 60000:
+            elif d is not None and isinstance(d, (int, float)) and 40000 < d < 60000:
                 from datetime import date as _date, timedelta
                 current_date = _date(1899, 12, 30) + timedelta(days=int(d))
+            elif d is not None and isinstance(d, str) and len(d) >= 7:
+                try:
+                    from datetime import datetime as _dt
+                    current_date = _dt.strptime(d[:10], '%Y-%m-%d')
+                except: pass
             if current_date is None:
                 continue
 
@@ -264,7 +282,15 @@ def parse_lines_heatmap(rows_list):
             if m:
                 line = f'ЛІНІЯ {m.group(1)}'
 
-            ym = current_date.strftime('%Y-%m') if hasattr(current_date, 'strftime') else current_date[:7]
+            # For "Аналіз вкладів": w = вага×вклад%, need w/contrib to get full line weight
+            # For "Журнал": w = full line weight already, no division needed
+            if is_analiz and ci_contrib >= 0:
+                contrib = row[ci_contrib] if ci_contrib < len(row) else None
+                if isinstance(contrib, (int, float)) and contrib > 0:
+                    if contrib > 1.5: contrib /= 100
+                    w = w / contrib
+
+            ym = current_date.strftime('%Y-%m') if hasattr(current_date, 'strftime') else str(current_date)[:7]
             monthly[line][ym] += w
 
     if not monthly:
@@ -502,18 +528,39 @@ if __name__ == '__main__':
         print(f"WARNING okr: {e}")
         import traceback; traceback.print_exc()
 
-    # ── Lines heatmap (monthly aggregation from _AllData sheets) ──
+    # ── Lines heatmap ──
     hm_labels, hm_data = [], {}
     try:
-        rows1 = fetch_csv(LINES_SHEET_ID,  "Журнал.Локация1")
-        rows2 = []
-        try:
-            rows2 = fetch_csv(LINES_SHEET_ID2, "Журнал.Локация2")
-        except Exception as e2:
-            print(f"  Lines HM: sheet2 skipped: {e2}")
+        def fetch_lines_sheet(sheet_id, candidates):
+            """Try multiple sheet names, return first that has date+line data."""
+            for name in candidates:
+                try:
+                    rows = fetch_csv(sheet_id, name)
+                    if not rows or len(rows) < 3:
+                        print(f"  Lines HM: '{name}' — too few rows ({len(rows)}), skipping")
+                        continue
+                    # Quick check: does any of first 3 rows look like a journal header?
+                    preview = ' '.join(str(c) for row in rows[:3] for c in row if c).lower()
+                    if 'лін' in preview or 'лини' in preview or 'line' in preview:
+                        print(f"  Lines HM: '{name}' — OK ({len(rows)} rows)")
+                        return rows
+                    else:
+                        print(f"  Lines HM: '{name}' — no line column found, skipping")
+                except Exception as e:
+                    print(f"  Lines HM: '{name}' failed: {e}")
+            return []
+
+        SHEET1_CANDIDATES = ["Журнал.Локация1", "Аналіз вкладів", "_AllData"]
+        SHEET2_CANDIDATES = ["Журнал.Локация2", "Аналіз вкладів", "_AllData"]
+
+        rows1 = fetch_lines_sheet(LINES_SHEET_ID,  SHEET1_CANDIDATES)
+        rows2 = fetch_lines_sheet(LINES_SHEET_ID2, SHEET2_CANDIDATES)
         hm_labels, hm_data = parse_lines_heatmap([rows1, rows2])
+        print(f"  Lines HM result: {len(hm_labels)} months, {len(hm_data)} lines")
     except Exception as e:
+        import traceback
         print(f"WARNING lines heatmap: {e}")
+        traceback.print_exc()
 
     html = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data)
     with open('index.html', 'w', encoding='utf-8') as f:
