@@ -7,6 +7,7 @@ import os, requests, io, csv
 from datetime import datetime
 
 SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
+SHEET_ID2     = os.environ.get("SHEET_ID2",     "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI")
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
@@ -199,6 +200,106 @@ def parse_calc_extended(rows):
         print(f"  Extended calc error: {e}")
     return result
 
+
+def parse_lines_heatmap(rows_list):
+    """
+    Агрегує кг по лінії × місяць з одного або кількох листів _AllData.
+    rows_list — список списків рядків (з кількох листів/локацій).
+    """
+    from collections import defaultdict
+    import re as _re
+
+    UA_SHORT = {
+        '01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+        '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'
+    }
+
+    def parse_date_ym(raw):
+        if not raw: return None
+        raw = str(raw).strip()
+        try:
+            n = float(raw.replace(',','.'))
+            if 40000 < n < 60000:
+                from datetime import date, timedelta
+                d = date(1899,12,30) + timedelta(days=int(n))
+                return d.strftime('%Y-%m')
+        except: pass
+        for fmt in ('%Y-%m-%d %H:%M:%S','%Y-%m-%d','%d.%m.%Y','%d/%m/%Y'):
+            try:
+                from datetime import datetime as _dt
+                return _dt.strptime(raw[:10], fmt[:10]).strftime('%Y-%m')
+            except: pass
+        return None
+
+    def find_col(headers, kws):
+        for kw in kws:
+            for i, h in enumerate(headers):
+                if kw in h: return i
+        return -1
+
+    monthly = defaultdict(lambda: defaultdict(float))
+
+    for rows in rows_list:
+        if not rows: continue
+        hi = 0
+        for i in range(min(5, len(rows))):
+            j = ' '.join(str(c) for c in rows[i]).lower()
+            if 'дата' in j or 'лін' in j or 'лини' in j:
+                hi = i; break
+        hdr = [str(c).strip().lower() for c in rows[hi]]
+        ci_date    = find_col(hdr, ['дата', 'date'])
+        ci_line    = find_col(hdr, ['лінія', 'линия', 'line'])
+        ci_weight  = find_col(hdr, ['вес кг (вклад)', 'вага кг', 'вес кг'])
+        ci_contrib = find_col(hdr, ['вклад %', 'вклад%', '% вклад', 'вклад'])
+        if ci_date < 0 or ci_line < 0 or ci_weight < 0:
+            print(f"  Lines HM: cannot find columns in: {hdr[:10]}")
+            continue
+        for row in rows[hi+1:]:
+            if not row or all(not str(c).strip() for c in row): continue
+            g = lambda idx: str(row[idx]).strip() if 0 <= idx < len(row) else ''
+            ym = parse_date_ym(g(ci_date))
+            if not ym: continue
+            try:
+                w = float(g(ci_weight).replace(',','.').replace(' ','').replace('\xa0',''))
+            except: continue
+            if w <= 0: continue
+            contrib = 1.0
+            if ci_contrib >= 0:
+                try:
+                    cv = float(g(ci_contrib).replace(',','.').replace('%',''))
+                    if cv > 0:
+                        contrib = cv / 100 if cv > 1.5 else cv
+                except: pass
+            kg_real = w / contrib if contrib > 0 else w
+            line = g(ci_line).upper().replace('ЛИНИЯ','ЛІНІЯ').strip()
+            if not line or line == '?': continue
+            m = _re.match(r'.*?(\d+)$', line)
+            if m: line = f'ЛІНІЯ {m.group(1)}'
+            monthly[line][ym] += kg_real
+
+    if not monthly:
+        print("  Lines HM: no data")
+        return [], {}
+
+    all_months = sorted(set(ym for d in monthly.values() for ym in d))
+    hm_labels = []
+    for ym in all_months:
+        y, mo = ym.split('-')
+        hm_labels.append(f"{UA_SHORT[mo]} {y[2:]}")
+
+    def line_num(ln):
+        m = _re.search(r'(\d+)', ln)
+        return int(m.group(1)) if m else 999
+
+    hm_data = {}
+    for line in sorted(monthly.keys(), key=line_num):
+        hm_data[line] = [round(monthly[line].get(ym, 0)) for ym in all_months]
+
+    total_kg = sum(sum(v.values()) for v in monthly.values())
+    print(f"  Lines HM: {len(hm_data)} lines x {len(all_months)} months, total={round(total_kg):,} kg")
+    return hm_labels, hm_data
+
+
 def parse_sales(rows):
     """
     Парсит продажи из листа _AllData_$ — выторг по каналам по месяцам,
@@ -314,7 +415,7 @@ def jv(v):
 
 
 
-def generate(data, calc, calc_ext, sales=None, okr=None):
+def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None):
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     subs = {
@@ -336,6 +437,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None):
         '{{CALC_PLA_PRICE}}':  str(calc['pla_price']),
         '{{CALC_WASTE_PCT}}':  str(calc['waste_pct']),
         '{{CALC_EX_GRANULE}}': str(calc_ext['granule']),
+        '{{HM_LABELS}}':       jv(hm_labels or []),
+        '{{HM_DATA}}':         jv(hm_data or {}),
     }
     if sales:
         subs.update({
@@ -401,7 +504,20 @@ if __name__ == '__main__':
         print(f"WARNING okr: {e}")
         import traceback; traceback.print_exc()
 
-    html = generate(data, calc, calc_ext, sales, okr)
+    # ── Lines heatmap (monthly aggregation from _AllData sheets) ──
+    hm_labels, hm_data = [], {}
+    try:
+        rows1 = fetch_csv(SHEET_ID,  "_AllData")
+        rows2 = []
+        try:
+            rows2 = fetch_csv(SHEET_ID2, "_AllData")
+        except Exception as e2:
+            print(f"  Lines HM: sheet2 skipped: {e2}")
+        hm_labels, hm_data = parse_lines_heatmap([rows1, rows2])
+    except Exception as e:
+        print(f"WARNING lines heatmap: {e}")
+
+    html = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data)
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")
