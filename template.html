@@ -1720,61 +1720,93 @@ function okrShowKr(okrName, okrShort) {
     return (el?el.value:'').trim().replace(/\/+$/,'')+'/';
   }
 
-  // JSON POST — найнадійніший формат для B24 REST
-  async function invB24(method, params){
-    var r = await fetch(invUrl() + method, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(params || {})
-    });
-    if(!r.ok) throw new Error('HTTP ' + r.status);
+  async function invGet(method, params){
+    var qs = Object.keys(params||{}).map(function(k){
+      return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
+    }).join('&');
+    var url = invUrl()+method+(qs?'?'+qs:'');
+    var r = await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
     var d = await r.json();
-    if(d.error) throw new Error(d.error_description || d.error);
+    if(d.error) throw new Error(d.error_description||d.error);
     return d;
   }
 
-  async function invAll(method, key, params){
+  async function invGetAll(method, key, params){
     var start=0, out=[];
     while(true){
       var p = Object.assign({}, params||{}, {start:start});
-      var d = await invB24(method, p);
-      var items = (d.result && d.result[key]) ? d.result[key] : (Array.isArray(d.result) ? d.result : []);
+      var d = await invGet(method, p);
+      var items = (d.result&&d.result[key]) ? d.result[key] : (Array.isArray(d.result)?d.result:[]);
       out = out.concat(items);
-      if(start + 50 >= (d.total || 0)) break;
+      if(start+50 >= (d.total||0)) break;
       start += 50;
     }
     return out;
   }
 
   window.invLoad = async function(){
-    var btn = document.getElementById('invLoadBtn');
+    var btn=document.getElementById('invLoadBtn');
     btn.disabled=true; btn.textContent='⏳ ЗАВАНТАЖЕННЯ...';
     invShowErr('');
     document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:50px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px"><div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lspin .7s linear infinite;margin:0 auto 12px"></div>Отримую дані зі складів...</div>';
     try{
-      // Склади — без зайвих параметрів
-      var stD = await invB24('catalog.store.list', {});
-      var storeList = (stD.result && stD.result.stores) ? stD.result.stores : [];
+      // 1. Склади
+      var stD = await invGet('catalog.store.list', {});
+      var storeList = (stD.result&&stD.result.stores) ? stD.result.stores : [];
       invStores = storeList.map(function(s){ return {id:String(s.id), title:s.title}; });
       if(invStores[0]) document.getElementById('invWh0').textContent=invStores[0].title;
       if(invStores[1]) document.getElementById('invWh1').textContent=invStores[1].title;
 
-      // Товари
-      invProducts = await invAll('catalog.product.list', 'products', {
-        select: ['ID','NAME','QUANTITY']
+      // 2. Залишки по складах (містить productId — звідси беремо товари)
+      var spList = await invGetAll('catalog.storeproduct.list', 'storeProducts', {
+        'select[0]':'PRODUCT_ID',
+        'select[1]':'STORE_ID',
+        'select[2]':'AMOUNT',
+        'select[3]':'QUANTITY_RESERVED'
       });
-      invProducts.forEach(function(p){ if(!(p.id in invThresholds)) invThresholds[p.id]=0; });
 
-      // Залишки по складах
-      var spList = await invAll('catalog.storeproduct.list', 'storeProducts', {
-        select: ['PRODUCT_ID','STORE_ID','AMOUNT','QUANTITY_RESERVED']
-      });
-      invSpMap={};
+      // 3. Збираємо унікальні productId
+      invSpMap = {};
+      var pidSet = {};
       spList.forEach(function(sp){
         var pid=String(sp.productId), sid=String(sp.storeId);
         if(!invSpMap[pid]) invSpMap[pid]={};
         invSpMap[pid][sid]={amount:parseFloat(sp.amount||0), reserved:parseFloat(sp.quantityReserved||0)};
+        pidSet[pid]=true;
       });
+
+      // 4. Назви товарів через catalog.product.get для кожного id (батчами по 50)
+      var pids = Object.keys(pidSet);
+      var nameMap = {};
+      // Отримуємо назви через iblock — використовуємо CRM product catalog
+      for(var i=0; i<pids.length; i+=50){
+        var chunk = pids.slice(i, i+50);
+        var batchCmds = {};
+        chunk.forEach(function(pid, idx){
+          batchCmds['p'+idx] = 'catalog.product.get?id='+pid;
+        });
+        try{
+          var batchParams = {};
+          Object.keys(batchCmds).forEach(function(k){
+            batchParams['cmd['+k+']'] = batchCmds[k];
+          });
+          var br = await invGet('batch', batchParams);
+          var res = br.result&&br.result.result ? br.result.result : {};
+          Object.keys(res).forEach(function(k){
+            var item = res[k];
+            if(item && item.product){
+              nameMap[String(item.product.id)] = item.product.name || ('Товар #'+item.product.id);
+            }
+          });
+        }catch(e){ /* якщо batch не спрацював — використаємо ID */ }
+      }
+
+      invProducts = pids.map(function(pid){
+        return {id:pid, name: nameMap[pid] || ('Товар #'+pid)};
+      });
+      invProducts.sort(function(a,b){ return a.name.localeCompare(b.name,'uk'); });
+      invProducts.forEach(function(p){ if(!(p.id in invThresholds)) invThresholds[p.id]=0; });
 
       document.getElementById('invKpi').style.display='grid';
       document.getElementById('invFilters').style.display='flex';
