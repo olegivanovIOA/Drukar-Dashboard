@@ -916,7 +916,95 @@ function initProduction(){
   new Chart(document.getElementById('lineChart'),{type:'bar',data:{labels:lns.map(l=>l.n),datasets:[{label:'кг',data:lns.map(l=>l.kg),backgroundColor:lns.map((_,i)=>`rgba(71,180,255,${0.85-i*0.1})`),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   buildHeatmap();
 }
-function buildHeatmap(){
+async function buildHeatmap(){
+  // If generate.py didn't fill HM data, load from Google Sheets directly
+  if(!HM_LABELS.length || !Object.keys(HM_DATA).length){
+    document.getElementById('heatmapWrap').innerHTML=
+      '<div style="color:var(--muted);font-size:11px;padding:16px 20px;font-family:\'IBM Plex Mono\',monospace">⟳ Завантаження теплової карти...</div>';
+    try {
+      const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
+      const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+      const UA={'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+
+      async function fetchSheet(sid, sheetName){
+        const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        const r=await fetch(url); if(!r.ok) return [];
+        const txt=await r.text(); if(txt.includes('<html')) return [];
+        return lParseCSV(txt); // reuse existing CSV parser from Lines tab
+      }
+
+      function parseJournal(rows){
+        // Журнал structure: date forward-fill, col0=date, col6=line, col9=weight
+        // Аналіз вкладів: col0=date, col3=contrib, col4=line, col7=weight
+        if(!rows||rows.length<3) return {};
+        const hdr=rows[0].map(h=>String(h||'').toLowerCase().trim());
+        const isAnaliz=hdr.some(h=>h.includes('вклад %'));
+        const ci_date=isAnaliz?0:0, ci_line=isAnaliz?4:6, ci_weight=isAnaliz?7:9, ci_contrib=isAnaliz?3:-1;
+        const monthly={};
+        let curDate=null;
+        for(let i=1;i<rows.length;i++){
+          const row=rows[i];
+          const dRaw=row[ci_date];
+          if(dRaw){
+            // Try parse date
+            const d=lParseDate(String(dRaw));
+            if(d) curDate=d;
+          }
+          if(!curDate) continue;
+          const ym=curDate.slice(0,7);
+          if(ym<'2025-11') continue; // skip old data
+          const w=parseFloat(String(row[ci_weight]||'').replace(',','.'));
+          if(isNaN(w)||w<=0) continue;
+          let line=String(row[ci_line]||'').toUpperCase().trim();
+          if(!line) continue;
+          const nm=line.match(/\d+$/);
+          if(nm) line='ЛІНІЯ '+nm[0];
+          let kg=w;
+          if(isAnaliz&&ci_contrib>=0){
+            let c=parseFloat(String(row[ci_contrib]||'').replace(',','.'));
+            if(!isNaN(c)&&c>0){if(c>1.5)c/=100; kg=w/c;}
+          }
+          if(!monthly[line]) monthly[line]={};
+          monthly[line][ym]=(monthly[line][ym]||0)+kg;
+        }
+        return monthly;
+      }
+
+      // Try Журнал sheets first, fallback to Аналіз вкладів
+      let rows1=await fetchSheet(sid1,'Журнал.Локация1');
+      if(!rows1.length||!rows1[0].some(c=>String(c||'').toLowerCase().includes('лін')))
+        rows1=await fetchSheet(sid1,'Аналіз вкладів');
+      let rows2=await fetchSheet(sid2,'Журнал.Локация2');
+      if(!rows2.length||!rows2[0].some(c=>String(c||'').toLowerCase().includes('лін')))
+        rows2=await fetchSheet(sid2,'Аналіз вкладів');
+
+      const m1=parseJournal(rows1), m2=parseJournal(rows2);
+      // Merge
+      const merged={};
+      for(const [line,data] of Object.entries(m1)){
+        if(!merged[line]) merged[line]={};
+        for(const [ym,v] of Object.entries(data)) merged[line][ym]=(merged[line][ym]||0)+v;
+      }
+      for(const [line,data] of Object.entries(m2)){
+        if(!merged[line]) merged[line]={};
+        for(const [ym,v] of Object.entries(data)) merged[line][ym]=(merged[line][ym]||0)+v;
+      }
+      if(!Object.keys(merged).length) throw new Error('No data parsed from sheets');
+
+      const allMonths=[...new Set(Object.values(merged).flatMap(d=>Object.keys(d)))].sort().filter(m=>m>='2025-11');
+      // Overwrite globals
+      HM_LABELS.length=0;
+      allMonths.forEach(ym=>{const[y,mo]=ym.split('-');HM_LABELS.push(UA[mo]+' '+y.slice(2));});
+      for(const ln of Object.keys(HM_DATA)) delete HM_DATA[ln];
+      const sortedLines=Object.keys(merged).sort((a,b)=>{const na=parseInt(a.match(/\d+/)||0),nb=parseInt(b.match(/\d+/)||0);return na-nb;});
+      sortedLines.forEach(ln=>{HM_DATA[ln]=allMonths.map(ym=>Math.round(merged[ln][ym]||0));});
+      console.log('HM loaded from sheets:',HM_LABELS,HM_DATA);
+    } catch(e){
+      document.getElementById('heatmapWrap').innerHTML=`<div style="color:var(--muted);font-size:11px;padding:16px 20px">⚠ Помилка завантаження: ${e.message}</div>`;
+      return;
+    }
+  }
+
   const lines=Object.keys(HM_DATA);
   if(!lines.length||!HM_LABELS.length){document.getElementById('heatmapWrap').innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px">Немає даних теплової карти</div>';return;}
   const allVals=Object.values(HM_DATA).flat();
@@ -926,54 +1014,34 @@ function buildHeatmap(){
   function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
   function fmtFull(v){return v.toLocaleString('uk');}
   function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
-
-  // Локації: 1-6 → Лок.1, 7-14 → Лок.2, 15-22 → Лок.3 (розширюється автоматично)
   function getLoc(ln){const n=lineNum(ln);if(n<=6)return 1;if(n<=14)return 2;return 3;}
   const LOC_COLORS={1:'#00d4ff',2:'#a78bfa',3:'#34d399'};
   const LOC_LABELS={1:'ЛОКАЦІЯ 1',2:'ЛОКАЦІЯ 2',3:'ЛОКАЦІЯ 3'};
-  const LOC_BG={1:'rgba(0,212,255,0.04)',2:'rgba(167,139,250,0.04)',3:'rgba(52,211,153,0.04)'};
-
-  // Підсумок по місяцях
   const colTotals=HM_LABELS.map((_,i)=>lines.reduce((s,ln)=>s+(HM_DATA[ln][i]||0),0));
   const grandTotal=colTotals.reduce((a,b)=>a+b,0);
-
   const cols=HM_LABELS.length;
   const gridCols=`112px repeat(${cols},minmax(52px,1fr)) 70px`;
   let html=`<div class="hmap-grid" style="grid-template-columns:${gridCols}">`;
-
-  // ── Заголовок ──
   html+=`<div class="hmap-label" style="font-weight:600;font-size:9px;color:var(--accent);letter-spacing:1px">ЛІНІЯ</div>`;
-  HM_LABELS.forEach(lbl=>{
-    html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:9px;height:22px;letter-spacing:.5px;font-weight:600">${lbl}</div>`;
-  });
+  HM_LABELS.forEach(lbl=>{html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:9px;height:22px;letter-spacing:.5px;font-weight:600">${lbl}</div>`;});
   html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:9px;height:22px;font-weight:600;letter-spacing:.5px">РАЗОМ</div>`;
-
-  // ── Рядки по локаціях ──
   let prevLoc=null;
   lines.forEach(ln=>{
     const loc=getLoc(ln);
     const locColor=LOC_COLORS[loc];
-    const locBg=LOC_BG[loc];
-
-    // Роздільник між локаціями
     if(loc!==prevLoc){
       if(prevLoc!==null){
-        // Підсумок попередньої локації
         const locLines=lines.filter(l=>getLoc(l)===prevLoc);
-        const locColTotals=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
-        const locTotal=locColTotals.reduce((a,b)=>a+b,0);
+        const lct=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
+        const lt=lct.reduce((a,b)=>a+b,0);
         html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:8px;opacity:.7;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
-        locColTotals.forEach(v=>{
-          html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)" title="${LOC_LABELS[prevLoc]}: ${fmtFull(v)} кг">${fmt(v)}</div>`;
-        });
-        html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9" title="${LOC_LABELS[prevLoc]} всього: ${fmtFull(locTotal)} кг">${fmt(locTotal)}</div>`;
+        lct.forEach(v=>{html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)">${fmt(v)}</div>`;});
+        html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9">${fmt(lt)}</div>`;
       }
-      // Заголовок нової локації
       html+=`<div style="grid-column:1/-1;height:6px;background:linear-gradient(90deg,${locColor}22,transparent);border-left:2px solid ${locColor};margin:2px 0;border-radius:0 2px 2px 0"></div>`;
       html+=`<div style="grid-column:1/-1;font-family:'IBM Plex Mono',monospace;font-size:8px;color:${locColor};letter-spacing:2px;padding:2px 4px;opacity:.8">${LOC_LABELS[loc]}</div>`;
       prevLoc=loc;
     }
-
     const vals=HM_DATA[ln];
     const lineTotal=vals.reduce((a,b)=>a+b,0);
     const activeMonths=vals.filter(v=>v>0).length;
@@ -984,31 +1052,24 @@ function buildHeatmap(){
     });
     html+=`<div class="hmap-cell" style="background:#1a2030;color:rgba(255,255,255,.6);font-size:9px;font-weight:600" title="${ln} всього: ${fmtFull(lineTotal)} кг">${fmt(lineTotal)}</div>`;
   });
-
-  // Підсумок останньої локації
   if(prevLoc!==null){
     const locLines=lines.filter(l=>getLoc(l)===prevLoc);
-    const locColTotals=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
-    const locTotal=locColTotals.reduce((a,b)=>a+b,0);
+    const lct=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
+    const lt=lct.reduce((a,b)=>a+b,0);
     html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:8px;opacity:.7;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
-    locColTotals.forEach(v=>{
-      html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)" title="${LOC_LABELS[prevLoc]}: ${fmtFull(v)} кг">${fmt(v)}</div>`;
-    });
-    html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9" title="${LOC_LABELS[prevLoc]} всього: ${fmtFull(locTotal)} кг">${fmt(locTotal)}</div>`;
+    lct.forEach(v=>{html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)">${fmt(v)}</div>`;});
+    html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9">${fmt(lt)}</div>`;
   }
-
-  // ── ПІДСУМОК по всіх місяцях (ІТОГО) ──
   html+=`<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
   html+=`<div class="hmap-label" style="color:#fff;font-size:9px;font-weight:700;letter-spacing:.5px">ІТОГО</div>`;
   colTotals.forEach((v,i)=>{
-    const tip=`${HM_LABELS[i]} — всі лінії: ${fmtFull(v)} кг`;
-    html+=`<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:${v>=100000?'8px':'9px'};font-weight:700;border-top:1px solid rgba(255,255,255,.15)" title="${tip}">${fmt(v)}</div>`;
+    html+=`<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:${v>=100000?'8px':'9px'};font-weight:700;border-top:1px solid rgba(255,255,255,.15)" title="${HM_LABELS[i]}: ${fmtFull(v)} кг">${fmt(v)}</div>`;
   });
   html+=`<div class="hmap-cell" style="background:#1e2535;color:var(--accent);font-size:9px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)" title="Загальний підсумок: ${fmtFull(grandTotal)} кг">${fmt(grandTotal)}</div>`;
-
   html+='</div>';
   document.getElementById('heatmapWrap').innerHTML=html;
 }
+
 function initQuality(){
   new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#47b4ff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#e8ff47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
