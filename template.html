@@ -54,7 +54,7 @@
   .month-btn.active{border-color:var(--accent);background:rgba(232,255,71,.08);color:var(--accent)}
   #heatmapWrap{overflow-x:auto;padding-bottom:4px}
   .hmap-grid{display:inline-grid;gap:2px;min-width:100%}
-  .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8px;height:26px;cursor:default}
+  .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;height:32px;cursor:default;font-weight:500}
   .hmap-cell:hover{outline:1px solid rgba(255,255,255,.35)}
   .hmap-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:4px 2px;display:flex;align-items:center;white-space:nowrap}
   .legend-item{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap}
@@ -235,10 +235,8 @@
   <div class="grid-2">
     <div class="card"><div class="card-header"><div><div class="card-title">Завантаженість ліній</div><div class="card-subtitle">Загальний кг за весь період · всі лінії</div></div></div><div class="cw"><canvas id="lineChart"></canvas></div></div>
     <div class="card"><div class="card-header"><div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div></div>
-      <div style="display:flex;align-items:center;justify-content:center;height:230px;gap:40px">
-        <div style="text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent);line-height:1">70 074</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">53.4%</div></div>
-        <div style="width:1px;height:70px;background:var(--border)"></div>
-        <div style="text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent2);line-height:1">61 269</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">46.6%</div></div>
+      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:230px;gap:40px">
+        <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
       </div>
     </div>
   </div>
@@ -915,6 +913,86 @@ function initProduction(){
   const lns=[{"n":"ЛІНІЯ 1","kg":37510.8},{"n":"ЛІНІЯ 2","kg":17030.1},{"n":"ЛІНІЯ 8","kg":6511.4},{"n":"ЛІНІЯ 3","kg":5824.3},{"n":"ЛІНІЯ 4","kg":5001.8},{"n":"ЛІНІЯ 6","kg":2844.5},{"n":"ЛІНІЯ 5","kg":2337.1},{"n":"ЛІНІЯ 7","kg":907.0}];
   new Chart(document.getElementById('lineChart'),{type:'bar',data:{labels:lns.map(l=>l.n),datasets:[{label:'кг',data:lns.map(l=>l.kg),backgroundColor:lns.map((_,i)=>`rgba(71,180,255,${0.85-i*0.1})`),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   buildHeatmap();
+  loadShiftData();
+}
+async function loadShiftData(){
+  const wrap=document.getElementById('shiftWrap');
+  if(!wrap) return;
+  try{
+    const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
+    const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+    async function fetchSheet(sid,sheet){
+      const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+      const r=await fetch(url); if(!r.ok) return [];
+      const txt=await r.text(); if(txt.includes('<html')) return [];
+      return lParseCSV(txt);
+    }
+    async function getBest(sid,names){
+      for(const n of names){
+        const rows=await fetchSheet(sid,n);
+        if(rows.length>2){
+          const hdr=rows[0].map(c=>String(c||'').toLowerCase());
+          if(hdr.some(h=>h.includes('зміна')||h.includes('смена'))) return rows;
+        }
+      }
+      return [];
+    }
+    const [r1,r2]=await Promise.all([
+      getBest(sid1,['Журнал.Локация1','Аналіз вкладів']),
+      getBest(sid2,['Журнал.Локация2','Аналіз вкладів']),
+    ]);
+    function calcShifts(rows){
+      if(!rows||rows.length<2) return {day:0,night:0};
+      const hdr=rows[0].map(h=>String(h||'').toLowerCase().trim());
+      const ci_shift=hdr.findIndex(h=>h.includes('зміна')||h.includes('смена'));
+      const ci_weight=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
+      const ci_contrib=hdr.findIndex(h=>h.includes('вклад %')||h.includes('вклад%'));
+      if(ci_shift<0||ci_weight<0) return {day:0,night:0};
+      const isAnaliz=ci_contrib>=0;
+      let day=0,night=0,curDate=null,curShift=null;
+      const seen=new Set();
+      for(let i=1;i<rows.length;i++){
+        const row=rows[i];
+        const dRaw=row[0]; if(dRaw){const d=lParseDate(String(dRaw));if(d)curDate=d;}
+        const sRaw=String(row[ci_shift]||'').trim().toLowerCase();
+        if(sRaw) curShift=sRaw;
+        if(!curDate||!curShift) continue;
+        const w=parseFloat(String(row[ci_weight]||'').replace(',','.'));
+        if(isNaN(w)||w<=0) continue;
+        let kg=w;
+        if(isAnaliz&&ci_contrib>=0){
+          let c=parseFloat(String(row[ci_contrib]||'').replace(',','.'));
+          if(!isNaN(c)&&c>0){if(c>1.5)c/=100;kg=w/c;}
+        }
+        if(!isAnaliz){
+          const key=`${curDate}|${curShift}|${String(row[6]||'')}`;
+          if(seen.has(key)) continue; seen.add(key);
+        }
+        if(curShift.includes('ден')||curShift.includes('day')) day+=kg;
+        else if(curShift.includes('ніч')||curShift.includes('ноч')||curShift.includes('night')) night+=kg;
+      }
+      return {day,night};
+    }
+    const s1=calcShifts(r1),s2=calcShifts(r2);
+    const dayKg=Math.round(s1.day+s2.day),nightKg=Math.round(s1.night+s2.night);
+    const total=dayKg+nightKg; if(total===0) throw new Error('no shift data');
+    const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
+    const fmt=v=>v.toLocaleString('uk');
+    wrap.innerHTML=`
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${dayPct}%</div>
+      </div>
+      <div style="width:1px;height:70px;background:var(--border)"></div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${nightPct}%</div>
+      </div>`;
+  }catch(e){
+    if(wrap) wrap.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
+  }
 }
 async function buildHeatmap(){
   // If generate.py didn't fill HM data, load from Google Sheets directly
