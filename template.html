@@ -924,25 +924,88 @@ function buildHeatmap(){
   function cc(v){if(v===0)return'#0e1219';const r=v/maxVal;if(r<0.05)return'#18202e';if(r<0.15)return'#1a2d48';if(r<0.30)return'#1a4068';if(r<0.55)return'#1a5a8a';if(r<0.80)return'#2080b8';return'#47b4ff';}
   function tc(v){return v/maxVal>0.40?'rgba(255,255,255,.9)':'rgba(255,255,255,.25)';}
   function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
-  // Підсумок по місяцях (для tooltip)
-  const monthTotal={};
-  HM_LABELS.forEach((lbl,i)=>{let s=0;lines.forEach(ln=>{s+=(HM_DATA[ln][i]||0);});monthTotal[lbl]=s;});
-  let html=`<div class="hmap-grid" style="grid-template-columns:80px repeat(${HM_LABELS.length},minmax(52px,1fr))">`;
-  // Заголовок
+  function fmtFull(v){return v.toLocaleString('uk');}
+  function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
+
+  // Локації: 1-6 → Лок.1, 7-14 → Лок.2, 15-22 → Лок.3 (розширюється автоматично)
+  function getLoc(ln){const n=lineNum(ln);if(n<=6)return 1;if(n<=14)return 2;return 3;}
+  const LOC_COLORS={1:'#00d4ff',2:'#a78bfa',3:'#34d399'};
+  const LOC_LABELS={1:'ЛОКАЦІЯ 1',2:'ЛОКАЦІЯ 2',3:'ЛОКАЦІЯ 3'};
+  const LOC_BG={1:'rgba(0,212,255,0.04)',2:'rgba(167,139,250,0.04)',3:'rgba(52,211,153,0.04)'};
+
+  // Підсумок по місяцях
+  const colTotals=HM_LABELS.map((_,i)=>lines.reduce((s,ln)=>s+(HM_DATA[ln][i]||0),0));
+  const grandTotal=colTotals.reduce((a,b)=>a+b,0);
+
+  const cols=HM_LABELS.length;
+  const gridCols=`112px repeat(${cols},minmax(52px,1fr)) 70px`;
+  let html=`<div class="hmap-grid" style="grid-template-columns:${gridCols}">`;
+
+  // ── Заголовок ──
   html+=`<div class="hmap-label" style="font-weight:600;font-size:9px;color:var(--accent);letter-spacing:1px">ЛІНІЯ</div>`;
-  HM_LABELS.forEach(lbl=>{html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:9px;height:22px;letter-spacing:.5px;font-weight:600">${lbl}</div>`;});
-  // Рядки ліній
+  HM_LABELS.forEach(lbl=>{
+    html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:9px;height:22px;letter-spacing:.5px;font-weight:600">${lbl}</div>`;
+  });
+  html+=`<div class="hmap-cell" style="background:transparent;color:var(--muted);font-size:9px;height:22px;font-weight:600;letter-spacing:.5px">РАЗОМ</div>`;
+
+  // ── Рядки по локаціях ──
+  let prevLoc=null;
   lines.forEach(ln=>{
+    const loc=getLoc(ln);
+    const locColor=LOC_COLORS[loc];
+    const locBg=LOC_BG[loc];
+
+    // Роздільник між локаціями
+    if(loc!==prevLoc){
+      if(prevLoc!==null){
+        // Підсумок попередньої локації
+        const locLines=lines.filter(l=>getLoc(l)===prevLoc);
+        const locColTotals=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
+        const locTotal=locColTotals.reduce((a,b)=>a+b,0);
+        html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:8px;opacity:.7;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
+        locColTotals.forEach(v=>{
+          html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)" title="${LOC_LABELS[prevLoc]}: ${fmtFull(v)} кг">${fmt(v)}</div>`;
+        });
+        html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9" title="${LOC_LABELS[prevLoc]} всього: ${fmtFull(locTotal)} кг">${fmt(locTotal)}</div>`;
+      }
+      // Заголовок нової локації
+      html+=`<div style="grid-column:1/-1;height:6px;background:linear-gradient(90deg,${locColor}22,transparent);border-left:2px solid ${locColor};margin:2px 0;border-radius:0 2px 2px 0"></div>`;
+      html+=`<div style="grid-column:1/-1;font-family:'IBM Plex Mono',monospace;font-size:8px;color:${locColor};letter-spacing:2px;padding:2px 4px;opacity:.8">${LOC_LABELS[loc]}</div>`;
+      prevLoc=loc;
+    }
+
     const vals=HM_DATA[ln];
     const lineTotal=vals.reduce((a,b)=>a+b,0);
     const activeMonths=vals.filter(v=>v>0).length;
-    html+=`<div class="hmap-label" title="${ln} · всього ${Math.round(lineTotal/1000)}т · активних місяців: ${activeMonths}">${ln}</div>`;
+    html+=`<div class="hmap-label" style="border-left:2px solid ${locColor}44;padding-left:6px" title="${ln} · всього ${Math.round(lineTotal/1000)}т · активних міс: ${activeMonths}">${ln}</div>`;
     vals.forEach((v,i)=>{
-      const lbl=HM_LABELS[i];
-      const tip=v>0?`${ln} · ${lbl}: ${v.toLocaleString('uk')} кг`:`${ln} · ${lbl}: немає даних`;
+      const tip=v>0?`${ln} · ${HM_LABELS[i]}: ${fmtFull(v)} кг`:`${ln} · ${HM_LABELS[i]}: немає даних`;
       html+=`<div class="hmap-cell" style="background:${cc(v)};color:${tc(v)};font-size:${v>=10000?'9px':'10px'}" title="${tip}">${fmt(v)}</div>`;
     });
+    html+=`<div class="hmap-cell" style="background:#1a2030;color:rgba(255,255,255,.6);font-size:9px;font-weight:600" title="${ln} всього: ${fmtFull(lineTotal)} кг">${fmt(lineTotal)}</div>`;
   });
+
+  // Підсумок останньої локації
+  if(prevLoc!==null){
+    const locLines=lines.filter(l=>getLoc(l)===prevLoc);
+    const locColTotals=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
+    const locTotal=locColTotals.reduce((a,b)=>a+b,0);
+    html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:8px;opacity:.7;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
+    locColTotals.forEach(v=>{
+      html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)" title="${LOC_LABELS[prevLoc]}: ${fmtFull(v)} кг">${fmt(v)}</div>`;
+    });
+    html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9" title="${LOC_LABELS[prevLoc]} всього: ${fmtFull(locTotal)} кг">${fmt(locTotal)}</div>`;
+  }
+
+  // ── ПІДСУМОК по всіх місяцях (ІТОГО) ──
+  html+=`<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
+  html+=`<div class="hmap-label" style="color:#fff;font-size:9px;font-weight:700;letter-spacing:.5px">ІТОГО</div>`;
+  colTotals.forEach((v,i)=>{
+    const tip=`${HM_LABELS[i]} — всі лінії: ${fmtFull(v)} кг`;
+    html+=`<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:${v>=100000?'8px':'9px'};font-weight:700;border-top:1px solid rgba(255,255,255,.15)" title="${tip}">${fmt(v)}</div>`;
+  });
+  html+=`<div class="hmap-cell" style="background:#1e2535;color:var(--accent);font-size:9px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)" title="Загальний підсумок: ${fmtFull(grandTotal)} кг">${fmt(grandTotal)}</div>`;
+
   html+='</div>';
   document.getElementById('heatmapWrap').innerHTML=html;
 }

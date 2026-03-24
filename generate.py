@@ -8,6 +8,8 @@ from datetime import datetime
 
 SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
 SHEET_ID2     = os.environ.get("SHEET_ID2",     "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI")
+LINES_SHEET_ID  = os.environ.get("LINES_SHEET_ID",  "1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4")
+LINES_SHEET_ID2 = os.environ.get("LINES_SHEET_ID2", "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI")
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
@@ -248,9 +250,9 @@ def parse_lines_heatmap(rows_list):
                 hi = i; break
         hdr = [str(c).strip().lower() for c in rows[hi]]
         ci_date    = find_col(hdr, ['дата', 'date'])
-        ci_line    = find_col(hdr, ['лінія', 'линия', 'line'])
+        ci_line    = find_col(hdr, ['линия', 'лінія', 'line'])
         ci_weight  = find_col(hdr, ['вес кг (вклад)', 'вага кг', 'вес кг'])
-        ci_contrib = find_col(hdr, ['вклад %', 'вклад%', '% вклад', 'вклад'])
+        ci_contrib = find_col(hdr, ['вклад %', 'вклад%', '% вклад'])
         if ci_date < 0 or ci_line < 0 or ci_weight < 0:
             print(f"  Lines HM: cannot find columns in: {hdr[:10]}")
             continue
@@ -507,10 +509,10 @@ if __name__ == '__main__':
     # ── Lines heatmap (monthly aggregation from _AllData sheets) ──
     hm_labels, hm_data = [], {}
     try:
-        rows1 = fetch_csv(SHEET_ID,  "_AllData")
+        rows1 = fetch_csv(LINES_SHEET_ID,  "Аналіз вкладів")
         rows2 = []
         try:
-            rows2 = fetch_csv(SHEET_ID2, "_AllData")
+            rows2 = fetch_csv(LINES_SHEET_ID2, "Аналіз вкладів")
         except Exception as e2:
             print(f"  Lines HM: sheet2 skipped: {e2}")
         hm_labels, hm_data = parse_lines_heatmap([rows1, rows2])
