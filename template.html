@@ -793,7 +793,7 @@
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
     <div id="invTableWrap">
       <div style="text-align:center;padding:50px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px">
-        <div style="font-size:32px;margin-bottom:12px">📦</div>Натисніть ▶ ЗАВАНТАЖИТИ щоб отримати залишки зі складів Bitrix24
+        <div style="font-size:32px;margin-bottom:12px">📦</div>Натисніть ▶ ЗАВАНТАЖИТИ
       </div>
     </div>
   </div>
@@ -1719,119 +1719,152 @@ function okrShowKr(okrName, okrShort) {
     var el=document.getElementById('inv_webhook');
     return (el?el.value:'').trim().replace(/\/+$/,'')+'/';
   }
-  async function invB24(method,params){
-    params=params||{};
-    var q=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
-    var r=await fetch(invUrl()+method+(q?'?'+q:''));
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    var d=await r.json();
-    if(d.error)throw new Error(d.error_description||d.error);
+
+  // POST замість GET — надійніше для Bitrix24
+  async function invB24(method, params){
+    params = params || {};
+    var body = new FormData();
+    Object.keys(params).forEach(function(k){ body.append(k, params[k]); });
+    var r = await fetch(invUrl() + method, {method:'POST', body:body});
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    if(d.error) throw new Error(d.error_description || d.error);
     return d;
   }
-  async function invAll(method,key,params){
-    var start=0,out=[];
+
+  async function invAll(method, key, params){
+    var start=0, out=[];
     while(true){
-      var p=Object.assign({},params||{},{start:start});
-      var d=await invB24(method,p);
-      var items=(d.result&&d.result[key])?d.result[key]:(d.result||[]);
-      if(!Array.isArray(items))items=Object.values(items);
-      out=out.concat(items);
-      if(start+50>=(d.total||0))break;
-      start+=50;
+      var p = Object.assign({}, params||{}, {start:start});
+      var d = await invB24(method, p);
+      var items = (d.result && d.result[key]) ? d.result[key] : (Array.isArray(d.result) ? d.result : []);
+      out = out.concat(items);
+      if(start + 50 >= (d.total || 0)) break;
+      start += 50;
     }
     return out;
   }
-  window.invLoad=async function(){
-    var btn=document.getElementById('invLoadBtn');
-    btn.disabled=true; btn.textContent='⏳ ЗАВАНТАЖЕННЯ...';
+
+  window.invLoad = async function(){
+    var btn = document.getElementById('invLoadBtn');
+    btn.disabled = true; btn.textContent = '⏳ ЗАВАНТАЖЕННЯ...';
     invShowErr('');
-    document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:50px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px"><div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lspin .7s linear infinite;margin:0 auto 12px"></div>Отримую дані зі складів...</div>';
+    document.getElementById('invTableWrap').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px"><div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lspin .7s linear infinite;margin:0 auto 12px"></div>Отримую дані зі складів...</div>';
     try{
-      var stD=await invB24('catalog.store.list',{'select[0]':'ID','select[1]':'TITLE'});
-      invStores=((stD.result&&stD.result.stores)?stD.result.stores:[]).map(function(s){return{id:String(s.id),title:s.title};});
-      if(invStores[0])document.getElementById('invWh0').textContent=invStores[0].title;
-      if(invStores[1])document.getElementById('invWh1').textContent=invStores[1].title;
-      invProducts=await invAll('catalog.product.list','products',{'select[0]':'ID','select[1]':'NAME','select[2]':'QUANTITY'});
-      invProducts.forEach(function(p){if(!(p.id in invThresholds))invThresholds[p.id]=0;});
-      var spList=await invAll('catalog.storeproduct.list','storeProducts',{'select[0]':'PRODUCT_ID','select[1]':'STORE_ID','select[2]':'AMOUNT','select[3]':'QUANTITY_RESERVED'});
-      invSpMap={};
-      spList.forEach(function(sp){
-        var pid=String(sp.productId),sid=String(sp.storeId);
-        if(!invSpMap[pid])invSpMap[pid]={};
-        invSpMap[pid][sid]={amount:parseFloat(sp.amount||0),reserved:parseFloat(sp.quantityReserved||0)};
+      // Склади
+      var stD = await invB24('catalog.store.list', {'select[]':'ID,TITLE'});
+      var storeList = (stD.result && stD.result.stores) ? stD.result.stores : (Array.isArray(stD.result) ? stD.result : []);
+      invStores = storeList.map(function(s){ return {id:String(s.id||s.ID), title:s.title||s.TITLE}; });
+      if(invStores[0]) document.getElementById('invWh0').textContent = invStores[0].title;
+      if(invStores[1]) document.getElementById('invWh1').textContent = invStores[1].title;
+
+      // Товари
+      invProducts = await invAll('catalog.product.list', 'products', {
+        'select[0]':'ID','select[1]':'NAME','select[2]':'QUANTITY','iblockId':15
       });
-      document.getElementById('invKpi').style.display='grid';
-      document.getElementById('invFilters').style.display='flex';
-      document.getElementById('invRefreshBtn').style.display='inline-block';
-      document.getElementById('invUpdated').textContent='↻ '+new Date().toLocaleTimeString('uk');
-      invBuildThr(); invRender();
+      invProducts.forEach(function(p){ if(!(p.id in invThresholds)) invThresholds[p.id]=0; });
+
+      // Залишки по складах
+      var spList = await invAll('catalog.storeproduct.list', 'storeProducts', {
+        'select[0]':'PRODUCT_ID','select[1]':'STORE_ID','select[2]':'AMOUNT','select[3]':'QUANTITY_RESERVED'
+      });
+      invSpMap = {};
+      spList.forEach(function(sp){
+        var pid=String(sp.productId), sid=String(sp.storeId);
+        if(!invSpMap[pid]) invSpMap[pid]={};
+        invSpMap[pid][sid] = {amount:parseFloat(sp.amount||0), reserved:parseFloat(sp.quantityReserved||0)};
+      });
+
+      document.getElementById('invKpi').style.display = 'grid';
+      document.getElementById('invFilters').style.display = 'flex';
+      document.getElementById('invRefreshBtn').style.display = 'inline-block';
+      document.getElementById('invUpdated').textContent = '↻ ' + new Date().toLocaleTimeString('uk');
+      invBuildThr();
+      invRender();
     }catch(e){
-      invShowErr('Помилка: '+e.message+'. Перевірте вебхук та право catalog.');
-      document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">⚠️ Не вдалось завантажити дані</div>';
+      invShowErr('Помилка: ' + e.message);
+      document.getElementById('invTableWrap').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">⚠️ Не вдалось завантажити дані</div>';
     }
-    btn.disabled=false; btn.textContent='▶ ЗАВАНТАЖИТИ';
+    btn.disabled = false; btn.textContent = '▶ ЗАВАНТАЖИТИ';
   };
+
   function invStatus(pid){
-    var t=invThresholds[pid]||0;
-    var tot=invStores.reduce(function(s,st){return s+((invSpMap[pid]&&invSpMap[pid][st.id])?invSpMap[pid][st.id].amount:0);},0);
-    if(t<=0)return 'ok';
-    if(tot<=0)return 'danger';
-    if(tot<t)return 'warn';
+    var t = invThresholds[pid]||0;
+    var tot = invStores.reduce(function(s,st){ return s + ((invSpMap[pid]&&invSpMap[pid][st.id]) ? invSpMap[pid][st.id].amount : 0); }, 0);
+    if(t<=0) return 'ok';
+    if(tot<=0) return 'danger';
+    if(tot<t) return 'warn';
     return 'ok';
   }
-  window.invRender=function(){
-    var search=(document.getElementById('invSearch')||{value:''}).value.toLowerCase();
-    var list=invProducts.filter(function(p){
-      if(search&&p.name.toLowerCase().indexOf(search)<0)return false;
-      if(invTab!=='all'&&invStatus(p.id)!==invTab)return false;
-      if(invWh!=='all'){var st=invStores[invWh];if(st&&!(invSpMap[p.id]&&invSpMap[p.id][st.id]&&invSpMap[p.id][st.id].amount>0))return false;}
+
+  window.invRender = function(){
+    var search = (document.getElementById('invSearch')||{value:''}).value.toLowerCase();
+    var list = invProducts.filter(function(p){
+      if(search && p.name.toLowerCase().indexOf(search)<0) return false;
+      if(invTab!=='all' && invStatus(p.id)!==invTab) return false;
+      if(invWh!=='all'){
+        var st=invStores[invWh];
+        if(st && !(invSpMap[p.id] && invSpMap[p.id][st.id] && invSpMap[p.id][st.id].amount>0)) return false;
+      }
       return true;
     });
-    list.sort(function(a,b){var o={danger:0,warn:1,ok:2};return o[invStatus(a.id)]-o[invStatus(b.id)]||a.name.localeCompare(b.name,'uk');});
-    var c={danger:0,warn:0,ok:0},mon=0;
-    invProducts.forEach(function(p){c[invStatus(p.id)]++;if((invThresholds[p.id]||0)>0)mon++;});
-    document.getElementById('inv_kTotal').textContent=invProducts.length;
-    document.getElementById('inv_kDanger').textContent=c.danger;
-    document.getElementById('inv_kWarn').textContent=c.warn;
-    document.getElementById('inv_kOk').textContent=c.ok;
-    document.getElementById('inv_kMon').textContent=mon;
-    var al=document.getElementById('invAlert');
+    list.sort(function(a,b){
+      var o={danger:0,warn:1,ok:2};
+      return o[invStatus(a.id)]-o[invStatus(b.id)] || a.name.localeCompare(b.name,'uk');
+    });
+    var c={danger:0,warn:0,ok:0}, mon=0;
+    invProducts.forEach(function(p){ c[invStatus(p.id)]++; if((invThresholds[p.id]||0)>0) mon++; });
+    document.getElementById('inv_kTotal').textContent = invProducts.length;
+    document.getElementById('inv_kDanger').textContent = c.danger;
+    document.getElementById('inv_kWarn').textContent = c.warn;
+    document.getElementById('inv_kOk').textContent = c.ok;
+    document.getElementById('inv_kMon').textContent = mon;
+    var al = document.getElementById('invAlert');
     if(c.danger>0){
-      var names=invProducts.filter(function(p){return invStatus(p.id)==='danger';}).slice(0,3).map(function(p){return p.name;}).join(', ');
-      al.innerHTML='<strong style="color:var(--bad)">🔴 КРИТИЧНО:</strong> '+c.danger+' позицій нижче мінімуму — '+names+(c.danger>3?' та ін.':'');
+      var names = invProducts.filter(function(p){return invStatus(p.id)==='danger';}).slice(0,3).map(function(p){return p.name;}).join(', ');
+      al.innerHTML = '<strong style="color:var(--bad)">🔴 КРИТИЧНО:</strong> '+c.danger+' позицій нижче мінімуму — '+names+(c.danger>3?' та ін.':'');
       al.style.display='block';
-    }else if(c.warn>0){
-      al.innerHTML='<strong style="color:var(--warn)">🟡 УВАГА:</strong> '+c.warn+' позицій наближаються до мінімуму';
+    } else if(c.warn>0){
+      al.innerHTML = '<strong style="color:var(--warn)">🟡 УВАГА:</strong> '+c.warn+' позицій наближаються до мінімуму';
       al.style.display='block';
-    }else al.style.display='none';
-    if(!list.length){document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">🔍 Нічого не знайдено</div>';return;}
-    var whCols=invStores.map(function(s){return '<th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left">'+invEsc(s.title)+'</th>';}).join('');
+    } else al.style.display='none';
+
+    if(!list.length){
+      document.getElementById('invTableWrap').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">🔍 Нічого не знайдено</div>';
+      return;
+    }
+    var whCols = invStores.map(function(s){
+      return '<th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left">'+invEsc(s.title)+'</th>';
+    }).join('');
     var smap={ok:'НОРМА',warn:'МАЛО',danger:'КРИТИЧНО'};
     var bcls={ok:'badge-green',warn:'badge-yellow',danger:'badge-red'};
-    var rows=list.map(function(p){
-      var st=invStatus(p.id),thr=invThresholds[p.id]||0;
-      var tds=invStores.map(function(s){
+    var rows = list.map(function(p){
+      var st=invStatus(p.id), thr=invThresholds[p.id]||0;
+      var tds = invStores.map(function(s){
         var sp=(invSpMap[p.id]&&invSpMap[p.id][s.id])?invSpMap[p.id][s.id]:null;
-        var amt=sp?sp.amount:0,res=sp?sp.reserved:0;
+        var amt=sp?sp.amount:0, res=sp?sp.reserved:0;
         var col=amt<=0?'var(--border)':thr>0&&amt<thr?'var(--bad)':thr>0?'var(--good)':'var(--text)';
         return '<td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:600;color:'+col+'">'+(amt>0?invFmt(amt):'—')+'</span>'+(res>0?'<br><span style="font-size:9px;color:var(--muted)">рез: '+invFmt(res)+'</span>':'')+'</td>';
       }).join('');
       return '<tr><td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><span style="font-size:12px;font-weight:500">'+invEsc(p.name)+'</span><br><span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted)">ID: '+p.id+'</span></td>'+tds+'<td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><span class="'+bcls[st]+'" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;padding:3px 8px;border-radius:3px">'+smap[st]+'</span></td><td style="padding:10px 14px;border-bottom:1px solid rgba(37,42,58,.5)"><input type="number" min="0" value="'+thr+'" onchange="invSetThr(\''+p.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:3px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;width:80px;text-align:center;outline:none"></td></tr>';
     }).join('');
-    document.getElementById('invTableWrap').innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)"><th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left">Товар</th>'+whCols+'<th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px">Статус</th><th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px">⚠ Мін. поріг</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    document.getElementById('invTableWrap').innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)"><th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left">Товар</th>'+whCols+'<th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px">Статус</th><th style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px">⚠ Мін. поріг</th></tr></thead><tbody>'+rows+'</tbody></table>';
   };
-  window.invSetThr=function(pid,val){invThresholds[pid]=parseFloat(val)||0;invBuildThr();invRender();};
+
+  window.invSetThr=function(pid,val){ invThresholds[pid]=parseFloat(val)||0; invBuildThr(); invRender(); };
   function invBuildThr(){
     var g=document.getElementById('invThrGrid');
-    if(!invProducts.length)return;
-    g.innerHTML=invProducts.map(function(p){return '<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:8px 12px"><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+invEsc(p.name)+'</span><span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted)">ID:'+p.id+'</span><input type="number" min="0" value="'+(invThresholds[p.id]||0)+'" onchange="invSetThr(\''+p.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:3px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;width:80px;text-align:center;outline:none"></div>';}).join('');
+    if(!invProducts.length) return;
+    g.innerHTML=invProducts.map(function(p){
+      return '<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:8px 12px"><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+invEsc(p.name)+'</span><span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted)">ID:'+p.id+'</span><input type="number" min="0" value="'+(invThresholds[p.id]||0)+'" onchange="invSetThr(\''+p.id+'\',this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:3px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;width:80px;text-align:center;outline:none"></div>';
+    }).join('');
   }
-  window.invSetTab=function(tab,el){invTab=tab;document.querySelectorAll('#tab-inventory .month-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');invRender();};
-  window.invSetWh=function(wh,el){invWh=wh;['invWhAll','invWh0','invWh1'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('active');});el.classList.add('active');invRender();};
-  window.invToggleThr=function(){var p=document.getElementById('invThrPanel');p.style.display=p.style.display==='none'?'block':'none';};
-  function invShowErr(msg){var b=document.getElementById('invErr');if(msg){b.textContent=msg;b.style.display='block';}else b.style.display='none';}
-  function invFmt(v){return Number(v).toLocaleString('uk',{maximumFractionDigits:2});}
-  function invEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  window.invSetTab=function(tab,el){ invTab=tab; document.querySelectorAll('#tab-inventory .month-btn').forEach(function(b){b.classList.remove('active');}); el.classList.add('active'); invRender(); };
+  window.invSetWh=function(wh,el){ invWh=wh; ['invWhAll','invWh0','invWh1'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('active');}); el.classList.add('active'); invRender(); };
+  window.invToggleThr=function(){ var p=document.getElementById('invThrPanel'); p.style.display=p.style.display==='none'?'block':'none'; };
+  function invShowErr(msg){ var b=document.getElementById('invErr'); if(msg){b.textContent=msg;b.style.display='block';}else b.style.display='none'; }
+  function invFmt(v){ return Number(v).toLocaleString('uk',{maximumFractionDigits:2}); }
+  function invEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 })();
 // ══════════════ /INVENTORY MODULE ══════════════
 
