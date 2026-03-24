@@ -205,8 +205,11 @@ def parse_calc_extended(rows):
 
 def parse_lines_heatmap(rows_list):
     """
-    Агрегує кг по лінії × місяць з одного або кількох листів _AllData.
-    rows_list — список списків рядків (з кількох листів/локацій).
+    Агрегує кг готової продукції по лінії × місяць.
+    Джерело: лист Журнал.Локация1 / Журнал.Локация2
+    Структура: рядок зміни — дата вказана тільки в першому рядку блоку,
+    далі None (forward-fill). Кожен рядок = одна лінія за зміну.
+    col A=Дата(0), G=Лінія(6), J=Вага кг(9)
     """
     from collections import defaultdict
     import re as _re
@@ -216,78 +219,70 @@ def parse_lines_heatmap(rows_list):
         '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'
     }
 
-    def parse_date_ym(raw):
-        if not raw: return None
-        raw = str(raw).strip()
-        try:
-            n = float(raw.replace(',','.'))
-            if 40000 < n < 60000:
-                from datetime import date, timedelta
-                d = date(1899,12,30) + timedelta(days=int(n))
-                return d.strftime('%Y-%m')
-        except: pass
-        for fmt in ('%Y-%m-%d %H:%M:%S','%Y-%m-%d','%d.%m.%Y','%d/%m/%Y'):
-            try:
-                from datetime import datetime as _dt
-                return _dt.strptime(raw[:10], fmt[:10]).strftime('%Y-%m')
-            except: pass
-        return None
-
-    def find_col(headers, kws):
-        for kw in kws:
-            for i, h in enumerate(headers):
-                if kw in h: return i
-        return -1
-
     monthly = defaultdict(lambda: defaultdict(float))
 
     for rows in rows_list:
         if not rows: continue
-        hi = 0
-        for i in range(min(5, len(rows))):
-            j = ' '.join(str(c) for c in rows[i]).lower()
-            if 'дата' in j or 'лін' in j or 'лини' in j:
-                hi = i; break
-        hdr = [str(c).strip().lower() for c in rows[hi]]
-        ci_date    = find_col(hdr, ['дата', 'date'])
-        ci_line    = find_col(hdr, ['линия', 'лінія', 'line'])
-        ci_weight  = find_col(hdr, ['вес кг (вклад)', 'вага кг', 'вес кг'])
-        ci_contrib = find_col(hdr, ['вклад %', 'вклад%', '% вклад'])
-        if ci_date < 0 or ci_line < 0 or ci_weight < 0:
-            print(f"  Lines HM: cannot find columns in: {hdr[:10]}")
-            continue
-        for row in rows[hi+1:]:
-            if not row or all(not str(c).strip() for c in row): continue
-            g = lambda idx: str(row[idx]).strip() if 0 <= idx < len(row) else ''
-            ym = parse_date_ym(g(ci_date))
-            if not ym: continue
-            try:
-                w = float(g(ci_weight).replace(',','.').replace(' ','').replace('\xa0',''))
-            except: continue
-            if w <= 0: continue
-            contrib = 1.0
-            if ci_contrib >= 0:
-                try:
-                    cv = float(g(ci_contrib).replace(',','.').replace('%',''))
-                    if cv > 0:
-                        contrib = cv / 100 if cv > 1.5 else cv
-                except: pass
-            kg_real = w / contrib if contrib > 0 else w
-            line = g(ci_line).upper().replace('ЛИНИЯ','ЛІНІЯ').strip()
-            if not line or line == '?': continue
+
+        # Detect header rows (first 3) and find col indexes dynamically
+        # Default known positions: date=0, line=6, weight=9
+        ci_date = 0; ci_line = 6; ci_weight = 9
+        data_start = 2  # data starts at row index 2 (0-based)
+
+        # Try to auto-detect from headers (row index 0 and 1)
+        for hi in range(min(3, len(rows))):
+            hdr = [str(c).lower().strip() if c else '' for c in rows[hi]]
+            if any('лін' in h or 'лини' in h for h in hdr):
+                for i, h in enumerate(hdr):
+                    if 'дата' in h or h == 'date': ci_date = i
+                    if 'лін' in h or 'лини' in h: ci_line = i
+                    if 'вага' in h or ('вес' in h and 'кг' in h): ci_weight = i
+                data_start = hi + 1
+                break
+
+        current_date = None
+        for row in rows[data_start:]:
+            if not row: continue
+            # Forward-fill date
+            d = row[ci_date] if ci_date < len(row) else None
+            if d is not None and hasattr(d, 'strftime'):
+                current_date = d
+            elif isinstance(d, (int, float)) and 40000 < d < 60000:
+                from datetime import date as _date, timedelta
+                current_date = _date(1899, 12, 30) + timedelta(days=int(d))
+            if current_date is None:
+                continue
+
+            w = row[ci_weight] if ci_weight < len(row) else None
+            if not isinstance(w, (int, float)) or w <= 0:
+                continue
+
+            line = str(row[ci_line] if ci_line < len(row) else '').upper().strip()
+            if not line:
+                continue
             m = _re.match(r'.*?(\d+)$', line)
-            if m: line = f'ЛІНІЯ {m.group(1)}'
-            monthly[line][ym] += kg_real
+            if m:
+                line = f'ЛІНІЯ {m.group(1)}'
+
+            ym = current_date.strftime('%Y-%m') if hasattr(current_date, 'strftime') else current_date[:7]
+            monthly[line][ym] += w
 
     if not monthly:
         print("  Lines HM: no data")
         return [], {}
 
-    all_months = sorted(set(ym for d in monthly.values() for ym in d))
-    hm_labels = []
-    for ym in all_months:
-        y, mo = ym.split('-')
-        hm_labels.append(f"{UA_SHORT[mo]} {y[2:]}")
+    # Filter out stray old months (keep only from 2025-11 onwards)
+    all_months = sorted(
+        ym for ym in set(m for d in monthly.values() for m in d)
+        if ym >= '2025-11'
+    )
+    if not all_months:
+        return [], {}
+
+    hm_labels = [
+        f"{UA_SHORT[ym.split('-')[1]]} {ym.split('-')[0][2:]}"
+        for ym in all_months
+    ]
 
     def line_num(ln):
         m = _re.search(r'(\d+)', ln)
@@ -300,6 +295,7 @@ def parse_lines_heatmap(rows_list):
     total_kg = sum(sum(v.values()) for v in monthly.values())
     print(f"  Lines HM: {len(hm_data)} lines x {len(all_months)} months, total={round(total_kg):,} kg")
     return hm_labels, hm_data
+
 
 
 def parse_sales(rows):
@@ -509,10 +505,10 @@ if __name__ == '__main__':
     # ── Lines heatmap (monthly aggregation from _AllData sheets) ──
     hm_labels, hm_data = [], {}
     try:
-        rows1 = fetch_csv(LINES_SHEET_ID,  "Аналіз вкладів")
+        rows1 = fetch_csv(LINES_SHEET_ID,  "Журнал.Локация1")
         rows2 = []
         try:
-            rows2 = fetch_csv(LINES_SHEET_ID2, "Аналіз вкладів")
+            rows2 = fetch_csv(LINES_SHEET_ID2, "Журнал.Локация2")
         except Exception as e2:
             print(f"  Lines HM: sheet2 skipped: {e2}")
         hm_labels, hm_data = parse_lines_heatmap([rows1, rows2])
