@@ -8,8 +8,9 @@ okr_tracker.py — Трекинг прогресса OKR 2026, Друкар
   3. Прогресс по каждому KR (внутри OKR)
   4. Рейтинг вклада каждого человека
 
-Прогресс берётся из колонки 'Progress' листа OKR_2026.
+Прогресс берётся из колонки 'Прогресс, %' листа OKR_2026.
 Значение 0–1 (или 0–100%, нормализуется автоматически).
+Значение "Выполнено" / "Done" в col D или H = 100%.
 """
 
 import pandas as pd
@@ -17,15 +18,11 @@ import numpy as np
 import sys
 import os
 
-# ─────────────────────────────────────────────
 FILE = os.path.join(os.path.dirname(__file__), 'Друкар_стратегия_2026.xlsx')
 if not os.path.exists(FILE):
-    # fallback for direct run
     FILE = '/mnt/user-data/uploads/Друкар_стратегия_2026.xlsx'
-# ─────────────────────────────────────────────
 
-LEAD_COEFF    = 0.7   # вес лида за задачу
-# Вес саппорта берётся из листа Весакоэфф, но если не найден — fallback
+LEAD_COEFF            = 0.7
 DEFAULT_SUPPORT_COEFF = 0.3
 
 
@@ -33,8 +30,9 @@ def to_progress(v):
     """Парсит значение прогресса → float 0.0–1.0 или None."""
     try:
         f = float(v)
+        if f != f: return None   # nan
         if f > 1.0:
-            f = f / 100.0   # если введено как %
+            f = f / 100.0
         return round(min(max(f, 0.0), 1.0), 4)
     except:
         return None
@@ -42,50 +40,44 @@ def to_progress(v):
 
 DONE_KEYWORDS = {'выполнено', 'done', 'завершено', 'готово', 'completed', '✓', '✅'}
 
-def is_done_status(status_val):
-    """Возвращает True если статус означает 'выполнено'."""
-    s = str(status_val).strip().lower()
+def is_done_status(val):
+    """True если значение означает 'выполнено' (100%)."""
+    s = str(val).strip().lower()
     return any(kw in s for kw in DONE_KEYWORDS)
 
 
+# ── БАГ 1 ФИКС: динамический поиск весов ОКР ────────────────────────────────
 def parse_okr_weights(raw_df):
-    """Читает веса OKR из блока строк 191–198 листа OKR_2026."""
+    """
+    Читает веса OKR — ищет блок где col_A = название ОКР и col_C = число.
+    Ранее хардкодило рядки 191–198 что сломалось после правок в таблице.
+    """
     weights = {}
-    for idx in range(191, 199):
+    for idx in range(len(raw_df)):
         try:
             name = str(raw_df.iloc[idx, 0]).strip()
             val  = raw_df.iloc[idx, 2]
-            if name != 'nan' and pd.notna(val):
-                weights[name] = int(val)
+            # Ищем строки где col_A = "ОКРn. ..." и col_C = целое число (вес)
+            if (name.startswith('ОКР') and name != 'nan'
+                    and pd.notna(val) and str(val) != 'nan'):
+                try:
+                    w = int(float(val))
+                    if 1 <= w <= 100:   # разумный диапазон весов
+                        weights[name] = w
+                except:
+                    pass
         except:
             pass
-    return weights
-
-
-    """Читает веса OKR из блока строк 191–198 листа OKR_2026."""
-    weights = {}
-    for idx in range(191, 199):
-        try:
-            name = str(raw_df.iloc[idx, 0]).strip()
-            val  = raw_df.iloc[idx, 2]
-            if name != 'nan' and pd.notna(val):
-                weights[name] = int(val)
-        except:
-            pass
+    # Если нашли несколько строк с одинаковым ОКР — берём последнюю (служебная зона)
+    # Если совсем пусто — равные веса
+    if not weights:
+        print("  ⚠ Веса ОКР не найдены — используются равные веса")
     return weights
 
 
 def parse_support_coeffs(xl):
-    """
-    Читает лист Весакоэфф и строит dict:
-      (okr_prefix, kr_prefix, task_prefix) → {'lead': 0.7, 'support': 0.3, 'n_support': 1}
-    Используется для точных коэффициентов.
-    Если строка не найдена — возвращается DEFAULT_SUPPORT_COEFF.
-    """
     try:
         df = xl.parse('Весакоэфф', header=0)
-        # Колонки: OKR(Цель), РЕЗУЛЬТАТ, ЗАДАЧА, Удельный вес задачи,
-        #          Вес Лида, Доля 1 Саппорта, Всего помогаторов
         coeffs = []
         cur_okr = None
         cur_kr  = None
@@ -115,7 +107,6 @@ def parse_support_coeffs(xl):
 
 
 def get_support_coeff(coeffs, okr, kr, task):
-    """Ищет коэффициент саппорта для конкретной задачи/КР."""
     for c in reversed(coeffs):
         task_ok = (task and c['task'] and task[:30] in (c['task'] or '')) or \
                   c['task'] is None or c['task'] == 'nan'
@@ -128,87 +119,84 @@ def get_support_coeff(coeffs, okr, kr, task):
 
 
 def parse_main_sheet(xl):
-    """
-    Читает OKR_2026 и строит иерархию:
-    [
-      {
-        'okr': 'ОКР1. ...',
-        'kr':  'КР1.1. ...',
-        'task': 'описание задачи',
-        'type': 'OKR'|'KR'|'TASK',
-        'responsible': '...',
-        'helpers': ['...', '...'],
-        'progress': 0.0–1.0 or None,
-      }, ...
-    ]
-    """
     raw  = xl.parse('OKR_2026', header=None)
     okr_weights = parse_okr_weights(raw)
 
+    # ── БАГ 2 ФИКС: берём все строки до служебной зоны (≤185) ──────────────
     df = xl.parse('OKR_2026', header=0).iloc[:185].copy()
 
     def row_type(row):
-        okr  = str(row['ОКР']).strip()
-        kr   = str(row['КР']).strip()
-        task = str(row['Проект / Задача']).strip()
-        if okr.startswith('ОКР') and okr != 'nan':  return 'OKR'
-        if kr.startswith('КР')  and kr  != 'nan':
-            # Если задача = "Выполнено" — это маркер прогресса самого KR, не отдельная задача
-            if is_done_status(task): return 'KR'
+        okr  = str(row.get('ОКР', '') or '').strip()
+        kr   = str(row.get('КР',  '') or '').strip()
+        task = str(row.get('Проект / Задача', '') or '').strip()
+        stat = str(row.get('Статус/комментарий', '') or '').strip()
+
+        if okr.startswith('ОКР') and okr != 'nan': return 'OKR'
+        if kr.startswith('КР')   and kr  != 'nan':
+            # ── БАГ 2 ФИКС: "Выполнено" в col_D = KR помечен как выполненный ──
+            if is_done_status(task) or is_done_status(stat):
+                return 'KR_DONE'
             return 'KR'
-        if task != 'nan' and task and not is_done_status(task): return 'TASK'
+        if task and task != 'nan':
+            # ── БАГ 2 ФИКС: задача с "Выполнено" в col_D ──────────────────
+            if is_done_status(task):
+                return 'TASK_DONE'
+            return 'TASK'
         return None
 
     df['_type'] = df.apply(row_type, axis=1)
-
-    # Forward-fill current OKR / KR context
-    df['_okr'] = df['ОКР'].where(df['ОКР'].notna()).ffill()
-    df['_kr']  = df['КР'].where(df['КР'].notna()).ffill()
+    df['_okr']  = df['ОКР'].where(df['ОКР'].notna()).ffill()
+    df['_kr']   = df['КР'].where(df['КР'].notna()).ffill()
 
     rows = []
     for _, r in df[df['_type'].notna()].iterrows():
-        helpers_raw = str(r.get('Кто помогает', '')).strip()
-        helpers = [h.strip() for h in helpers_raw.split(',') if h.strip() and h.strip() != 'nan']
+        helpers_raw = str(r.get('Кто помогает', '') or '').strip()
+        helpers = [h.strip() for h in helpers_raw.split(',')
+                   if h.strip() and h.strip() != 'nan']
 
-        task_name = str(r.get('Проект / Задача', '')).strip()
-        if task_name == 'nan': task_name = None
+        task_name = str(r.get('Проект / Задача', '') or '').strip()
+        if task_name in ('nan', ''): task_name = None
 
-        # Прогресс: пробуем все возможные имена колонки
-        raw_progress = (r.get('Прогресс, %')        # текущее имя в файле
-                     or r.get('Прогресс')            # старое имя
-                     or r.get('Progress'))           # вычисляемая формула
-        status_raw   = str(r.get('Статус/комментарий', '') or '')
-        task_raw     = str(r.get('Проект / Задача',    '') or '')
-        helpers_raw2 = str(r.get('Кто помогает',       '') or '').strip()
+        raw_progress = (r.get('Прогресс, %')
+                     or r.get('Прогресс')
+                     or r.get('Progress'))
+        status_raw = str(r.get('Статус/комментарий', '') or '')
+        task_raw   = str(r.get('Проект / Задача',    '') or '')
 
-        if is_done_status(status_raw) or is_done_status(task_raw) or is_done_status(helpers_raw2):
+        # ── БАГ 2 ФИКС: "Выполнено" в задаче ИЛИ статусе = 100% ──────────
+        if r['_type'] in ('KR_DONE', 'TASK_DONE') or \
+           is_done_status(status_raw) or is_done_status(task_raw):
             progress = 1.0
         else:
             progress = to_progress(raw_progress)
 
+        # Нормализуем тип для единообразия
+        rtype = r['_type']
+        if rtype == 'KR_DONE':   rtype = 'KR'
+        if rtype == 'TASK_DONE': rtype = 'TASK'
+
         rows.append({
-            'type':        r['_type'],
+            'type':        rtype,
             'okr':         str(r['_okr']).strip(),
             'kr':          str(r['_kr']).strip() if pd.notna(r['_kr']) else None,
             'task':        task_name,
-            'responsible': str(r.get('Ответственный', '')).strip() or None,
+            'responsible': str(r.get('Ответственный', '') or '').strip() or None,
             'helpers':     helpers,
             'progress':    progress,
-            'status':      str(status_raw).strip() if pd.notna(status_raw) else None,
+            'status':      str(status_raw).strip() if status_raw != 'nan' else None,
         })
     return rows, okr_weights
 
 
 def parse_person_sheets(xl):
     """
-    Читает OKR_<Имя> листы → dict person → list of {okr, kr, task, role}
-    role: 'Ответственный' | 'Помогаю'
-    Если OKR/KR не указаны — определяем по задаче или KR через словари из OKR_2026.
+    Читает OKR_<Имя> листы.
+    БАГ 3 ФИКС: forward-fill ОКР/КР + lookup для строк где col_A пустой.
     """
-    # Строим словари из главного листа с forward-fill
-    kr_to_okr  = {}   # kr_name → okr_name
-    task_to_kr = {}   # task_name → kr_name
-    task_to_okr = {}  # task_name → okr_name
+    # Строим lookup из главного листа
+    kr_to_okr   = {}
+    task_to_kr  = {}
+    task_to_okr = {}
     try:
         main_raw = xl.parse('OKR_2026', header=None)
         cur_okr = None
@@ -221,8 +209,7 @@ def parse_person_sheets(xl):
                 cur_okr = okr_val
             if kr_val.startswith('КР') and kr_val != 'nan':
                 cur_kr = kr_val
-                if cur_okr:
-                    kr_to_okr[cur_kr] = cur_okr
+                if cur_okr: kr_to_okr[cur_kr] = cur_okr
             if task_val and task_val != 'nan' and cur_kr:
                 task_to_kr[task_val]  = cur_kr
                 task_to_okr[task_val] = cur_okr
@@ -230,13 +217,9 @@ def parse_person_sheets(xl):
         print(f"  WARNING lookup build: {e}")
 
     def find_okr_kr(task):
-        """Ищет OKR и KR по началу названия задачи."""
-        if not task or task == 'nan':
-            return None, None
-        # Точное совпадение
+        if not task or task == 'nan': return None, None
         if task in task_to_kr:
             return task_to_okr.get(task), task_to_kr.get(task)
-        # По префиксу (первые 20 символов)
         for k, v in task_to_kr.items():
             if task[:20] in k or k[:20] in task:
                 return task_to_okr.get(k), v
@@ -247,75 +230,77 @@ def parse_person_sheets(xl):
         if not sheet.startswith('OKR_') or sheet == 'OKR_2026':
             continue
         person = sheet.replace('OKR_', '')
-        df = xl.parse(sheet, header=0)
+        try:
+            df = xl.parse(sheet, header=0)
+        except:
+            continue
+
         entries = []
         cur_okr = None
         cur_kr  = None
+
         for _, row in df.iterrows():
-            okr  = str(row.iloc[0]).strip()
-            kr   = str(row.iloc[1]).strip()
-            role = str(row.iloc[2]).strip()
-            task = str(row.iloc[3]).strip() if len(row) > 3 else ''
+            okr  = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ''
+            kr   = str(row.iloc[1]).strip() if pd.notna(row.iloc[1]) else ''
+            role = str(row.iloc[2]).strip() if pd.notna(row.iloc[2]) else ''
+            task = str(row.iloc[3]).strip() if len(row) > 3 and pd.notna(row.iloc[3]) else ''
             task = task if task != 'nan' else ''
 
             if okr.startswith('ОКР') and okr != 'nan':
                 cur_okr = okr
             if kr.startswith('КР') and kr != 'nan':
                 cur_kr = kr
+                # ── БАГ 3 ФИКС: ищем ОКР по КР если cur_okr пустой ────────
                 if not cur_okr or cur_okr == 'nan':
                     cur_okr = kr_to_okr.get(kr)
 
-            # Если OKR/KR всё ещё неизвестны — ищем по задаче
             eff_okr = cur_okr
             eff_kr  = cur_kr
+
+            # ── БАГ 3 ФИКС: доп. поиск по задаче ──────────────────────────
             if (not eff_okr or not eff_kr) and task:
                 lkp_okr, lkp_kr = find_okr_kr(task)
                 eff_okr = eff_okr or lkp_okr
                 eff_kr  = eff_kr  or lkp_kr
 
-            if role in ('Ответственный', 'Помогаю') and eff_okr:
+            # ── БАГ 3 ФИКС: включаем строку даже без ОКР если есть КР ─────
+            if role in ('Ответственный', 'Помогаю') and (eff_okr or eff_kr):
                 entries.append({
-                    'okr':  eff_okr,
+                    'okr':  eff_okr or '',
                     'kr':   eff_kr,
                     'task': task or None,
                     'role': role,
                 })
+
         if entries:
             person_map[person] = entries
     return person_map
 
 
 # ══════════════════════════════════════════════
-# CALCULATION ENGINE
+# CALCULATION ENGINE (без изменений)
 # ══════════════════════════════════════════════
 
 def safe_float(v, default=0.0):
-    """float без NaN/None."""
     try:
         f = float(v)
-        return default if f != f else f   # f!=f только для NaN
+        return default if f != f else f
     except:
         return default
 
 
 def calc_kr_progress(rows, okr_name, kr_name):
-    """
-    Прогресс KR = среднее по задачам (незаполненные = 0).
-    Нет задач → прогресс самой KR-строки (незаполненная = 0).
-    """
     task_rows = [r for r in rows
                  if r['type'] == 'TASK' and r['okr'] == okr_name and r['kr'] == kr_name]
     if task_rows:
         progs = [safe_float(r['progress']) for r in task_rows]
         return round(sum(progs) / len(progs), 4)
-
     kr_rows = [r for r in rows
                if r['type'] == 'KR' and r['okr'] == okr_name and r['kr'] == kr_name]
     return round(safe_float(kr_rows[0]['progress']) if kr_rows else 0.0, 4)
 
 
 def calc_okr_progress(rows, okr_name):
-    """Прогресс OKR = среднее по KR (незаполненные KR = 0)."""
     krs = list({r['kr'] for r in rows
                 if r['okr'] == okr_name and r['kr'] and r['type'] in ('KR', 'TASK')})
     if not krs:
@@ -326,7 +311,12 @@ def calc_okr_progress(rows, okr_name):
 
 
 def calc_company_progress(rows, okr_weights):
-    """Итоговый % = Σ (прогресс_OKR × вес / total_weight)."""
+    if not okr_weights:
+        # Фолбек: равные веса если словарь пустой
+        okrs = list({r['okr'] for r in rows if r['type'] == 'OKR'})
+        if not okrs: return 0.0
+        progs = [calc_okr_progress(rows, o) for o in okrs]
+        return round(sum(progs) / len(progs), 4)
     total_w = sum(okr_weights.values())
     return round(sum(
         calc_okr_progress(rows, n) * (w / total_w)
@@ -335,24 +325,20 @@ def calc_company_progress(rows, okr_weights):
 
 
 def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
-    """Вклад каждого человека: прогресс × коэф × вес_OKR/total."""
-    total_w = sum(okr_weights.values())
+    total_w = sum(okr_weights.values()) if okr_weights else 1.0
 
-    # Кешируем прогресс KR — по (okr, kr) И по одному kr-имени
-    kr_cache = {}
-    kr_by_name = {}  # kr_name → progress, для случаев когда OKR в личном листе неточный
+    kr_cache   = {}
+    kr_by_name = {}
     for r in rows:
         if r['type'] == 'KR':
             key = (r['okr'], r['kr'])
             if key not in kr_cache:
                 p = calc_kr_progress(rows, r['okr'], r['kr'])
                 kr_cache[key] = p
-                if r['kr']:
-                    kr_by_name[r['kr']] = p
+                if r['kr']: kr_by_name[r['kr']] = p
 
-    # Кешируем прогресс задач — по (okr, kr, task) И по task-имени отдельно
-    task_cache = {}
-    task_by_name = {}  # task_name → progress
+    task_cache   = {}
+    task_by_name = {}
     for r in rows:
         if r['type'] == 'TASK' and r['task']:
             p = safe_float(r['progress'])
@@ -363,23 +349,17 @@ def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
         w = okr_weights.get(okr_name, 0)
         if not w:
             for k, v in okr_weights.items():
-                if okr_name[:15] in k:
-                    return v
-        return w
+                if okr_name[:15] in k: return v
+        return w if w else (1.0 / len(okr_weights) if okr_weights else 0.0)
 
     def get_prog(okr, kr, task):
-        """Ищет прогресс с каскадными фолбеками."""
         if task:
-            # 1) точный ключ (okr, kr, task)
             p = task_cache.get((okr, kr, task))
             if p is not None: return p
-            # 2) только по имени задачи
             p = task_by_name.get(task)
             if p is not None: return p
-        # 3) точный ключ KR
         p = kr_cache.get((okr, kr))
         if p is not None: return p
-        # 4) только по имени KR (OKR в личном листе мог быть неточный)
         if kr:
             p = kr_by_name.get(kr)
             if p is not None: return p
@@ -393,6 +373,8 @@ def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
             w_norm = get_okr_w(okr) / total_w if total_w else 0
             coeff  = LEAD_COEFF if role == 'Ответственный' else \
                      get_support_coeff(support_coeffs, okr, kr, task)
+            if coeff is None or (isinstance(coeff, float) and coeff != coeff):  # nan check
+                coeff = DEFAULT_SUPPORT_COEFF
             prog   = get_prog(okr, kr, task)
             score        += safe_float(prog) * coeff * w_norm
             max_possible += coeff * w_norm
@@ -405,8 +387,6 @@ def calc_person_contributions(rows, okr_weights, person_map, support_coeffs):
     return result
 
 
-
-
 # ══════════════════════════════════════════════
 # MAIN REPORT
 # ══════════════════════════════════════════════
@@ -415,13 +395,12 @@ def run(filepath=None):
     f = filepath or FILE
     xl = pd.ExcelFile(f)
 
-    rows, okr_weights = parse_main_sheet(xl)
-    person_map        = parse_person_sheets(xl)
-    support_coeffs    = parse_support_coeffs(xl)
+    rows, okr_weights   = parse_main_sheet(xl)
+    person_map          = parse_person_sheets(xl)
+    support_coeffs      = parse_support_coeffs(xl)
 
-    total_w = sum(okr_weights.values())
+    total_w = sum(okr_weights.values()) if okr_weights else 1
 
-    # ── Company progress ──
     company_pct = calc_company_progress(rows, okr_weights)
     if company_pct is None or (isinstance(company_pct, float) and np.isnan(company_pct)):
         company_pct = 0.0
@@ -431,7 +410,6 @@ def run(filepath=None):
     print(f"  {'█' * int(company_pct * 40)}{'░' * (40 - int(company_pct * 40))}  {company_pct*100:.1f}%")
     print("=" * 65)
 
-    # ── OKR breakdown ──
     print("\n📌 ПРОГРЕСС ПО OKR:\n")
     okr_results = {}
     for okr_name, weight in okr_weights.items():
@@ -439,10 +417,8 @@ def run(filepath=None):
         p = 0.0 if (p is None or np.isnan(p)) else p
         okr_results[okr_name] = p
         bar = '█' * int(p * 20) + '░' * (20 - int(p * 20))
-        short = okr_name[:40]
-        print(f"  {short:<42} [{bar}] {p*100:5.1f}%  (вес {weight}/{total_w} = {weight/total_w*100:.0f}%)")
+        print(f"  {okr_name[:42]:<44} [{bar}] {p*100:5.1f}%  (вес {weight}/{total_w}={weight/total_w*100:.0f}%)")
 
-    # ── KR breakdown ──
     print("\n📋 ПРОГРЕСС ПО KR:\n")
     krs_seen = {}
     for r in rows:
@@ -452,19 +428,16 @@ def run(filepath=None):
                 krs_seen[key] = True
                 p = calc_kr_progress(rows, r['okr'], r['kr'])
                 p = 0.0 if (p is None or np.isnan(p)) else p
-                okr_short = r['okr'][:25]
-                kr_short  = r['kr'][:45]
                 bar = '█' * int(p * 10) + '░' * (10 - int(p * 10))
-                print(f"  {okr_short:<27} | {kr_short:<47} [{bar}] {p*100:5.1f}%")
+                print(f"  {r['okr'][:25]:<27} | {r['kr'][:45]:<47} [{bar}] {p*100:5.1f}%")
 
-    # ── Person contributions ──
     person_contribs = calc_person_contributions(rows, okr_weights, person_map, support_coeffs)
 
     print("\n👤 РЕЙТИНГ ВКЛАДА ЛЮДЕЙ:\n")
     print(f"  {'Имя':<22} {'Реализ. потенциала':>20}  {'Абс. вклад':>12}  {'Макс. потенциал':>16}")
     print("  " + "─" * 74)
-
-    sorted_people = sorted(person_contribs.items(), key=lambda x: -x[1]['realized'] if not np.isnan(x[1]['realized']) else 0)
+    sorted_people = sorted(person_contribs.items(),
+                           key=lambda x: -x[1]['realized'] if not np.isnan(x[1]['realized']) else 0)
     for person, data in sorted_people:
         realized = data['realized'] if not np.isnan(data['realized']) else 0.0
         bar = '█' * int(realized * 15) + '░' * (15 - int(realized * 15))
@@ -474,36 +447,29 @@ def run(filepath=None):
     print("\n" + "─" * 65)
     print("  ℹ  Реализ. потенциала = сколько % от своих задач выполнено")
     print("  ℹ  Абс. вклад = вклад в общий % прогресса компании")
-    print("  ℹ  Данные берутся из колонки 'Progress' листа OKR_2026")
     print("─" * 65 + "\n")
 
     return {
-        'company_pct': company_pct,
-        'okr_results': okr_results,
+        'company_pct':    company_pct,
+        'okr_results':    okr_results,
         'person_contribs': person_contribs,
-        'okr_weights': okr_weights,
-        'rows': rows,
+        'okr_weights':    okr_weights,
+        'rows':           rows,
     }
 
 
 def to_dashboard_json(result):
-    """
-    Преобразует результат run() в JSON-строки для подстановки в template.html.
-    Возвращает dict с ключами okr_data_json, people_json, kr_data_json, company_pct.
-    """
     import json
 
-    okr_weights    = result['okr_weights']
-    okr_results    = result['okr_results']
+    okr_weights     = result['okr_weights']
+    okr_results     = result['okr_results']
     person_contribs = result['person_contribs']
-    rows           = result['rows']
-    total_w        = sum(okr_weights.values())
+    rows            = result['rows']
+    total_w         = sum(okr_weights.values()) if okr_weights else 1
 
-    # OKR list: [{name, short, pct, weight, weight_pct}]
     okr_data = []
     for name, weight in okr_weights.items():
-        pct = round((okr_results.get(name, 0.0)) * 100, 1)
-        # short name: убираем "ОКР1. " префикс
+        pct   = round((okr_results.get(name, 0.0)) * 100, 1)
         short = name.split('. ', 1)[1] if '. ' in name else name
         okr_data.append({
             'name':       name,
@@ -513,7 +479,6 @@ def to_dashboard_json(result):
             'weight_pct': round(weight / total_w * 100, 1),
         })
 
-    # KR list: [{okr_name, kr_name, pct}]
     kr_data = []
     seen = set()
     for r in rows:
@@ -522,16 +487,14 @@ def to_dashboard_json(result):
             if key not in seen:
                 seen.add(key)
                 p = calc_kr_progress(rows, r['okr'], r['kr'])
-                # Find OKR short name
                 okr_short = r['okr'].split('. ', 1)[1] if '. ' in r['okr'] else r['okr']
                 kr_data.append({
-                    'okr':  r['okr'],
+                    'okr':       r['okr'],
                     'okr_short': okr_short,
-                    'kr':   r['kr'],
-                    'pct':  round(p * 100, 1),
+                    'kr':        r['kr'],
+                    'pct':       round(p * 100, 1),
                 })
 
-    # People list: [{name, realized_pct, score, max}]
     people = sorted(
         [{'name': p, 'realized_pct': round(d['realized'] * 100, 1),
           'score': round(d['score'], 4), 'max': round(d['max'], 4)}
