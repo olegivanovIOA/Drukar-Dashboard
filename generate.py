@@ -478,13 +478,13 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{SALES_TOTAL_OPT}}':    str(sales['total_opt']),
             '{{SALES_TOTAL_RET}}':    str(sales['total_ret']),
         })
-    if okr:
-        subs.update({
-            '{{OKR_COMPANY_PCT}}':   str(round(okr['company_pct'] * 100, 1)),
-            '{{OKR_DATA}}':          okr['okr_data_json'],
-            '{{OKR_PEOPLE}}':        okr['people_json'],
-            '{{OKR_KR_DATA}}':       okr['kr_data_json'],
-        })
+    # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
+    subs.update({
+        '{{OKR_COMPANY_PCT}}':   str(round(okr['company_pct'] * 100, 1)) if okr else '0',
+        '{{OKR_DATA}}':          okr['okr_data_json']  if okr else '[]',
+        '{{OKR_PEOPLE}}':        okr['people_json']    if okr else '[]',
+        '{{OKR_KR_DATA}}':       okr['kr_data_json']   if okr else '[]',
+    })
 
 
 
@@ -521,9 +521,17 @@ if __name__ == '__main__':
         print(f"WARNING sales: {e}")
     try:
         fetch_xlsx(STRATEGY_SHEET_ID, STRATEGY_FILE)
+        import importlib, os as _os
+        # Перевіряємо що файл скачався нормально
+        _fsize = _os.path.getsize(STRATEGY_FILE)
+        print(f"  Strategy file: {_fsize:,} bytes")
+        if _fsize < 10000:
+            raise ValueError(f"Strategy file too small ({_fsize} bytes) — download failed?")
         import okr_tracker
+        importlib.reload(okr_tracker)
         okr_result = okr_tracker.run(STRATEGY_FILE)
         okr = okr_tracker.to_dashboard_json(okr_result)
+        print(f"  OKR: company={okr_result['company_pct']*100:.1f}%, okrs={len(okr_result['okr_results'])}, people={len(okr_result['person_contribs'])}")
     except Exception as e:
         print(f"WARNING okr: {e}")
         import traceback; traceback.print_exc()
