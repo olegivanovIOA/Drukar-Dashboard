@@ -931,8 +931,9 @@ async function loadShiftData(){
       for(const n of names){
         const rows=await fetchSheet(sid,n);
         if(rows.length>2){
-          const hdr=rows[0].map(c=>String(c||'').toLowerCase());
-          if(hdr.some(h=>h.includes('зміна')||h.includes('смена'))) return rows;
+          // Check first 3 header rows (Журнал has 2-row headers)
+          const combined=rows.slice(0,3).map(r=>r.map(c=>String(c||'').toLowerCase()).join(' ')).join(' ');
+          if(combined.includes('зміна')||combined.includes('смена')) return rows;
         }
       }
       return [];
@@ -942,16 +943,26 @@ async function loadShiftData(){
       getBest(sid2,['Журнал.Локация2','Аналіз вкладів']),
     ]);
     function calcShifts(rows){
-      if(!rows||rows.length<2) return {day:0,night:0};
-      const hdr=rows[0].map(h=>String(h||'').toLowerCase().trim());
-      const ci_shift=hdr.findIndex(h=>h.includes('зміна')||h.includes('смена'));
-      const ci_weight=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
-      const ci_contrib=hdr.findIndex(h=>h.includes('вклад %')||h.includes('вклад%'));
-      if(ci_shift<0||ci_weight<0) return {day:0,night:0};
+      if(!rows||rows.length<3) return {day:0,night:0};
+      // Scan first 3 rows for headers (Журнал has 2 header rows)
+      let ci_shift=-1, ci_weight=-1, ci_contrib=-1, dataStart=1;
+      for(let hi=0;hi<Math.min(3,rows.length);hi++){
+        const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
+        const s=hdr.findIndex(h=>h.includes('зміна')||h.includes('смена')||h==='shift');
+        const w=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
+        const c=hdr.findIndex(h=>h.includes('вклад %')||h.includes('вклад%'));
+        if(s>=0) ci_shift=s;
+        if(w>=0) ci_weight=w;
+        if(c>=0) ci_contrib=c;
+        if(s>=0||w>=0) dataStart=hi+1;
+      }
+      // Журнал fallback: known fixed positions col4=shift, col9=weight
+      if(ci_shift<0) ci_shift=4;
+      if(ci_weight<0) ci_weight=9;
       const isAnaliz=ci_contrib>=0;
       let day=0,night=0,curDate=null,curShift=null;
       const seen=new Set();
-      for(let i=1;i<rows.length;i++){
+      for(let i=dataStart;i<rows.length;i++){
         const row=rows[i];
         const dRaw=row[0]; if(dRaw){const d=lParseDate(String(dRaw));if(d)curDate=d;}
         const sRaw=String(row[ci_shift]||'').trim().toLowerCase();
