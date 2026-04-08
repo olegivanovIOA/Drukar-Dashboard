@@ -408,8 +408,24 @@ def parse_sales(rows):
     total_opt = sum(monthly_opt.values())
     total_ret = sum(monthly_ret.values())
 
+    # Best month — динамічно шукаємо максимум по сумі opt+ret
+    best_ym  = max(months_sorted, key=lambda m: monthly_opt.get(m,0)+monthly_ret.get(m,0))
+    best_tot = monthly_opt.get(best_ym,0) + monthly_ret.get(best_ym,0)
+    best_o   = monthly_opt.get(best_ym,0)
+    best_r   = monthly_ret.get(best_ym,0)
+    UA_FULL  = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+    by, bm   = best_ym.split('-')
+    best_label = f"{UA_FULL[bm]} {by}"
+
+    # Donut по місяцях: {ym: [opt, ret]} для JS перемикача
+    donut_by_month = {}
+    for m in months_sorted:
+        donut_by_month[m] = [round(monthly_opt.get(m,0)), round(monthly_ret.get(m,0))]
+
     result = {
         'sales_labels':      labels,
+        'sales_months':      months_sorted,
         'sales_opt':         sales_opt,
         'sales_ret':         sales_ret,
         'top_labels':        [x[0] for x in top10],
@@ -420,6 +436,11 @@ def parse_sales(rows):
         'pla_avg_price':     pla_price,
         'total_opt':         round(total_opt),
         'total_ret':         round(total_ret),
+        'best_month_label':  best_label,
+        'best_month_total':  round(best_tot/1e6, 1),
+        'best_month_opt':    round(best_o/1e6, 1),
+        'best_month_ret':    round(best_r/1e6, 1),
+        'donut_by_month':    donut_by_month,
     }
     print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
     return result
@@ -475,8 +496,12 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{PETG_AVG_PRICE}}':     jv(sales['petg_avg_price']),
             '{{PLA_PRICE_LABELS}}':   jv(sales['pla_price_labels']),
             '{{PLA_AVG_PRICE}}':      jv(sales['pla_avg_price']),
-            '{{SALES_TOTAL_OPT}}':    str(sales['total_opt']),
-            '{{SALES_TOTAL_RET}}':    str(sales['total_ret']),
+            '{{SALES_MONTHS}}':       jv(sales.get('sales_months', [])),
+            '{{BEST_MONTH_LABEL}}':   sales.get('best_month_label', '—'),
+            '{{BEST_MONTH_TOTAL}}':   str(sales.get('best_month_total', 0)),
+            '{{BEST_MONTH_OPT}}':     str(sales.get('best_month_opt', 0)),
+            '{{BEST_MONTH_RET}}':     str(sales.get('best_month_ret', 0)),
+            '{{DONUT_BY_MONTH}}':     jv(sales.get('donut_by_month', {})),
         })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
     subs.update({

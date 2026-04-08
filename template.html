@@ -7,21 +7,27 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-  :root{--bg:#0d0f14;--surface:#161921;--surface2:#1e2230;--border:#252a3a;--accent:#e8ff47;--accent2:#47b4ff;--accent3:#ff6b47;--text:#e8ecf4;--muted:#6b7494;--good:#4fffb0;--warn:#ffb347;--bad:#ff5555}
+  :root{
+    --bg:#f0f2f5;--surface:#ffffff;--surface2:#f5f7fa;--border:#dde1ea;
+    --accent:#2563eb;--accent2:#0ea5e9;--accent3:#f97316;
+    --text:#1a202c;--muted:#64748b;
+    --good:#16a34a;--warn:#d97706;--bad:#dc2626;
+    --shadow:0 1px 4px rgba(0,0,0,.08)
+  }
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
-  header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:16px;flex-wrap:nowrap}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:16px;flex-wrap:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:4px;color:var(--accent);line-height:1}
   .logo span{color:var(--muted);font-size:10px;font-family:'IBM Plex Mono',monospace;display:block;letter-spacing:2px;margin-top:2px}
   .header-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:right;line-height:1.8}
-  .tabs{display:flex;gap:2px;background:var(--bg);padding:12px 28px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;position:sticky;top:57px;z-index:99}
+  .tabs{display:flex;gap:2px;background:var(--surface);padding:12px 28px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;position:sticky;top:57px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.05)}
   .tab{padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;border:1px solid transparent;border-bottom:none;background:transparent;text-transform:uppercase;transition:all .2s;border-radius:4px 4px 0 0}
   .tab:hover{color:var(--text);border-color:var(--border)}
-  .tab.active{color:var(--accent);border-color:var(--border);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px}
+  .tab.active{color:var(--accent);border-color:var(--accent);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px;font-weight:600}
   .main{padding:22px 28px;max-width:1700px;margin:0 auto}
   .tab-content{display:none}.tab-content.active{display:block}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
-  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s;box-shadow:var(--shadow)}
   .kpi-card:hover{border-color:var(--accent2)}
   .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent-bar,var(--accent))}
   .kpi-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
@@ -32,7 +38,7 @@
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
   .grid-31{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;box-shadow:var(--shadow)}
   .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
   .card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
   .card-subtitle{font-size:13px;color:var(--text);margin-top:3px;font-weight:600}
@@ -40,18 +46,18 @@
   .badge{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:3px 7px;border-radius:3px;letter-spacing:1px;white-space:nowrap}
   .badge-red{background:rgba(255,85,85,.15);color:var(--bad);border:1px solid rgba(255,85,85,.3)}
   .badge-green{background:rgba(79,255,176,.1);color:var(--good);border:1px solid rgba(79,255,176,.25)}
-  .badge-yellow{background:rgba(232,255,71,.1);color:var(--accent);border:1px solid rgba(232,255,71,.25)}
+  .badge-yellow{background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.25)}
   .badge-blue{background:rgba(71,180,255,.1);color:var(--accent2);border:1px solid rgba(71,180,255,.25)}
   table{width:100%;border-collapse:collapse;font-size:12px}
   th{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
   td{padding:7px 10px;border-bottom:1px solid rgba(37,42,58,.5);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px}
-  tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
-  .section-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  tr:last-child td{border-bottom:none}tr:hover td{background:rgba(37,99,235,.04)}
+  .section-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:12px;padding-bottom:7px;border-bottom:2px solid var(--accent);display:flex;align-items:center;gap:10px}
   .section-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block}
   .month-switcher{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .month-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .15s}
   .month-btn:hover{border-color:var(--accent2);color:var(--text)}
-  .month-btn.active{border-color:var(--accent);background:rgba(232,255,71,.08);color:var(--accent)}
+  .month-btn.active{border-color:var(--accent);background:rgba(37,99,235,.08);color:var(--accent)}
   #heatmapWrap{overflow-x:auto;padding-bottom:4px}
   .hmap-grid{display:inline-grid;gap:2px;min-width:100%}
   .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;height:32px;cursor:default;font-weight:500}
@@ -78,14 +84,14 @@
   .lines-topn span{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
   .topn-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .15s}
   .topn-btn:hover{color:var(--text);border-color:var(--accent2)}
-  .topn-btn.active{border-color:var(--accent);background:rgba(232,255,71,.08);color:var(--accent)}
+  .topn-btn.active{border-color:var(--accent);background:rgba(37,99,235,.08);color:var(--accent)}
   .lines-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
   .lines-stat{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;position:relative}
   .lines-stat::after{content:'';position:absolute;bottom:0;left:0;width:35%;height:2px;background:var(--accent);border-radius:0 0 0 6px}
   .lines-stat-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
   .lines-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);line-height:1}
   .line-block{margin-bottom:16px}
-  .line-block-hdr{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;margin-bottom:1px}
+  .line-block-hdr{display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(37,99,235,.05);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;margin-bottom:1px}
   .line-block-hdr .lname{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--text)}
   .lb{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;letter-spacing:1px;text-transform:uppercase}
   .lb-loc1{color:var(--accent2);border:1px solid rgba(71,180,255,.35);background:rgba(71,180,255,.07)}
@@ -129,7 +135,7 @@
   .scenario-val{color:var(--text)}
   @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.grid-3{grid-template-columns:1fr 1fr}.calc-wrap{grid-template-columns:1fr}}
   @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr};#quoteText{font-size:11px;-webkit-line-clamp:2}.grid-2,.grid-3,.grid-31,.calc-wrap{grid-template-columns:1fr}.main{padding:14px}.scenarios-grid{grid-template-columns:1fr}}
-  @keyframes pulse-icon{0%,100%{filter:drop-shadow(0 0 4px rgba(232,255,71,.4))}50%{filter:drop-shadow(0 0 10px rgba(232,255,71,.9))}}
+  @keyframes pulse-icon{0%,100%{filter:drop-shadow(0 0 4px rgba(37,99,235,.4))}50%{filter:drop-shadow(0 0 10px rgba(37,99,235,.9))}}
 </style>
 </head>
 <body>
@@ -139,7 +145,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО {{UPDATED}}<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(232,255,71,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО {{UPDATED}}<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -195,7 +201,7 @@
     <div class="card">
       <div class="card-header">
         <div><div class="card-title">Загальний обсяг виробництва (PETG + PLA)</div><div class="card-subtitle">кг/місяць · пунктир = тренд</div></div>
-        <div style="display:flex;gap:6px"><span class="badge badge-blue">PETG</span><span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span><span class="badge" style="background:rgba(232,255,71,.1);color:var(--accent);border:1px solid rgba(232,255,71,.3)">ВСЬОГО</span></div>
+        <div style="display:flex;gap:6px"><span class="badge badge-blue">PETG</span><span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span><span class="badge" style="background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.3)">ВСЬОГО</span></div>
       </div>
       <div class="cw"><canvas id="prodMonthChart"></canvas></div>
     </div>
@@ -616,27 +622,27 @@
   <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
     <div class="kpi-card" style="--accent-bar:var(--accent)">
       <div class="kpi-label">Загальні продажі · Всього</div>
-      <div class="kpi-value" style="font-size:26px">56.9</div>
+      <div class="kpi-value" style="font-size:26px" id="salesTotalVal">56.9</div>
       <div class="kpi-unit">млн грн (Опт + Роздріб)</div>
       <div class="kpi-delta delta-up">▲ Вер 2024 — Бер 2026</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--accent2)">
       <div class="kpi-label">Оптові продажі</div>
-      <div class="kpi-value" style="font-size:26px">48.3</div>
+      <div class="kpi-value" style="font-size:26px" id="salesOptVal">48.3</div>
       <div class="kpi-unit">млн грн · 84.8%</div>
       <div class="kpi-delta delta-up">▲ Основний канал</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--good)">
       <div class="kpi-label">Роздрібні продажі</div>
-      <div class="kpi-value" style="font-size:26px">8.7</div>
+      <div class="kpi-value" style="font-size:26px" id="salesRetVal">8.7</div>
       <div class="kpi-unit">млн грн · 15.2%</div>
       <div class="kpi-delta delta-up">▲ Зростаючий канал</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--warn)">
       <div class="kpi-label">Найкращий місяць</div>
-      <div class="kpi-value" style="font-size:26px">10.3</div>
-      <div class="kpi-unit">млн грн · Лют 2026</div>
-      <div class="kpi-delta delta-up">▲ Опт 7.9М + Роздр 2.4М</div>
+      <div class="kpi-value" style="font-size:26px">{{BEST_MONTH_TOTAL}}</div>
+      <div class="kpi-unit">млн грн · {{BEST_MONTH_LABEL}}</div>
+      <div class="kpi-delta delta-up">▲ Опт {{BEST_MONTH_OPT}}М + Роздр {{BEST_MONTH_RET}}М</div>
     </div>
   </div>
 
@@ -655,6 +661,8 @@
     <div class="card">
       <div class="card-header"><div><div class="card-title">Частка каналів</div><div class="card-subtitle">% від загального виторгу</div></div></div>
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:290px;gap:16px">
+        <!-- Перемикач місяців для бублика -->
+        <div id="donutMonthBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-width:200px"></div>
         <div style="width:160px;height:160px;position:relative"><canvas id="salesDonutChart"></canvas></div>
         <div style="display:flex;flex-direction:column;gap:8px;width:100%;padding:0 12px">
           <div class="legend-item" style="justify-content:space-between">
@@ -842,6 +850,8 @@ const OKR_KR_DATA={{OKR_KR_DATA}};
 const OKR_PEOPLE={{OKR_PEOPLE}};
 // ── SALES DATA (from _AllData_$ sheet) ──
 const SALES_LABELS={{SALES_LABELS}};
+const SALES_MONTHS={{SALES_MONTHS}};
+const DONUT_BY_MONTH={{DONUT_BY_MONTH}};
 const SALES_OPT={{SALES_OPT}};
 const SALES_RET={{SALES_RET}};
 const TOP_PRODUCTS_LABELS={{TOP_PRODUCTS_LABELS}};
@@ -860,9 +870,9 @@ const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Ма�
 const HM_LABELS={{HM_LABELS}};
 const HM_DATA={{HM_DATA}};
 
-Chart.defaults.color='#6b7494';Chart.defaults.borderColor='#252a3a';
+Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
-const GR={grid:{color:'#1e2230',drawBorder:false},ticks:{color:'#6b7494'}};
+const GR={grid:{color:'rgba(0,0,0,.07)',drawBorder:false},ticks:{color:'#64748b'}};
 function trendline(data){
   const pts=data.map((v,i)=>({x:i,y:v})).filter(p=>p.y!==null&&!isNaN(p.y));
   if(pts.length<2)return data.map(()=>null);
@@ -889,22 +899,22 @@ window.addEventListener('DOMContentLoaded',()=>{
   }
   // Production chart: stacked bar PETG+PLA + total trend line
   new Chart(document.getElementById('prodMonthChart'),{data:{labels:MS,datasets:[
-    {type:'bar',label:'PETG',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},
+    {type:'bar',label:'PETG',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
     {type:'bar',label:'PLA',data:PLA_ALL,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-    {type:'line',label:'Тренд Всього',data:trendline(TOTAL_ALL),borderColor:'rgba(232,255,71,.6)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0}
+    {type:'line',label:'Тренд Всього',data:trendline(TOTAL_ALL),borderColor:'rgba(37,99,235,.6)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[...PETG_ALL,...PLA_ALL].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.2/5000)*5000:50000;})(),ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   (function(){
     const finLabels=MS.filter((_,i)=>FIN_INCOME[i]!==null);
     const finInc=FIN_INCOME.filter(v=>v!==null);
     const finExp=FIN_EXPENSES.filter(v=>v!==null);
     new Chart(document.getElementById('finOverviewChart'),{type:'bar',data:{labels:finLabels,datasets:[
-      {label:'Доход',data:finInc,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},
+      {label:'Доход',data:finInc,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
       {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
   })();
   new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'НФ %',data:NF_PCT,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:NF_PCT.map(v=>v>10?'#ff5555':'#ff6b47'),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=NF_PCT.filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
-  new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'Відходи %',data:WASTE_PCT,borderColor:'#e8ff47',backgroundColor:'rgba(232,255,71,.08)',tension:.3,fill:true,pointBackgroundColor:'#e8ff47',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(+(Math.ceil(Math.max(...v)*1.5)).toFixed(0),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
-  new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ff9999'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'60%',plugins:{legend:{display:false}}}});
+  new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:MS,datasets:[{label:'Відходи %',data:WASTE_PCT,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',tension:.3,fill:true,pointBackgroundColor:'#2563eb',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(+(Math.ceil(Math.max(...v)*1.5)).toFixed(0),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
+  new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#2563eb','#2563eb','#ff6b47','#b47bff','#16a34a','#ff9999'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'60%',plugins:{legend:{display:false}}}});
 });
 
 function initProduction(){
@@ -971,7 +981,7 @@ async function loadProductionCharts(){
 
     new Chart(document.getElementById('petgChart'),{
       data:{labels,datasets:[
-        {type:'bar',label:'PETG кг',data:petgVals,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},
+        {type:'bar',label:'PETG кг',data:petgVals,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(petgVals),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
       ]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
@@ -988,7 +998,7 @@ async function loadProductionCharts(){
   } catch(e){
     console.warn('loadProductionCharts failed:',e);
     // Fallback to static data
-    new Chart(document.getElementById('petgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG кг',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PETG_ALL),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+    new Chart(document.getElementById('petgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG кг',data:PETG_ALL,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PETG_ALL),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
     new Chart(document.getElementById('plaChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PLA кг',data:PLA_ALL,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд',data:trendline(PLA_ALL),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(1)+'k'}}}}});
   }
 }
@@ -1168,7 +1178,7 @@ async function buildHeatmap(){
   if(!lines.length||!HM_LABELS.length){document.getElementById('heatmapWrap').innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px">Немає даних теплової карти</div>';return;}
   const allVals=Object.values(HM_DATA).flat();
   const maxVal=Math.max(...allVals,1);
-  function cc(v){if(v===0)return'#0e1219';const r=v/maxVal;if(r<0.05)return'#18202e';if(r<0.15)return'#1a2d48';if(r<0.30)return'#1a4068';if(r<0.55)return'#1a5a8a';if(r<0.80)return'#2080b8';return'#47b4ff';}
+  function cc(v){if(v===0)return'#0e1219';const r=v/maxVal;if(r<0.05)return'#18202e';if(r<0.15)return'#1a2d48';if(r<0.30)return'#1a4068';if(r<0.55)return'#1a5a8a';if(r<0.80)return'#2080b8';return'#2563eb';}
   function tc(v){return v/maxVal>0.40?'rgba(255,255,255,.9)':'rgba(255,255,255,.25)';}
   function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
   function fmtFull(v){return v.toLocaleString('uk');}
@@ -1230,7 +1240,7 @@ async function buildHeatmap(){
 }
 
 function initQuality(){
-  new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#47b4ff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#e8ff47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
 }
 function initCosts(){
@@ -1240,15 +1250,15 @@ function initCosts(){
     const fe=FIN_EXPENSES.filter(v=>v!==null);
     const td=trendline(fi); const te=trendline(fe);
     new Chart(document.getElementById('incExpChart'),{data:{labels:fl,datasets:[
-      {type:'bar',label:'Доход',data:fi,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#4fffb0',borderWidth:1,borderRadius:3},
+      {type:'bar',label:'Доход',data:fi,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
       {type:'bar',label:'Витрати',data:fe,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3},
       {type:'line',label:'Тренд Доходу',data:td,borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},
       {type:'line',label:'Тренд Витрат',data:te,borderColor:'rgba(255,107,71,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
   })()
-  new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#47b4ff',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.2/50)*50:600;})(),min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
+  new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.2/50)*50:600;})(),min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
 }
-function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const d=COSTS[key];const tbody=document.getElementById('costTableBody');tbody.innerHTML='';d.items.forEach(([name,sum,pct])=>{tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;});tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;if(costCI)costCI.destroy();costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#47b4ff','#e8ff47','#ff6b47','#b47bff','#4fffb0','#ffb347','#ff9999','#6b7494','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});}
+function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const d=COSTS[key];const tbody=document.getElementById('costTableBody');tbody.innerHTML='';d.items.forEach(([name,sum,pct])=>{tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;});tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;if(costCI)costCI.destroy();costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#2563eb','#2563eb','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});}
 function setOpMonth(key, btn) {
   document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -1353,7 +1363,7 @@ function renderShiftView(key) {
   if (opShiftDonutCI) opShiftDonutCI.destroy();
   opShiftDonutCI = new Chart(document.getElementById('opShiftDonut'), {
     type: 'doughnut',
-    data: { labels: ['День','Ніч'], datasets: [{ data: [totalDay, totalNight], backgroundColor: ['#e8ff47','#47b4ff'], borderWidth: 0 }] },
+    data: { labels: ['День','Ніч'], datasets: [{ data: [totalDay, totalNight], backgroundColor: ['#2563eb','#2563eb'], borderWidth: 0 }] },
     options: { responsive: false, cutout: '65%', plugins: { legend: { display: false } } }
   });
 
@@ -1408,7 +1418,7 @@ function renderShiftView(key) {
     data: {
       labels: data.map(d => d[0]),
       datasets: [
-        { label: '☀ День', data: data.map(d => d[1]), backgroundColor: 'rgba(232,255,71,.75)', borderWidth: 0, borderRadius: 2 },
+        { label: '☀ День', data: data.map(d => d[1]), backgroundColor: 'rgba(37,99,235,.75)', borderWidth: 0, borderRadius: 2 },
         { label: '☾ Ніч',  data: data.map(d => d[2]), backgroundColor: 'rgba(71,180,255,.75)', borderWidth: 0, borderRadius: 2 }
       ]
     },
@@ -1838,8 +1848,8 @@ function initSales() {
     data: {
       labels: SALES_LABELS,
       datasets: [
-        {label:'Опт', data:SALES_OPT, backgroundColor:'rgba(71,180,255,.7)', borderColor:'#47b4ff', borderWidth:1, borderRadius:3},
-        {label:'Роздріб', data:SALES_RET, backgroundColor:'rgba(79,255,176,.65)', borderColor:'#4fffb0', borderWidth:1, borderRadius:3}
+        {label:'Опт', data:SALES_OPT, backgroundColor:'rgba(37,99,235,.7)', borderColor:'#2563eb', borderWidth:1, borderRadius:3},
+        {label:'Роздріб', data:SALES_RET, backgroundColor:'rgba(22,163,74,.6)', borderColor:'#16a34a', borderWidth:1, borderRadius:3}
       ]
     },
     options:{
@@ -1853,20 +1863,76 @@ function initSales() {
     }
   });
 
-  // Chart 2: Donut Опт vs Роздріб
-  new Chart(document.getElementById('salesDonutChart'), {
-    type: 'doughnut',
-    data:{
-      labels:['Опт','Роздріб'],
-      datasets:[{data:[48262434,8664716], backgroundColor:['#47b4ff','#4fffb0'], borderWidth:0}]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:true, cutout:'62%',
-      plugins:{legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>{const total=ctx.dataset.data.reduce((a,b)=>a+b,0);const pct=(ctx.raw/total*100).toFixed(1);return ` ${(ctx.raw/1e6).toFixed(1)}M грн (${pct}%)`;}}}
+  // Chart 2: Donut Опт vs Роздріб з перемикачем місяців
+  (function(){
+    const UA_MONTHS = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                       '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+    function monthLabel(ym){ const[y,m]=ym.split('-'); return UA_MONTHS[m]+' '+y.slice(2); }
+
+    // Загальні суми
+    const totalOpt = (SALES_OPT||[]).reduce((a,b)=>a+b,0);
+    const totalRet = (SALES_RET||[]).reduce((a,b)=>a+b,0);
+
+    const donutChart = new Chart(document.getElementById('salesDonutChart'), {
+      type: 'doughnut',
+      data:{
+        labels:['Опт','Роздріб'],
+        datasets:[{data:[totalOpt, totalRet], backgroundColor:['#2563eb','#16a34a'], borderWidth:0}]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:true, cutout:'62%',
+        plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>{
+            const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+            const pct=(ctx.raw/total*100).toFixed(1);
+            return ` ${(ctx.raw/1e6).toFixed(1)}M грн (${pct}%)`;
+          }}}
+        }
       }
+    });
+
+    // Будуємо кнопки місяців
+    const btnsEl = document.getElementById('donutMonthBtns');
+    if(btnsEl && SALES_MONTHS && SALES_MONTHS.length){
+    function updateSalesKPI(opt, ret){
+      const total = opt + ret;
+      const el_t = document.getElementById('salesTotalVal');
+      const el_o = document.getElementById('salesOptVal');
+      const el_r = document.getElementById('salesRetVal');
+      if(el_t) el_t.textContent = (total/1e6).toFixed(1);
+      if(el_o) el_o.textContent = (opt/1e6).toFixed(1);
+      if(el_r) el_r.textContent = (ret/1e6).toFixed(1);
     }
-  });
+          // Кнопка "Всі місяці"
+      const allBtn = document.createElement('button');
+      allBtn.className = 'month-btn active';
+      allBtn.textContent = 'Всі';
+      allBtn.onclick = function(){
+        donutChart.data.datasets[0].data = [totalOpt, totalRet];
+        donutChart.update();
+        btnsEl.querySelectorAll('.month-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        updateSalesKPI(totalOpt, totalRet);
+      };
+      btnsEl.appendChild(allBtn);
+
+      // Кнопки місяців
+      SALES_MONTHS.forEach(function(ym){
+        const btn = document.createElement('button');
+        btn.className = 'month-btn';
+        btn.textContent = monthLabel(ym);
+        btn.onclick = function(){
+          const d = DONUT_BY_MONTH[ym] || [0,0];
+          donutChart.data.datasets[0].data = d;
+          donutChart.update();
+          btnsEl.querySelectorAll('.month-btn').forEach(b=>b.classList.remove('active'));
+          this.classList.add('active');
+          updateSalesKPI(d[0], d[1]);
+        };
+        btnsEl.appendChild(btn);
+      });
+    }
+  })();
 
   // Chart 3: Top-10 products horizontal bar
   new Chart(document.getElementById('topProductsChart'), {
@@ -1876,8 +1942,8 @@ function initSales() {
       datasets:[{
         label:'Виторг, грн',
         data: TOP_PRODUCTS_DATA,
-        backgroundColor: TOP_PRODUCTS_DATA.map((_,i)=>`rgba(232,255,71,${0.85-i*0.07})`),
-        borderColor: TOP_PRODUCTS_DATA.map((_,i)=>`rgba(232,255,71,${0.5-i*0.04})`),
+        backgroundColor: TOP_PRODUCTS_DATA.map((_,i)=>`rgba(37,99,235,${0.85-i*0.07})`),
+        borderColor: TOP_PRODUCTS_DATA.map((_,i)=>`rgba(37,99,235,${0.5-i*0.04})`),
         borderWidth:1, borderRadius:3
       }]
     },
@@ -1903,7 +1969,7 @@ function initSales() {
     data:{
       labels: allPriceLabels,
       datasets:[
-        {type:'line', label:'PETG ₴/кг', data:petgAligned, borderColor:'#47b4ff', backgroundColor:'rgba(71,180,255,.08)', tension:.3, pointRadius:5, pointBackgroundColor:'#47b4ff', fill:true, spanGaps:true},
+        {type:'line', label:'PETG ₴/кг', data:petgAligned, borderColor:'#2563eb', backgroundColor:'rgba(71,180,255,.08)', tension:.3, pointRadius:5, pointBackgroundColor:'#2563eb', fill:true, spanGaps:true},
         {type:'line', label:'PLA ₴/кг',  data:plaAligned,  borderColor:'#c8b400', backgroundColor:'rgba(200,180,0,.06)',  tension:.3, pointRadius:5, pointBackgroundColor:'#c8b400', fill:true, spanGaps:true},
         {type:'line', label:'Тренд PETG', data:trendline(petgAligned), borderColor:'rgba(71,180,255,.35)', borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false, tension:0, spanGaps:true},
         {type:'line', label:'Тренд PLA',  data:trendline(plaAligned),  borderColor:'rgba(200,180,0,.35)',  borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false, tension:0, spanGaps:true}
@@ -1938,7 +2004,7 @@ function initOkr() {
   barsEl.innerHTML = OKR_DATA.map(o => {
     const color = o.pct >= 75 ? 'var(--good)' : o.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
     return `<div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin-bottom:5px">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--accent);background:rgba(232,255,71,.08);border:1px solid rgba(232,255,71,.2);border-radius:2px;padding:1px 5px;white-space:nowrap;min-width:36px;text-align:center">${o.weight_pct}%</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--accent);background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:2px;padding:1px 5px;white-space:nowrap;min-width:36px;text-align:center">${o.weight_pct}%</span>
       <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.name}">${o.short}</div>
         <div style="background:var(--surface2);border-radius:2px;height:5px;overflow:hidden">
@@ -2255,7 +2321,7 @@ function okrShowKr(okrName, okrShort) {
     }
     var rows='';
     if(prods.length){rows+=makeGH('📦 Продукція · PETG / PLA',prods.length,'var(--accent2)');rows+=prods.map(function(p){return makeRow(p,'transparent');}).join('');}
-    if(mats.length){rows+=makeGH('🧪 Сировина та матеріали',mats.length,'var(--accent)');rows+=mats.map(function(p){return makeRow(p,'rgba(232,255,71,0.02)');}).join('');}
+    if(mats.length){rows+=makeGH('🧪 Сировина та матеріали',mats.length,'var(--accent)');rows+=mats.map(function(p){return makeRow(p,'rgba(37,99,235,0.02)');}).join('');}
     if(!rows)rows='<tr><td colspan="'+nc+'" style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">🔍 Нічого не знайдено</td></tr>';
     document.getElementById('invTbody').innerHTML=rows;
   };
