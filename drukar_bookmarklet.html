@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Друкар — Букмарклет Склад</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 20px; }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .sub { color: #6b7280; font-size: 14px; margin-bottom: 32px; }
+  .step { display: flex; gap: 16px; margin-bottom: 24px; align-items: flex-start; }
+  .num { background: #2563eb; color: #fff; border-radius: 50%; width: 28px; height: 28px;
+         display: flex; align-items: center; justify-content: center;
+         font-weight: 700; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+  .step-body h3 { font-size: 15px; margin-bottom: 6px; }
+  .step-body p { font-size: 13px; color: #374151; line-height: 1.6; }
+  .bookmark-btn {
+    display: inline-block;
+    padding: 14px 28px;
+    background: #1d4ed8;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    text-decoration: none;
+    margin: 16px 0;
+    cursor: grab;
+    border: 3px dashed transparent;
+    transition: all .2s;
+  }
+  .bookmark-btn:hover { background: #1e40af; border-color: #93c5fd; }
+  .tip {
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #1e40af; margin-top: 24px;
+  }
+  .tip b { display: block; margin-bottom: 4px; }
+  .warning {
+    background: #fff7ed; border: 1px solid #fed7aa;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #9a3412; margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>📦 Букмарклет «Оновити склад»</h1>
+<p class="sub">Один клік — і склад оновлено у всіх позиціях угоди</p>
+
+<div class="step">
+  <div class="num">1</div>
+  <div class="step-body">
+    <h3>Перетягни кнопку в панель закладок браузера</h3>
+    <p>Якщо панель закладок прихована — увімкни її: <b>Ctrl+Shift+B</b> (Windows) або <b>Cmd+Shift+B</b> (Mac)</p>
+    <br>
+    <a class="bookmark-btn" href="javascript:(function()%7B%20var%20id%3Dwindow.location.pathname.match(%2F%5C%2F(%5Cd%2B)%5C%2F%2F)%3F.%5B1%5D%3B%20if(!id)%7Balert('%D0%92%D1%96%D0%B4%D0%BA%D1%80%D0%B8%D0%B9%20%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D1%83%20%D1%83%D0%B3%D0%BE%D0%B4%D0%B8!')%3Breturn%3B%7D%20var%20sess%3Dwindow.BX%26%26BX.bitrix_sessid%3FBX.bitrix_sessid()%3A''%3B%20if(!sess)%7Balert('%D0%A1%D0%B5%D1%81%D1%96%D1%8F%20%D0%BD%D0%B5%20%D0%B7%D0%BD%D0%B0%D0%B9%D0%B4%D0%B5%D0%BD%D0%B0.%20%D0%92%D1%96%D0%B4%D0%BA%D1%80%D0%B8%D0%B9%20%D0%B7%20%D0%B1%D1%80%D0%B0%D1%83%D0%B7%D0%B5%D1%80%D0%B0%20%D0%B4%D0%B5%20%D0%B2%D1%96%D0%B4%D0%BA%D1%80%D0%B8%D1%82%D0%B8%D0%B9%20Bitrix24.')%3Breturn%3B%7D%20var%20map%3D%7B'123'%3A1%2C'125'%3A3%7D%3B%20var%20token%3D'%2Frest%2F2517%2Fgyj1j3mxsy5x3g55'%3B%20fetch(token%2B'%2Fcrm.deal.get.json%3Fid%3D'%2Bid).then(r%3D%3Er.json()).then(function(d)%7B%20var%20whVal%3Dd.result%5B'UF_CRM_1774265771387'%5D%3B%20var%20storeId%3Dmap%5BwhVal%5D%7C%7C1%3B%20var%20whName%3DstoreId%3D%3D%3D1%3F'%D0%A1%D0%BA%D0%BB%D0%B0%D0%B4%201'%3AstoreId%3D%3D%3D3%3F'%D0%A1%D0%BA%D0%BB%D0%B0%D0%B4%202'%3A'%D0%A1%D0%BA%D0%BB%D0%B0%D0%B4%20'%2BstoreId%3B%20if(!confirm('%D0%A3%D0%B3%D0%BE%D0%B4%D0%B0%20%23'%2Bid%2B'%5Cn%D0%9F%D0%BE%D0%BB%D0%B5%20%D1%81%D0%BA%D0%BB%D0%B0%D0%B4%D1%83%3A%20'%2BwhVal%2B'%20%E2%86%92%20'%2BwhName%2B'%5Cn%5Cn%D0%97%D0%B0%D1%81%D1%82%D0%BE%D1%81%D1%83%D0%B2%D0%B0%D1%82%D0%B8%20'%2BwhName%2B'%20%D0%B4%D0%BE%20%D0%B2%D1%81%D1%96%D1%85%20%D0%BF%D0%BE%D0%B7%D0%B8%D1%86%D1%96%D0%B9%3F'))return%3B%20fetch(token%2B'%2Fcrm.deal.productrows.get.json%3Fid%3D'%2Bid).then(r%3D%3Er.json()).then(function(p)%7B%20var%20rows%3Dp.result%3B%20if(!rows%7C%7C!rows.length)%7Balert('%D0%9F%D0%BE%D0%B7%D0%B8%D1%86%D1%96%D0%B9%20%D1%82%D0%BE%D0%B2%D0%B0%D1%80%D1%96%D0%B2%20%D0%BD%D0%B5%D0%BC%D0%B0%D1%94!')%3Breturn%3B%7D%20var%20updated%3Drows.map(function(r)%7Breturn%7BID%3Ar.ID%2CPRODUCT_ID%3Ar.PRODUCT_ID%2CPRODUCT_NAME%3Ar.PRODUCT_NAME%2CQUANTITY%3Ar.QUANTITY%2CSTORE_ID%3AstoreId%2CPRICE%3A0%2CCURRENCY%3A'UAH'%2CTYPE%3A4%2CCUSTOMIZED%3A'Y'%2CTAX_RATE%3Anull%2CTAX_INCLUDED%3A'N'%7D%3B%7D)%3B%20var%20body%3Dnew%20URLSearchParams()%3B%20body.append('ACTION'%2C'SAVE')%3B%20body.append('ACTION_ENTITY_TYPE'%2C'D')%3B%20body.append('ACTION_ENTITY_ID'%2Cid)%3B%20body.append('DEAL_PRODUCT_DATA'%2CJSON.stringify(updated))%3B%20body.append('PARAMS%5BCATEGORY_ID%5D'%2C'1')%3B%20body.append('EDITOR_CONFIG_ID'%2C'deal_details_c_1')%3B%20body.append('ASSIGNED_BY_ID'%2C'2517')%3B%20body.append('IS_MANUAL_OPPORTUNITY'%2C'N')%3B%20body.append('DEAL_PRODUCT_DATA_SETTINGS'%2C'%7B%22ENABLE_DISCOUNT%22%3A%22N%22%2C%22ENABLE_TAX%22%3A%22N%22%7D')%3B%20body.append('ENABLE_REQUIRED_USER_FIELD_CHECK'%2C'Y')%3B%20fetch('%2Fbitrix%2Fcomponents%2Fbitrix%2Fcrm.deal.details%2Fajax.php%3Fsessid%3D'%2Bsess%2C%7Bmethod%3A'POST'%2Cheaders%3A%7B'Bx-ajax'%3A'true'%2C'X-Requested-With'%3A'XMLHttpRequest'%7D%2Cbody%3Abody%7D).then(r%3D%3Er.json()).then(function(res)%7Bif(res.ENTITY_ID)%7Balert('%E2%9C%85%20%D0%93%D0%BE%D1%82%D0%BE%D0%B2%D0%BE!%5Cn%D0%A3%D0%B3%D0%BE%D0%B4%D0%B0%20%23'%2Bid%2B'%5Cn'%2BwhName%2B'%20%D0%B2%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%BE%5Cn%D0%9F%D0%BE%D0%B7%D0%B8%D1%86%D1%96%D0%B9%20%D0%BE%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%BE%3A%20'%2Brows.length)%3B%7Delse%7Balert('%E2%9D%8C%20%D0%9F%D0%BE%D0%BC%D0%B8%D0%BB%D0%BA%D0%B0%3A%5Cn'%2BJSON.stringify(res))%3B%7D%7D)%3B%7D)%3B%7D)%3B%7D)()%3B">
+      📦 Оновити склад
+    </a>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">2</div>
+  <div class="step-body">
+    <h3>Відкрий угоду в Bitrix24</h3>
+    <p>Перейди на картку угоди у воронці «Витрати матеріалів». Переконайся що поле <b>Склад №</b> вже вказане (123 = Склад 1, 125 = Склад 2).</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="num">3</div>
+  <div class="step-body">
+    <h3>Клікни закладку «📦 Оновити склад»</h3>
+    <p>З'явиться підтвердження з номером угоди і складом. Натисни <b>OK</b> — всі позиції оновляться автоматично.</p>
+  </div>
+</div>
+
+<div class="tip">
+  <b>⚡ Як це працює:</b>
+  Букмарклет читає поле «Склад №» з угоди, визначає потрібний STORE_ID
+  і оновлює всі позиції через внутрішній ajax.php Bitrix24 —
+  той самий механізм що працює при ручному збереженні угоди.
+</div>
+
+<div class="warning">
+  ⚠️ <b>Важливо:</b> запускати до переведення угоди на стадію «Матеріали витрачено».
+  Після проведення Sales Order — редагування заблоковане.
+</div>
+
+</body>
+</html>
