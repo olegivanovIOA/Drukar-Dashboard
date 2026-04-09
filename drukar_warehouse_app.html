@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Склад · Друкар</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f5f7fa;
+    padding: 16px;
+  }
+  h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 12px;
+  }
+  .btn-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .btn-wh {
+    flex: 1; padding: 12px 8px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    transition: all .15s;
+  }
+  .btn-wh .icon { font-size: 20px; }
+  .btn-wh .lbl  { font-size: 13px; font-weight: 700; }
+  .btn-wh .sub  { font-size: 10px; font-weight: 400; opacity: .7; }
+  .w1 { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+  .w1:hover, .w1.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+  .w2 { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+  .w2:hover, .w2.active { background:#15803d; color:#fff; border-color:#15803d; }
+  .w3 { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+  .w3:hover, .w3.active { background:#c2410c; color:#fff; border-color:#c2410c; }
+  .btn-wh:disabled { opacity:.4; cursor:not-allowed; }
+  .current {
+    font-size: 11px; color: #6b7280;
+    padding: 6px 10px; margin-bottom: 12px;
+    background: #fff; border-radius: 6px;
+    border: 1px solid #e5e7eb;
+  }
+  .current b { color: #111827; }
+  #status {
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 12px; line-height: 1.5;
+    display: none; white-space: pre-line;
+  }
+  .info    { background:#eff6ff; color:#1e40af; display:block!important; }
+  .success { background:#f0fdf4; color:#166534; display:block!important; }
+  .error   { background:#fef2f2; color:#991b1b; display:block!important; }
+  .prods {
+    margin-top: 10px; font-size: 11px; color: #374151;
+    padding: 8px 10px; background: #fff;
+    border-radius: 6px; border: 1px solid #e5e7eb;
+    display: none;
+  }
+  .prods.show { display: block; }
+  #dealIdInput {
+    width: 100%; padding: 6px 10px; font-size: 12px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    margin-bottom: 10px; display: none;
+  }
+</style>
+</head>
+<body>
+
+<h3>📦 Призначити склад</h3>
+
+<!-- Fallback: ручне введення ID угоди якщо BX24 не передав -->
+<input type="number" id="dealIdInput" placeholder="ID угоди (введи вручну якщо не визначився)">
+
+<div class="current">Поточний склад: <b id="curVal">…</b></div>
+
+<div class="btn-row">
+  <button class="btn-wh w1" onclick="setWH(1)" id="b1" disabled>
+    <span class="icon">🏭</span><span class="lbl">Склад 1</span><span class="sub">storeId=1</span>
+  </button>
+  <button class="btn-wh w2" onclick="setWH(2)" id="b2" disabled>
+    <span class="icon">🏗</span><span class="lbl">Склад 2</span><span class="sub">storeId=3</span>
+  </button>
+  <button class="btn-wh w3" onclick="setWH(3)" id="b3" disabled>
+    <span class="icon">📦</span><span class="lbl">Склад 3</span><span class="sub">незабаром</span>
+  </button>
+</div>
+
+<div id="status"></div>
+<div class="prods" id="prods"></div>
+
+<script>
+// ── КОНФІГ ──────────────────────────────────────────────────
+const WEBHOOK = 'https://b24-733cj8.bitrix24.eu/rest/2517/gyj1j3mxsy5x3g55';
+const FIELD_WH = 'UF_CRM_1774265771387';
+const WH = {
+  1: { dealVal: 123, storeId: 1,  label: 'Склад 1' },
+  2: { dealVal: 125, storeId: 3,  label: 'Склад 2' },
+  3: { dealVal: null, storeId: null, label: 'Склад 3' },
+};
+const VAL_LABEL = { 123: 'Склад 1', 125: 'Склад 2' };
+
+let DEAL_ID = null;
+let PRODUCTS = [];
+
+// ── ВИЗНАЧАЄМО DEAL ID ───────────────────────────────────────
+// Спробуємо кілька способів
+function getDealId() {
+  // 1. З URL параметру ?DEAL_ID=xxx або ?ID=xxx
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = params.get('DEAL_ID') || params.get('ID') || params.get('id');
+  if (fromUrl) return fromUrl;
+
+  // 2. З BX24 placement (якщо завантажився)
+  if (window.BX24) {
+    try {
+      const info = BX24.placement.info();
+      if (info && info.options && info.options.ID) return info.options.ID;
+    } catch(e) {}
+  }
+
+  // 3. З referrer URL
+  const ref = document.referrer;
+  const refMatch = ref.match(/[?&](?:DEAL_ID|ID)=(\d+)/);
+  if (refMatch) return refMatch[1];
+
+  return null;
+}
+
+// ── REST HELPER ──────────────────────────────────────────────
+async function rest(method, params) {
+  const url = WEBHOOK + '/' + method + '.json';
+  const body = new URLSearchParams();
+  function flatten(obj, prefix) {
+    for (const k in obj) {
+      const key = prefix ? prefix + '[' + k + ']' : k;
+      if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+        flatten(obj[k], key);
+      } else if (Array.isArray(obj[k])) {
+        obj[k].forEach((v, i) => {
+          if (typeof v === 'object') flatten(v, key + '[' + i + ']');
+          else body.append(key + '[' + i + ']', v);
+        });
+      } else {
+        body.append(key, obj[k]);
+      }
+    }
+  }
+  flatten(params, '');
+  const resp = await fetch(url, { method: 'POST', body });
+  const json = await resp.json();
+  if (json.error) throw new Error(json.error_description || json.error);
+  return json.result;
+}
+
+// ── ІНІЦІАЛІЗАЦІЯ ────────────────────────────────────────────
+function st(cls, msg) {
+  const el = document.getElementById('status');
+  el.className = cls; el.textContent = msg;
+}
+
+function init() {
+  DEAL_ID = getDealId();
+
+  if (!DEAL_ID) {
+    // Показуємо поле ручного вводу
+    const inp = document.getElementById('dealIdInput');
+    inp.style.display = 'block';
+    inp.addEventListener('change', function() {
+      DEAL_ID = this.value;
+      if (DEAL_ID) { inp.style.display='none'; loadDeal(); }
+    });
+    st('info', '⚠️ ID угоди не визначено автоматично.\nВведи ID вручну або відкрий з картки угоди.');
+    return;
+  }
+
+  loadDeal();
+}
+
+async function loadDeal() {
+  st('info', '⏳ Завантаження угоди #' + DEAL_ID + '…');
+  try {
+    const [deal, prods] = await Promise.all([
+      rest('crm.deal.get', { id: DEAL_ID }),
+      rest('crm.deal.productrows.get', { id: DEAL_ID }),
+    ]);
+
+    PRODUCTS = prods || [];
+    const curVal = deal[FIELD_WH];
+    const curLabel = VAL_LABEL[curVal] || (curVal ? 'ID:'+curVal : 'не вказано');
+    document.getElementById('curVal').textContent = curLabel;
+
+    showProds(PRODUCTS);
+    enableBtns(curVal);
+    document.getElementById('status').className = '';
+    document.getElementById('status').style.display = 'none';
+
+  } catch(e) {
+    st('error', '❌ Помилка: ' + e.message);
+  }
+}
+
+// ── ВСТАНОВЛЕННЯ СКЛАДУ ──────────────────────────────────────
+async function setWH(num) {
+  const wh = WH[num];
+  if (!wh.dealVal) { st('error', '⚠️ ' + wh.label + ' ще не налаштований'); return; }
+
+  disableBtns();
+  st('info', '⏳ Записуємо ' + wh.label + '…');
+
+  try {
+    // Крок 1: оновлюємо поле угоди
+    await rest('crm.deal.update', {
+      id: DEAL_ID,
+      fields: { [FIELD_WH]: wh.dealVal }
+    });
+
+    // Крок 2: оновлюємо STORE_ID в позиціях
+    if (PRODUCTS.length) {
+      const rows = PRODUCTS.map(p => ({
+        ID:           p.ID,
+        PRODUCT_ID:   p.PRODUCT_ID,
+        PRODUCT_NAME: p.PRODUCT_NAME,
+        PRICE:        p.PRICE,
+        QUANTITY:     p.QUANTITY,
+        STORE_ID:     wh.storeId,
+      }));
+      await rest('crm.deal.productrows.set', { id: DEAL_ID, rows });
+      showProds(rows, wh.label);
+    }
+
+    document.getElementById('curVal').textContent = wh.label;
+    enableBtns(wh.dealVal);
+    st('success',
+      '✅ ' + wh.label + ' встановлено!\n' +
+      '📋 Позицій оновлено: ' + PRODUCTS.length
+    );
+
+  } catch(e) {
+    st('error', '❌ Помилка: ' + e.message);
+    enableBtns();
+  }
+}
+
+// ── UI ───────────────────────────────────────────────────────
+function enableBtns(activeVal) {
+  [1,2,3].forEach(n => {
+    const b = document.getElementById('b'+n);
+    b.disabled = !WH[n].dealVal;
+    b.classList.toggle('active', WH[n].dealVal == activeVal);
+  });
+}
+function disableBtns() {
+  [1,2,3].forEach(n => document.getElementById('b'+n).disabled = true);
+}
+function showProds(prods, whLabel) {
+  const el = document.getElementById('prods');
+  if (!prods.length) { el.classList.remove('show'); return; }
+  el.innerHTML = '<b>Позиції' + (whLabel ? ' → ' + whLabel : '') + ':</b><br>' +
+    prods.map(p =>
+      '• ' + (p.PRODUCT_NAME || 'ID '+p.PRODUCT_ID) +
+      ' × ' + p.QUANTITY +
+      (p.STORE_ID ? ' [склад '+p.STORE_ID+']' : '')
+    ).join('<br>');
+  el.classList.add('show');
+}
+
+// ── СТАРТ ────────────────────────────────────────────────────
+// Чекаємо BX24 SDK якщо він є, або стартуємо одразу
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+
+<!-- BX24 JS SDK — завантажуємо але не залежимо від нього -->
+<script src="https://api.bitrix24.com/api/v1/" onerror="console.log('BX24 SDK not loaded')"></script>
+</body>
+</html>
