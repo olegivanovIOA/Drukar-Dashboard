@@ -933,6 +933,7 @@ window.addEventListener('DOMContentLoaded',()=>{
                 '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
     function fmtNum(n){return n==null?'—':Math.round(n).toLocaleString('uk-UA');}
     function lastValid(arr){
+      if(!arr||!arr.length) return -1;
       for(let i=arr.length-1;i>=0;i--) if(arr[i]!=null&&arr[i]>0) return i;
       return -1;
     }
@@ -942,11 +943,19 @@ window.addEventListener('DOMContentLoaded',()=>{
       return (p[0]||'')+(p[1]?' ''+p[1].slice(-2):'');
     }
 
+    // Fallback: якщо плейсхолдери не замінені generate.py — беремо хардкод масиви
+    const _tot = (typeof TOTAL_ALL!=='undefined'&&Array.isArray(TOTAL_ALL)&&TOTAL_ALL.length) ? TOTAL_ALL : (typeof TOTAL_PROD!=='undefined'?TOTAL_PROD:[]);
+    const _pet = (typeof PETG_ALL!=='undefined'&&Array.isArray(PETG_ALL)&&PETG_ALL.length)   ? PETG_ALL  : (typeof PETG_PROD!=='undefined'?PETG_PROD:[]);
+    const _pla = (typeof PLA_ALL!=='undefined'&&Array.isArray(PLA_ALL)&&PLA_ALL.length)      ? PLA_ALL   : (typeof PLA_PROD!=='undefined'?PLA_PROD:[]);
+    const _cpg = (typeof CPKG_PETG!=='undefined'&&Array.isArray(CPKG_PETG)&&CPKG_PETG.length)? CPKG_PETG : [];
+    const _inc = (typeof FIN_INCOME!=='undefined'&&Array.isArray(FIN_INCOME)&&FIN_INCOME.length)?FIN_INCOME:[];
+    const _prf = (typeof FIN_PROFIT!=='undefined'&&Array.isArray(FIN_PROFIT)&&FIN_PROFIT.length)?FIN_PROFIT:[];
+
     // Виробництво — останній місяць з даними
-    const lastTi = lastValid(TOTAL_ALL);
+    const lastTi = lastValid(_tot);
     if(lastTi>=0){
-      const tot=TOTAL_ALL[lastTi], pet=PETG_ALL[lastTi]??0, pla=PLA_ALL[lastTi]??0;
-      const prevTot=lastTi>0?TOTAL_ALL[lastTi-1]:null;
+      const tot=_tot[lastTi], pet=_pet[lastTi]??0, pla=_pla[lastTi]??0;
+      const prevTot=lastTi>0?_tot[lastTi-1]:null;
       const mon=monthStr(lastTi);
       const el=id=>document.getElementById(id);
       if(el('ov_totalLabel')) el('ov_totalLabel').textContent='Всього продукції · '+mon;
@@ -960,18 +969,18 @@ window.addEventListener('DOMContentLoaded',()=>{
       }
       if(el('ov_petgLabel')) el('ov_petgLabel').textContent='PETG · '+mon;
       if(el('ov_petgVal'))   el('ov_petgVal').textContent=fmtNum(pet);
-      if(el('ov_petgDelta') && lastTi>0 && PETG_ALL[lastTi-1]){
+      if(el('ov_petgDelta') && lastTi>0 && _pet[lastTi-1]){
         const prev2=monthStr(lastTi-1);
-        const pct2=((pet-PETG_ALL[lastTi-1])/PETG_ALL[lastTi-1]*100).toFixed(1);
+        const pct2=((pet-_pet[lastTi-1])/_pet[lastTi-1]*100).toFixed(1);
         el('ov_petgDelta').textContent=(pct2>=0?'▲ +':'▼ ')+pct2+'% vs '+prev2;
         el('ov_petgDelta').className='kpi-delta '+(pct2>=0?'delta-up':'delta-down');
       }
     }
 
     // Фінанси — останній місяць з даними
-    const lastFi = lastValid(FIN_PROFIT);
+    const lastFi = lastValid(_prf);
     if(lastFi>=0){
-      const prof=FIN_PROFIT[lastFi], inc=FIN_INCOME[lastFi], exp=FIN_EXPENSES[lastFi];
+      const prof=_prf[lastFi], inc=_inc[lastFi]||0, exp=_inc[lastFi]?_inc[lastFi]-_prf[lastFi]:0;
       const mon=monthStr(lastFi);
       const el=id=>document.getElementById(id);
       if(el('ov_profitLabel')) el('ov_profitLabel').textContent='Прибуток · '+mon;
@@ -983,14 +992,14 @@ window.addEventListener('DOMContentLoaded',()=>{
     }
 
     // Собівартість — остання непорожня
-    const lastCi = lastValid(CPKG_PETG);
-    if(lastCi>=0 && CPKG_PETG[lastCi]){
-      const cost=CPKG_PETG[lastCi], mon=monthStr(lastCi);
+    const lastCi = lastValid(_cpg);
+    if(lastCi>=0 && _cpg[lastCi]){
+      const cost=_cpg[lastCi], mon=monthStr(lastCi);
       const el=id=>document.getElementById(id);
       if(el('ov_costLabel')) el('ov_costLabel').textContent='Собів-сть PETG · '+mon;
       if(el('ov_costVal'))   el('ov_costVal').textContent=cost.toFixed(1);
-      if(el('ov_costDelta') && lastCi>0 && CPKG_PETG[lastCi-1]){
-        const prev=CPKG_PETG[lastCi-1], pct=((cost-prev)/prev*100).toFixed(1);
+      if(el('ov_costDelta') && lastCi>0 && _cpg[lastCi-1]){
+        const prev=_cpg[lastCi-1], pct=((cost-prev)/prev*100).toFixed(1);
         const prev2=monthStr(lastCi-1);
         el('ov_costDelta').textContent=(pct<=0?'▼ ':'▲ +')+pct+'% vs '+prev2+' ('+prev.toFixed(0)+'₴)';
         el('ov_costDelta').className='kpi-delta '+(pct<=0?'delta-up':'delta-down');
