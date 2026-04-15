@@ -866,11 +866,6 @@
 <script>
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];
 const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
-// ── FIXED: total production = PETG продукції + PLA продукції (з _Drukar_Product)
-const PETG_PROD=[19000,null,18881.6,25480.8,8007.3];
-const PLA_PROD=[5000,null,5319.7,6856.2,0];
-const TOTAL_PROD=PETG_PROD.map((v,i)=>v!==null&&PLA_PROD[i]!==null?v+PLA_PROD[i]:null);
-// For chart display (bars with all months including dec)
 const PETG_ALL={{PETG_PROD}};
 const PLA_ALL={{PLA_PROD}};
 const TOTAL_ALL={{TOTAL_PROD}};
@@ -934,7 +929,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
   // Restore active tab from URL hash
   const hash=location.hash.replace('#','');
-  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales','okr'];
+  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales','okr','inventory'];
   if(hash&&validTabs.includes(hash)){
     const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
     if(btn){switchTab(hash,btn);}

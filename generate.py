@@ -666,6 +666,24 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{BEST_MONTH_RET}}':     str(sales.get('best_month_ret', 0)),
             '{{DONUT_BY_MONTH}}':     jv(sales.get('donut_by_month', {})),
         })
+    else:
+        subs.update({
+            '{{SALES_LABELS}}':       '[]',
+            '{{SALES_OPT}}':          '[]',
+            '{{SALES_RET}}':          '[]',
+            '{{TOP_PRODUCTS_LABELS}}':'[]',
+            '{{TOP_PRODUCTS_DATA}}':  '[]',
+            '{{PETG_PRICE_LABELS}}':  '[]',
+            '{{PETG_AVG_PRICE}}':     '[]',
+            '{{PLA_PRICE_LABELS}}':   '[]',
+            '{{PLA_AVG_PRICE}}':      '[]',
+            '{{SALES_MONTHS}}':       '[]',
+            '{{BEST_MONTH_LABEL}}':   '—',
+            '{{BEST_MONTH_TOTAL}}':   '0',
+            '{{BEST_MONTH_OPT}}':     '0',
+            '{{BEST_MONTH_RET}}':     '0',
+            '{{DONUT_BY_MONTH}}':     '{}',
+        })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
     subs.update({
         '{{OKR_COMPANY_PCT}}':   str(round(okr['company_pct'] * 100, 1)) if okr else '0',
