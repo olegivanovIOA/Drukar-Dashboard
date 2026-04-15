@@ -225,11 +225,13 @@ def parse_lines_heatmap(rows_list):
         if not rows: continue
 
         # Detect header rows (first 3) and find col indexes dynamically
-        # Default known positions: date=0, line=6, weight=9
-        ci_date = 0; ci_line = 6; ci_weight = 9
+        # Default known positions after inserting new column F:
+        #   date=A(0), line=H(7), weight=K(10)
+        ci_date = 0; ci_line = 7; ci_weight = 10
         data_start = 2  # data starts at row index 2 (0-based)
 
-        # Try to auto-detect from headers (row index 0 and 1)
+        # Auto-detect from headers — scan all header rows
+        # Журнал has 2 header rows: row0=merged headers, row1=sub-headers with column names
         for hi in range(min(3, len(rows))):
             hdr = [str(c).lower().strip() if c else '' for c in rows[hi]]
             if any('лін' in h or 'лини' in h for h in hdr):
@@ -237,7 +239,9 @@ def parse_lines_heatmap(rows_list):
                     if 'дата' in h or h == 'date': ci_date = i
                     if 'лін' in h or 'лини' in h: ci_line = i
                     if 'вага' in h or ('вес' in h and 'кг' in h): ci_weight = i
-                data_start = hi + 1
+                # data_start = рядок після останнього заголовку
+                # Для журналу завжди 2 рядки заголовків → data_start=2
+                data_start = max(hi + 1, 2)
                 break
 
         # Detect if this is "Аналіз вкладів" (has contrib col) or "Журнал" (no contrib, forward-fill date)
