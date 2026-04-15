@@ -106,12 +106,12 @@ def extract_row_by_month(row, col_map):
 def parse_production_from_alldata(rows):
     """
     Читає _AllData_Product (агрегований лист з обох локацій).
-    Структура: A=Дата, B=Смена, C=Оператор, D=Вклад%, E=Лінія, F=Вид,
-               G=Кількість шт(вклад), H=Вес кг(вклад), I=НФ кг(вклад),
-               J=Відхід кг(вклад), K=Запаковано шт, L=Автоподсчет кг,
-               Q=Упаковщик, R=Старший зміни, S=Локація
+    Структура: A=Дата, B=Смена, C=Оператор, D=Вклад%, E=Кількість шт(вклад),
+               F=Лінія, G=Вид, H=Кількість шт(вклад, стара), I=Вес кг(вклад),
+               J=НФ кг(вклад), K=Відхід кг(вклад), L=Запаковано шт, M=Автоподсчет кг,
+               R=Упаковщик, S=Старший зміни, T=Локація
     
-    Оскільки H вже помножено на Вклад%, реальний вес = H/D.
+    Оскільки I вже помножено на Вклад%, реальний вес = I/D.
     Щоб не дублювати, беремо тільки рядки де D є максимальним для 
     комбінації (дата, зміна, лінія) — або просто H/D для першого оператора.
     Агрегуємо по місяцях і виду (PETG/PLA).
@@ -162,8 +162,8 @@ def parse_production_from_alldata(rows):
         if not ym or ym < '2025-11': continue
 
         shift   = str(row[1]).strip() if row[1] else ''
-        line    = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ''
-        vid     = str(row[5]).strip().upper() if len(row) > 5 and row[5] else ''
+        line    = str(row[5]).strip().upper() if len(row) > 5 and row[5] else ''  # F=Лінія після +колонки E
+        vid     = str(row[6]).strip().upper() if len(row) > 6 and row[6] else ''  # G=Вид після +колонки E
 
         # Ключ унікальності лінії
         line_key = (ym, shift, line, vid)
@@ -178,15 +178,15 @@ def parse_production_from_alldata(rows):
         except:
             contrib = 1.0
 
-        # Вага кг (вклад) → реальний вес = H/D
+        # Вага кг (вклад) → реальний вес = I/D (після +колонки E)
         def safe_f(val):
             try:
                 return float(str(val).replace(',','.').replace(' ','').strip()) if val else 0.0
             except: return 0.0
 
-        weight = safe_f(row[7]) / contrib if contrib > 0 else 0.0  # H/D
-        nf     = safe_f(row[8]) / contrib if len(row) > 8 else 0.0  # I/D
-        waste  = safe_f(row[9]) / contrib if len(row) > 9 else 0.0  # J/D
+        weight = safe_f(row[8]) / contrib if contrib > 0 else 0.0  # I/D (після +колонки E)
+        nf     = safe_f(row[9]) / contrib if len(row) > 9 else 0.0  # J/D (після +колонки E)
+        waste  = safe_f(row[10]) / contrib if len(row) > 10 else 0.0  # K/D (після +колонки E)
 
         is_petg = 'PETG' in vid
         is_pla  = 'PLA' in vid and 'PETG' not in vid
