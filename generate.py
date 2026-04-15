@@ -102,6 +102,165 @@ def extract_row_by_month(row, col_map):
             result[i] = f(row[ci])
     return result
 
+
+def parse_production_from_alldata(rows):
+    """
+    Читає _AllData_Product (агрегований лист з обох локацій).
+    Структура: A=Дата, B=Смена, C=Оператор, D=Вклад%, E=Лінія, F=Вид,
+               G=Кількість шт(вклад), H=Вес кг(вклад), I=НФ кг(вклад),
+               J=Відхід кг(вклад), K=Запаковано шт, L=Автоподсчет кг,
+               Q=Упаковщик, R=Старший зміни, S=Локація
+    
+    Оскільки H вже помножено на Вклад%, реальний вес = H/D.
+    Щоб не дублювати, беремо тільки рядки де D є максимальним для 
+    комбінації (дата, зміна, лінія) — або просто H/D для першого оператора.
+    Агрегуємо по місяцях і виду (PETG/PLA).
+    """
+    from collections import defaultdict
+    import re as _re
+    from datetime import datetime as _dt, date as _date, timedelta
+
+    UA_SHORT = {
+        '01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+        '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'
+    }
+
+    if not rows or len(rows) < 2:
+        print("  WARNING: _AllData_Product — no data")
+        return _empty_production()
+
+    # Заголовок рядок 1 (індекс 0)
+    # Дані з рядка 2 (індекс 1)
+
+    # Агрегація: унікальні (дата, зміна, лінія) → беремо H/D = реальний вес лінії
+    # key = (ym, вид) → {petg_kg, pla_kg, petg_nf, pla_nf, petg_waste, pla_waste}
+    monthly = defaultdict(lambda: {
+        'petg': 0.0, 'pla': 0.0,
+        'petg_nf': 0.0, 'pla_nf': 0.0,
+        'petg_waste': 0.0, 'pla_waste': 0.0,
+    })
+
+    # Щоб не дублювати: зберігаємо унікальні (дата, зміна, лінія) вже оброблені
+    seen_lines = set()
+
+    for row in rows[1:]:
+        if not row or len(row) < 8: continue
+
+        # Парсимо дату
+        date_val = row[0]
+        ym = None
+        if hasattr(date_val, 'strftime'):
+            ym = date_val.strftime('%Y-%m')
+        elif isinstance(date_val, str) and len(date_val) >= 7:
+            try:
+                ym = _dt.strptime(date_val[:10], '%Y-%m-%d').strftime('%Y-%m')
+            except:
+                try:
+                    # формат dd.mm.yyyy
+                    ym = _dt.strptime(date_val[:10], '%d.%m.%Y').strftime('%Y-%m')
+                except: pass
+        if not ym or ym < '2025-11': continue
+
+        shift   = str(row[1]).strip() if row[1] else ''
+        line    = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ''
+        vid     = str(row[5]).strip().upper() if len(row) > 5 and row[5] else ''
+
+        # Ключ унікальності лінії
+        line_key = (ym, shift, line, vid)
+        if line_key in seen_lines: continue
+        seen_lines.add(line_key)
+
+        # Вклад % (колонка D, індекс 3)
+        try:
+            contrib = float(str(row[3]).replace('%','').replace(',','.').strip())
+            if contrib > 1.5: contrib /= 100.0
+            if contrib <= 0: contrib = 1.0
+        except:
+            contrib = 1.0
+
+        # Вага кг (вклад) → реальний вес = H/D
+        def safe_f(val):
+            try:
+                return float(str(val).replace(',','.').replace(' ','').strip()) if val else 0.0
+            except: return 0.0
+
+        weight = safe_f(row[7]) / contrib if contrib > 0 else 0.0  # H/D
+        nf     = safe_f(row[8]) / contrib if len(row) > 8 else 0.0  # I/D
+        waste  = safe_f(row[9]) / contrib if len(row) > 9 else 0.0  # J/D
+
+        is_petg = 'PETG' in vid
+        is_pla  = 'PLA' in vid and 'PETG' not in vid
+
+        if is_petg:
+            monthly[ym]['petg']       += weight
+            monthly[ym]['petg_nf']    += nf
+            monthly[ym]['petg_waste'] += waste
+        elif is_pla:
+            monthly[ym]['pla']        += weight
+            monthly[ym]['pla_nf']     += nf
+            monthly[ym]['pla_waste']  += waste
+
+    # Формуємо масиви по MONTH_ORDER
+    petg_prod  = [round(monthly[m]['petg'],1)       if m in monthly else None for m in MONTH_ORDER]
+    pla_prod   = [round(monthly[m]['pla'],1)        if m in monthly else None for m in MONTH_ORDER]
+    petg_nf_kg = [round(monthly[m]['petg_nf'],1)    if m in monthly else None for m in MONTH_ORDER]
+    pla_nf_kg  = [round(monthly[m]['pla_nf'],1)     if m in monthly else None for m in MONTH_ORDER]
+    petg_w_kg  = [round(monthly[m]['petg_waste'],1) if m in monthly else None for m in MONTH_ORDER]
+    pla_w_kg   = [round(monthly[m]['pla_waste'],1)  if m in monthly else None for m in MONTH_ORDER]
+
+    # НФ % і Брак %
+    nf_pct = []; waste_pct = []
+    for i in range(MONTH_COUNT):
+        pp = (petg_prod[i] or 0) + (pla_prod[i] or 0)
+        nf_pct.append(round(((petg_nf_kg[i] or 0)+(pla_nf_kg[i] or 0))/pp*100,2) if pp else None)
+        waste_pct.append(round(((petg_w_kg[i] or 0)+(pla_w_kg[i] or 0))/pp*100,2) if pp else None)
+
+    petg_nf_r = [round((petg_nf_kg[i] or 0)/(petg_prod[i] or 1)*100,2) if petg_prod[i] else None for i in range(MONTH_COUNT)]
+    pla_nf_r  = [round((pla_nf_kg[i]  or 0)/(pla_prod[i]  or 1)*100,2) if pla_prod[i]  else None for i in range(MONTH_COUNT)]
+    petg_w_r  = [round((petg_w_kg[i]  or 0)/(petg_prod[i] or 1)*100,2) if petg_prod[i] else None for i in range(MONTH_COUNT)]
+    pla_w_r   = [round((pla_w_kg[i]   or 0)/(pla_prod[i]  or 1)*100,2) if pla_prod[i]  else None for i in range(MONTH_COUNT)]
+
+    total_prod = [
+        round((petg_prod[i] or 0)+(pla_prod[i] or 0), 1)
+        if petg_prod[i] is not None or pla_prod[i] is not None else None
+        for i in range(MONTH_COUNT)
+    ]
+
+    data = {
+        "updated":      datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
+        "petg_prod":    petg_prod,
+        "pla_prod":     pla_prod,
+        "total_prod":   total_prod,
+        "nf_pct":       nf_pct, "waste_pct": waste_pct,
+        "petg_nf":      petg_nf_r,
+        "pla_nf":       pla_nf_r,
+        "petg_waste":   petg_w_r,
+        "pla_waste":    pla_w_r,
+        # Фінансові дані — залишаємо порожніми (беруться з _Drukar_Product)
+        "income":       [None]*MONTH_COUNT,
+        "expenses":     [None]*MONTH_COUNT,
+        "profit":       [None]*MONTH_COUNT,
+        "cost_petg_kg": [None]*MONTH_COUNT,
+        "cost_pla_kg":  [None]*MONTH_COUNT,
+    }
+
+    print(f"\n  PETG prod (from _AllData_Product): {data['petg_prod']}")
+    print(f"  PLA prod:  {data['pla_prod']}")
+    return data
+
+
+def _empty_production():
+    return {
+        "updated": datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
+        "petg_prod": [None]*MONTH_COUNT, "pla_prod": [None]*MONTH_COUNT,
+        "total_prod": [None]*MONTH_COUNT, "nf_pct": [None]*MONTH_COUNT,
+        "waste_pct": [None]*MONTH_COUNT, "petg_nf": [None]*MONTH_COUNT,
+        "pla_nf": [None]*MONTH_COUNT, "petg_waste": [None]*MONTH_COUNT,
+        "pla_waste": [None]*MONTH_COUNT, "income": [None]*MONTH_COUNT,
+        "expenses": [None]*MONTH_COUNT, "profit": [None]*MONTH_COUNT,
+        "cost_petg_kg": [None]*MONTH_COUNT, "cost_pla_kg": [None]*MONTH_COUNT,
+    }
+
 def parse_production(rows):
     col_map, _ = detect_month_columns(rows)
 
@@ -525,8 +684,19 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
 
 if __name__ == '__main__':
     try:
-        prod_rows = fetch_csv(SHEET_ID, "_Drukar_Product")
-        data = parse_production(prod_rows)
+        prod_rows = fetch_csv(SHEET_ID, "_AllData_Product")
+        data = parse_production_from_alldata(prod_rows)
+        # Фінансові дані — окремо з _Drukar_Product
+        try:
+            fin_rows = fetch_csv(SHEET_ID, "_Drukar_Product")
+            fin = parse_production(fin_rows)
+            data["income"]       = fin["income"]
+            data["expenses"]     = fin["expenses"]
+            data["profit"]       = fin["profit"]
+            data["cost_petg_kg"] = fin["cost_petg_kg"]
+            data["cost_pla_kg"]  = fin["cost_pla_kg"]
+        except Exception as e:
+            print(f"  WARNING fin data: {e}")
     except Exception as e:
         print(f"ERROR: {e}")
         import traceback; traceback.print_exc()
