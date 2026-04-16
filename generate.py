@@ -479,19 +479,24 @@ def parse_lines_heatmap(rows_list):
         print(f"  Lines HM: source={'Аналіз вкладів' if is_analiz else 'Журнал'}, cols: date={ci_date} line={ci_line} weight={ci_weight} contrib={ci_contrib}")
 
         current_date = None
+        current_date_str = None
+        seen_lines = set()  # dedup: (date_str, shift, line) — один запис на лінію-зміну-день
         for row in rows[data_start:]:
             if not row: continue
-            # Forward-fill date (needed for Журнал where date only on first row of shift block)
+            # Forward-fill date
             d = row[ci_date] if ci_date < len(row) else None
             if d is not None and hasattr(d, 'strftime'):
                 current_date = d
+                current_date_str = d.strftime('%Y-%m-%d')
             elif d is not None and isinstance(d, (int, float)) and 40000 < d < 60000:
                 from datetime import date as _date, timedelta
                 current_date = _date(1899, 12, 30) + timedelta(days=int(d))
+                current_date_str = current_date.strftime('%Y-%m-%d')
             elif d is not None and isinstance(d, str) and len(d) >= 7:
                 try:
                     from datetime import datetime as _dt
                     current_date = _dt.strptime(d[:10], '%Y-%m-%d')
+                    current_date_str = d[:10]
                 except: pass
             if current_date is None:
                 continue
@@ -507,8 +512,16 @@ def parse_lines_heatmap(rows_list):
             if m:
                 line = f'ЛІНІЯ {m.group(1)}'
 
+            # Дедупликація: (дата, зміна, лінія) — тільки перший оператор
+            ci_shift_hm = 1 if is_analiz else 6
+            shift_hm = str(row[ci_shift_hm]).strip() if ci_shift_hm < len(row) and row[ci_shift_hm] else ''
+            line_key = (current_date_str, shift_hm, line)
+            if line_key in seen_lines:
+                continue
+            seen_lines.add(line_key)
+
             # For "Аналіз вкладів": w = вага×вклад%, need w/contrib to get full line weight
-            # For "Журнал": w = full line weight already, no division needed
+            # For "Журнал": w = full line weight already
             if is_analiz and ci_contrib >= 0:
                 contrib = row[ci_contrib] if ci_contrib < len(row) else None
                 if isinstance(contrib, (int, float)) and contrib > 0:
@@ -690,6 +703,71 @@ def jv(v):
 
 
 
+
+def generate_quality_table_rows(data):
+    """
+    Генерує рядки зведеної таблиці якості для всіх місяців з даними.
+    Повертає HTML рядки для <tbody>.
+    """
+    from datetime import datetime as _dt
+    UA_FULL = {
+        '2025-11':'Листопад 2025','2025-12':'Грудень 2025',
+        '2026-01':'Січень 2026','2026-02':'Лютий 2026','2026-03':'Березень 2026',
+        '2026-04':'Квітень 2026','2026-05':'Травень 2026','2026-06':'Червень 2026',
+        '2026-07':'Липень 2026','2026-08':'Серпень 2026','2026-09':'Вересень 2026',
+        '2026-10':'Жовтень 2026','2026-11':'Листопад 2026','2026-12':'Грудень 2026',
+    }
+    cur_ym = _dt.utcnow().strftime('%Y-%m')
+    rows_html = ''
+
+    for i, ym in enumerate(MONTH_ORDER):
+        petg_nf   = data['petg_nf'][i]
+        petg_w    = data['petg_waste'][i]
+        pla_nf    = data['pla_nf'][i]
+        pla_w     = data['pla_waste'][i]
+        total_nf  = data['nf_pct'][i]
+        total_w   = data['waste_pct'][i]
+
+        # Пропускаємо місяці без жодних даних
+        if all(v is None for v in [petg_nf, petg_w, pla_nf, pla_w, total_nf, total_w]):
+            continue
+
+        label = UA_FULL.get(ym, ym)
+        is_current = ym == cur_ym
+        is_closed  = ym < cur_ym
+
+        # Зірочка для поточного місяця
+        if is_current:
+            label += '*'
+
+        def cell(v, warn_thr=10.0, good_thr=5.0):
+            if v is None: return '<td>—</td>'
+            color = 'var(--bad)' if v > warn_thr else ('var(--warn)' if v > good_thr else 'var(--good)')
+            return f'<td style="color:{color}">{v:.2f}%</td>'
+
+        # Статус
+        if not is_closed:
+            badge = '<span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span>'
+        elif total_nf is not None and total_nf > 10:
+            badge = '<span class="badge badge-red">КРИТИЧНО!</span>'
+        elif any(v is None for v in [petg_nf, petg_w, pla_nf, pla_w]):
+            badge = '<span class="badge badge-yellow">ДАНІ НЕПОВНІ</span>'
+        elif total_nf is not None and total_nf < 4 and (total_w or 0) < 3:
+            badge = '<span class="badge badge-green">ДОБРЕ</span>'
+        else:
+            badge = '<span class="badge badge-green">НОРМА</span>'
+
+        petg_nf_cell  = cell(petg_nf,  warn_thr=10.0, good_thr=5.0)
+        petg_w_cell   = cell(petg_w,   warn_thr=5.0,  good_thr=2.0)
+        pla_nf_cell   = cell(pla_nf,   warn_thr=10.0, good_thr=5.0)
+        pla_w_cell    = cell(pla_w,    warn_thr=5.0,  good_thr=2.0)
+        tot_nf_cell   = cell(total_nf, warn_thr=10.0, good_thr=5.0)
+        tot_w_cell    = cell(total_w,  warn_thr=5.0,  good_thr=2.0)
+
+        rows_html += f'<tr><td>{label}</td>{petg_nf_cell}{petg_w_cell}{pla_nf_cell}{pla_w_cell}{tot_nf_cell}{tot_w_cell}<td>{badge}</td></tr>\n'
+
+    return rows_html or '<tr><td colspan="8" style="text-align:center;color:var(--muted)">Немає даних</td></tr>'
+
 def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None, line_norms=None):
     if line_norms is None: line_norms = {}
     with open('template.html', 'r', encoding='utf-8') as f:
@@ -737,6 +815,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
 
     subs = {
         '{{UPDATED}}':         data['updated'],
+        '{{QUALITY_TABLE_ROWS}}': generate_quality_table_rows(data),
         '{{KPI_MONTH_LABEL}}':  _kpi_label,
         '{{KPI_TOTAL_KG}}':      _fmt(_tot),
         '{{KPI_PETG_KG}}':       _fmt(_petg),
