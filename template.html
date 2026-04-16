@@ -1786,26 +1786,36 @@ async function loadOperatorData(){
     return lParseCSV(txt);
   }
   function parseOps(rows){
-    // _AllData_Product: A=Дата(0), B=Зміна(1), C=Оператор(2), D=Вклад%(3), E=Лінія(4), H=Вес(7), R=Старший(17)
     const allMap={}, byMonthMap={};
-    const seen=new Set();
     if(!rows||rows.length<2) return {allMap,byMonthMap};
-    for(let i=1;i<rows.length;i++){
-      const row=rows[i]; if(!row||row.length<4) continue;
-      const dRaw=row[0]; const d=dRaw?lParseDate(String(dRaw)):null; if(!d) continue;
+    // Автодетекція заголовку — шукаємо рядок з "Дата" або "Оператор"
+    let dataStart=1, ci_date=0, ci_shift=1, ci_op=2, ci_contrib=3, ci_line=4, ci_weight=7;
+    for(let hi=0;hi<Math.min(5,rows.length);hi++){
+      const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
+      const hasDate=hdr.some(h=>h==='дата'||h==='date');
+      const hasOp=hdr.some(h=>h.includes('оператор')||h.includes('operator'));
+      if(hasDate||hasOp){
+        dataStart=hi+1;
+        const iDate=hdr.findIndex(h=>h==='дата'||h==='date'); if(iDate>=0) ci_date=iDate;
+        const iShift=hdr.findIndex(h=>h.includes('смен')||h.includes('зміна')||h==='shift'); if(iShift>=0) ci_shift=iShift;
+        const iOp=hdr.findIndex(h=>h.includes('оператор')||h.includes('operator')); if(iOp>=0) ci_op=iOp;
+        const iContrib=hdr.findIndex(h=>h.includes('вклад')); if(iContrib>=0) ci_contrib=iContrib;
+        const iLine=hdr.findIndex(h=>h.includes('лін')||h.includes('лини')||h==='line'); if(iLine>=0) ci_line=iLine;
+        const iW=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг')||h.includes('weight')); if(iW>=0) ci_weight=iW;
+        break;
+      }
+    }
+    console.log(`parseOps: dataStart=${dataStart} ci_date=${ci_date} ci_op=${ci_op} ci_weight=${ci_weight} total=${rows.length}`);
+    for(let i=dataStart;i<rows.length;i++){
+      const row=rows[i]; if(!row||row.length<3) continue;
+      const dRaw=String(row[ci_date]||'').trim(); if(!dRaw) continue;
+      const d=lParseDate(dRaw); if(!d) continue;
       const ym=d.slice(0,7); if(ym<'2025-11') continue;
-      const shift=String(row[1]||'').trim();
-      const line=String(row[4]||'').trim().toUpperCase();
-      const op=String(row[2]||'').trim(); if(!op||op==='null') continue;
-      // contrib
-      let contrib=parseFloat(String(row[3]||'').replace('%','').replace(',','.'));
-      if(contrib>1.5) contrib/=100; if(!contrib||contrib<=0) contrib=1;
-      // weight
-      const wRaw=parseFloat(String(row[7]||'').replace(',','.')); if(!wRaw||wRaw<=0) continue;
-      const kg=wRaw/contrib;
-      // Зважуємо за вкладом оператора (contrib × kg = реальний вклад оператора)
-      const opKg=wRaw; // вес вже помножений на вклад — це частка оператора
-
+      const op=String(row[ci_op]||'').trim(); if(!op||op==='null'||op===''||op.includes('IFERROR')) continue;
+      let contrib=parseFloat(String(row[ci_contrib]||'').replace('%','').replace(',','.'));
+      if(isNaN(contrib)||contrib<=0) contrib=1; if(contrib>1.5) contrib/=100;
+      const wRaw=parseFloat(String(row[ci_weight]||'').replace(',','.')); if(isNaN(wRaw)||wRaw<=0) continue;
+      const opKg=wRaw; // вклад оператора (вес × вклад%)
       if(!allMap[op]) allMap[op]=0;
       allMap[op]+=opKg;
       if(!byMonthMap[ym]) byMonthMap[ym]={};
@@ -3168,7 +3178,7 @@ async function buildUtilHeatmap(){
     if(pct < 95) return '#16a34a';
     return '#22c55e';
   }
-  function textColor(pct){ return pct > 30 ? '#fff' : '#4a6a4a'; }
+  function textColor(pct){ return '#fff'; } // завжди білий
 
   function lineNum(ln){ const m=ln.match(/\d+/); return m?parseInt(m[0]):999; }
   const sortedLines = [...lines].sort((a,b)=>lineNum(a)-lineNum(b));
@@ -3211,7 +3221,7 @@ async function buildUtilHeatmap(){
     vals.forEach((pct,i) => {
       const bg = utilColor(pct);
       const tc = textColor(pct);
-      html += `<div class="hmap-cell" style="background:${bg};color:${tc}" title="${ln} · ${HM_LABELS[i]}: ${pct}%">${pct?pct+'%':''}</div>`;
+      html += `<div class="hmap-cell" style="background:${bg};color:${tc}" title="${ln} · ${HM_LABELS[i]}: ${pct}%">${pct?pct+'%':'—'}</div>`;
     });
     const avgBg = utilColor(avg);
     html += `<div class="hmap-cell" style="background:${avgBg};color:${textColor(avg)};font-weight:700">${avg}%</div>`;
@@ -3269,7 +3279,9 @@ function onUtilMonthChange(val, btn){
 }
 
 async function buildUtilHeatmapWeekly(monthIdx){
-  const norm = 1500; // fallback, реальні норми беруться з HM_NORMS
+  // Завантажуємо норми якщо потрібно
+  if(!HM_NORMS || !Object.keys(HM_NORMS).length) await loadNormsFromSheets();
+  const norm = 1500; // fallback якщо норма не знайдена для конкретної лінії
   const wrap = document.getElementById('utilHeatmapWrap');
   if(!wrap) return;
   const MONTH_ORDER_UTIL = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04',
@@ -3354,7 +3366,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
       if(pct<60) return '#1a5c1a'; if(pct<80) return '#1a7a1a';
       if(pct<95) return '#16a34a'; return '#22c55e';
     }
-    function textColor(pct){ return pct>30?'#fff':'#4a6a4a'; }
+    function textColor(pct){ return '#fff'; } // завжди білий
     function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
     const sortedLines=Object.keys(merged).sort((a,b)=>lineNum(a)-lineNum(b));
     const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8']; const isLoc2=ln=>LOC2.includes(ln);
@@ -3372,18 +3384,19 @@ async function buildUtilHeatmapWeekly(monthIdx){
         prevLoc=loc;
       }
       const kgArr=merged[ln]||new Array(wcols).fill(0);
-      const pctArr=kgArr.map((kg,i)=>{const maxKg=norm*2*weeks[i].days;return maxKg?Math.min(Math.round(kg/maxKg*100),999):0;});
+      const lineN=HM_NORMS&&HM_NORMS[ln]?Object.values(HM_NORMS[ln]).filter(v=>v>0).reduce((a,b,_,arr)=>a+b/arr.length,0)||norm:norm;
+      const pctArr=kgArr.map((kg,i)=>{const maxKg=lineN*2*weeks[i].days;return maxKg?Math.min(Math.round(kg/maxKg*100),999):0;});
       const avg=Math.round(pctArr.reduce((a,b)=>a+b,0)/wcols);
       html+=`<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
       pctArr.forEach((pct,i)=>{
-        html+=`<div class="hmap-cell" style="background:${utilColor(pct)};color:${textColor(pct)}" title="${ln} · ${wLabels[i]}: ${pct}%">${pct?pct+'%':''}</div>`;
+        html+=`<div class="hmap-cell" style="background:${utilColor(pct)};color:${textColor(pct)}" title="${ln} · ${wLabels[i]}: ${pct}%">${pct?pct+'%':'—'}</div>`;
       });
       html+=`<div class="hmap-cell" style="background:${utilColor(avg)};color:${textColor(avg)};font-weight:700">${avg}%</div>`;
     });
     html+=`<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
     html+=`<div class="hmap-label" style="color:#fff;font-size:13px;font-weight:700">ВСЬОГО</div>`;
     for(let i=0;i<wcols;i++){
-      const avg=sortedLines.reduce((s,l)=>s+(()=>{const kg=merged[l]?.[i]||0;const max=norm*2*weeks[i].days;return max?Math.min(Math.round(kg/max*100),999):0;})(),0)/sortedLines.length;
+      const avg=sortedLines.reduce((s,l)=>s+(()=>{const kg=merged[l]?.[i]||0;const ln2=HM_NORMS&&HM_NORMS[l]?Object.values(HM_NORMS[l]).filter(v=>v>0).reduce((a,b,_,ar)=>a+b/ar.length,0)||norm:norm;const max=ln2*2*weeks[i].days;return max?Math.min(Math.round(kg/max*100),999):0;})(),0)/sortedLines.length;
       html+=`<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(avg)}%</div>`;
     }
     const ga=sortedLines.reduce((s,l)=>{const kgA=merged[l]||[];const pa=kgA.map((kg,i)=>{const max=norm*2*weeks[i].days;return max?Math.min(Math.round(kg/max*100),999):0;});return s+pa.reduce((a,b)=>a+b,0)/wcols;},0)/sortedLines.length;
