@@ -25,7 +25,17 @@ function buildUtilHeatmap(){
   }
 
   const cols = HM_LABELS.length;
-  const colDays = MONTH_ORDER_UTIL.slice(0, cols).map(ym => daysInMonth(ym));
+  // Восстанавливаем YM из HM_LABELS: "Лис 25" → "2025-11" etc.
+  const UA_REV = {'Січ':'01','Лют':'02','Бер':'03','Кві':'04','Тра':'05','Чер':'06',
+                   'Лип':'07','Сер':'08','Вер':'09','Жов':'10','Лис':'11','Гру':'12'};
+  function labelToYm(lbl){
+    const p = lbl.trim().split(/\s+/);
+    if(p.length<2) return null;
+    const mo = UA_REV[p[0]]; const yr = '20'+p[1];
+    return mo ? yr+'-'+mo : null;
+  }
+  const colYms = HM_LABELS.map(labelToYm);
+  const colDays = colYms.map(ym => ym ? daysInMonth(ym) : 30);
 
   // Рассчитываем % для каждой линии × месяц
   // Норма: берём из HM_NORMS (середня по всіх видах для лінії), fallback = norm з поля
@@ -162,7 +172,14 @@ async function buildUtilHeatmapWeekly(monthIdx){
   if(!wrap) return;
   const MONTH_ORDER_UTIL = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04',
     '2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'];
-  const ym = MONTH_ORDER_UTIL[monthIdx];
+  // Monthly index matches HM_LABELS index → get ym from HM_LABELS
+  const UA_REV2 = {'Січ':'01','Лют':'02','Бер':'03','Кві':'04','Тра':'05','Чер':'06',
+                    'Лип':'07','Сер':'08','Вер':'09','Жов':'10','Лис':'11','Гру':'12'};
+  function labelToYm2(lbl){
+    const p=lbl.trim().split(/\s+/); if(p.length<2) return null;
+    const mo=UA_REV2[p[0]]; return mo?'20'+p[1]+'-'+mo:null;
+  }
+  const ym = HM_LABELS[monthIdx] ? labelToYm2(HM_LABELS[monthIdx]) : MONTH_ORDER_UTIL[monthIdx];
   if(!ym){ buildUtilHeatmap(); return; }
   const [yr,mo] = ym.split('-');
   const UA = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
@@ -418,7 +435,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 16.04.2026 08:15 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 16.04.2026 08:39 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -583,13 +600,13 @@ async function buildUtilHeatmapWeekly(monthIdx){
   <div class="card">
     <div class="card-header"><div><div class="card-title">Зведена таблиця якості</div></div><span class="badge badge-red">! = критично (&gt;10%)</span></div>
     <table><thead><tr><th>Місяць</th><th>PETG НФ%</th><th>PETG Брак%</th><th>PLA НФ%</th><th>PLA Брак%</th><th>Заг. НФ%</th><th>Заг. Відх.%</th><th>Статус</th></tr></thead>
-    <tbody>
-      <tr><td>Листопад 2025</td><td style="color:var(--good)">5.30%</td><td style="color:var(--good)">1.51%</td><td style="color:var(--good)">0.28%</td><td style="color:var(--good)">0.15%</td><td style="color:var(--good)">2.82%</td><td style="color:var(--good)">0.81%</td><td><span class="badge badge-green">НОРМА</span></td></tr>
-      <tr><td>Грудень 2025</td><td>—</td><td>—</td><td>—</td><td>—</td><td style="color:var(--warn)">3.30%</td><td style="color:var(--warn)">3.57%</td><td><span class="badge badge-yellow">ДАНІ НЕПОВНІ</span></td></tr>
-      <tr><td>Січень 2026</td><td style="color:var(--warn)">19.71%</td><td style="color:var(--warn)">2.48%</td><td style="color:var(--bad)">63.18%</td><td style="color:var(--bad)">2.94%</td><td style="color:var(--bad)">29.97%</td><td style="color:var(--warn)">2.64%</td><td><span class="badge badge-red">КРИТИЧНО!</span></td></tr>
-      <tr><td>Лютий 2026</td><td style="color:var(--good)">1.83%</td><td style="color:var(--good)">1.25%</td><td style="color:var(--good)">1.85%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.84%</td><td style="color:var(--good)">1.27%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
-      <tr><td>Березень 2026*</td><td style="color:var(--warn)">2.09%</td><td style="color:var(--good)">1.05%</td><td style="color:var(--warn)">4.27%</td><td style="color:var(--warn)">2.15%</td><td style="color:var(--warn)">6.43%</td><td style="color:var(--warn)">3.20%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
-    </tbody></table>
+    <tbody><tr><td>Листопад 2025</td><td style="color:var(--good)">4.82%</td><td style="color:var(--good)">1.39%</td><td style="color:var(--good)">1.95%</td><td style="color:var(--good)">1.09%</td><td style="color:var(--good)">4.74%</td><td style="color:var(--good)">1.38%</td><td><span class="badge badge-green">НОРМА</span></td></tr>
+<tr><td>Грудень 2025</td><td style="color:var(--good)">2.98%</td><td style="color:var(--good)">1.92%</td><td style="color:var(--good)">5.00%</td><td style="color:var(--bad)">14.41%</td><td style="color:var(--good)">3.25%</td><td style="color:var(--warn)">3.57%</td><td><span class="badge badge-green">НОРМА</span></td></tr>
+<tr><td>Січень 2026</td><td style="color:var(--bad)">19.89%</td><td style="color:var(--warn)">2.52%</td><td style="color:var(--bad)">63.24%</td><td style="color:var(--warn)">3.02%</td><td style="color:var(--bad)">29.47%</td><td style="color:var(--warn)">2.63%</td><td><span class="badge badge-red">КРИТИЧНО!</span></td></tr>
+<tr><td>Лютий 2026</td><td style="color:var(--good)">1.84%</td><td style="color:var(--good)">1.25%</td><td style="color:var(--good)">1.81%</td><td style="color:var(--good)">1.36%</td><td style="color:var(--good)">1.83%</td><td style="color:var(--good)">1.28%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
+<tr><td>Березень 2026</td><td style="color:var(--good)">3.32%</td><td style="color:var(--good)">1.76%</td><td style="color:var(--good)">4.60%</td><td style="color:var(--good)">1.90%</td><td style="color:var(--good)">3.57%</td><td style="color:var(--good)">1.79%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
+<tr><td>Квітень 2026*</td><td style="color:var(--good)">1.83%</td><td style="color:var(--good)">1.13%</td><td style="color:var(--good)">1.30%</td><td style="color:var(--good)">1.30%</td><td style="color:var(--good)">1.71%</td><td style="color:var(--good)">1.17%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
+</tbody></table>
   </div>
 </div>
 
@@ -602,6 +619,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
       <button class="month-btn active" onclick="setCostMonth('nov',this)">Листопад 2025</button>
       <button class="month-btn" onclick="setCostMonth('jan',this)">Січень 2026</button>
       <button class="month-btn" onclick="setCostMonth('feb',this)">Лютий 2026</button>
+      <button class="month-btn" onclick="setCostMonth('avg',this)" style="border-color:var(--accent2);color:var(--accent2)">∅ Середнє</button>
     </div>
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start">
       <table><thead><tr><th>Стаття витрат</th><th style="text-align:right">Сума, грн</th><th>%</th></tr></thead><tbody id="costTableBody"></tbody></table>
@@ -653,7 +671,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
   <div id="opViewTotal">
     <div class="grid-2">
       <div class="card"><div class="card-header"><div><div class="card-title">Рейтинг операторів</div><div class="card-subtitle" id="opTableTitle">Всі місяці · 19 операторів</div></div></div>
-        <table><thead><tr><th>#</th><th>Оператор</th><th>Обсяг, кг</th><th>Частка</th></tr></thead><tbody id="opTableBody"></tbody></table>
+        <table><thead><tr><th>#</th><th>Оператор</th><th>Обсяг, кг</th><th>Частка</th><th style="text-align:center" title="Кількість змін де оператор був Старшим">👑 Старших змін</th></tr></thead><tbody id="opTableBody"></tbody></table>
       </div>
       <div class="card"><div class="card-header"><div><div class="card-title">Обсяг по операторах</div><div class="card-subtitle" id="opChartTitle">Всі місяці</div></div></div>
         <div style="height:480px;position:relative"><canvas id="opChart"></canvas></div>
@@ -1249,7 +1267,7 @@ function initTab(id){if(id==='production')initProduction();else if(id==='quality
     const curYm = new Date().toISOString().slice(0,7);
     const closedOp = opMonths.filter(m=>m<curYm);
     const defOp = closedOp.length ? closedOp[closedOp.length-1] : 'all';
-    renderOpTotal(defOp);
+    loadSeniorData(); renderOpTotal(defOp);
     const opBtns = document.querySelectorAll('#opMonthSwitcher .month-btn');
     opBtns.forEach(b=>{
       const isDefault = defOp==='all' ? b.getAttribute('onclick')?.includes("'all'") : b.getAttribute('onclick')?.includes("'"+defOp+"'");
@@ -1909,7 +1927,55 @@ function initCosts(){
   })()
   new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.2/50)*50:600;})(),min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
 }
-function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const d=COSTS[key];const tbody=document.getElementById('costTableBody');tbody.innerHTML='';d.items.forEach(([name,sum,pct])=>{tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;});tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;if(costCI)costCI.destroy();costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#2563eb','#2563eb','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});}
+function setCostMonth(key,btn){
+  document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  let d;
+  if(key==='avg'){
+    const keys=Object.keys(COSTS);
+    const allItems={};
+    keys.forEach(k=>{
+      COSTS[k].items.forEach(([name,sum,pct])=>{
+        if(!allItems[name]) allItems[name]={sum:0,pct:0,cnt:0};
+        allItems[name].sum+=sum; allItems[name].pct+=pct; allItems[name].cnt++;
+      });
+    });
+    const avgTotal=keys.reduce((s,k)=>s+COSTS[k].total,0)/keys.length;
+    const avgItems=Object.entries(allItems).map(([name,v])=>[name,Math.round(v.sum/v.cnt),v.pct/v.cnt]);
+    d={total:Math.round(avgTotal),items:avgItems};
+  } else {
+    d=COSTS[key];
+  }
+  const tbody=document.getElementById('costTableBody');
+  tbody.innerHTML='';
+  d.items.forEach(([name,sum,pct])=>{
+    tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;
+  });
+  tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;
+  if(costCI) costCI.destroy();
+  const BAR_COLORS=['#2563eb','#0ea5e9','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'];
+  costCI=new Chart(document.getElementById('costBreakChart'),{
+    type:'bar',
+    data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:BAR_COLORS,borderWidth:0,borderRadius:3}]},
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{...GR,max:Math.ceil(Math.max(...d.items.map(i=>i[2]*100))*1.3/5)*5,ticks:{...GR.ticks,callback:v=>v+'%'}},
+        y:{...GR,ticks:{...GR.ticks,font:{size:9}}}
+      },
+      animation:{onComplete:function(){
+        const ctx=this.ctx; ctx.save();
+        ctx.font='10px IBM Plex Mono,monospace'; ctx.fillStyle='#64748b'; ctx.textBaseline='middle';
+        this.data.datasets[0].data.forEach((val,i)=>{
+          const meta=this.getDatasetMeta(0); const bar=meta.data[i];
+          if(bar&&val>0) ctx.fillText(val.toFixed(1)+'%', bar.x+5, bar.y);
+        });
+        ctx.restore();
+      }}
+    }
+  });
+}
 function opFilterYear(year, btn){
   ['opYearAll','opYear2025','opYear2026'].forEach(id=>{
     const b=document.getElementById(id); if(b) b.classList.remove('active');
@@ -1983,6 +2049,73 @@ function calcUpdate(){
 }
 
 // ═══════════════════════ SHIFT DATA ═══════════════════════
+// Старший зміни: завантажується асинхронно з _AllData_Product
+let SENIOR_ALL = {}; // { name: total_count }
+let SENIOR_BY_MONTH = {}; // { ym: { name: count } }
+let _seniorLoaded = false;
+
+async function loadSeniorData() {
+  if(_seniorLoaded) return;
+  const sid1 = '1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
+  const sid2 = '1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+  async function fetchCSV(sid, sheet) {
+    const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+    const r = await fetch(url); if(!r.ok) return [];
+    const txt = await r.text(); if(txt.includes('<html')) return [];
+    return lParseCSV(txt);
+  }
+  function parseSenior(rows) {
+    // _AllData_Product: A=Дата(0), B=Зміна(1), E=Лінія(4), R=Старший зміни(17)
+    const all = {}, byMonth = {};
+    const seen = new Set(); // dedup: (ym, shift, line) — один старший на зміну-лінію
+    if(!rows||rows.length<2) return {all, byMonth};
+    for(let i=1;i<rows.length;i++){
+      const row = rows[i]; if(!row||row.length<18) continue;
+      // Дата
+      const dRaw = row[0];
+      const d = dRaw ? lParseDate(String(dRaw)) : null;
+      if(!d) continue;
+      const ym = d.slice(0,7);
+      if(ym < '2025-11') continue;
+      const shift = String(row[1]||'').trim();
+      const line  = String(row[4]||'').trim().toUpperCase();
+      const senior = String(row[17]||'').trim();
+      if(!senior || senior === '0' || senior === 'null') continue;
+      // Дедупликація — один старший на (дата, зміна, лінія)
+      const key = d+'|'+shift+'|'+line;
+      if(seen.has(key)) continue;
+      seen.add(key);
+      // Рахуємо
+      all[senior] = (all[senior]||0) + 1;
+      if(!byMonth[ym]) byMonth[ym] = {};
+      byMonth[ym][senior] = (byMonth[ym][senior]||0) + 1;
+    }
+    return {all, byMonth};
+  }
+  try {
+    const [r1, r2] = await Promise.all([
+      fetchCSV(sid1, '_AllData_Product'),
+      fetchCSV(sid2, '_AllData_Product'),
+    ]);
+    const s1 = parseSenior(r1), s2 = parseSenior(r2);
+    // Merge
+    for(const [name, cnt] of Object.entries(s1.all)) SENIOR_ALL[name]=(SENIOR_ALL[name]||0)+cnt;
+    for(const [name, cnt] of Object.entries(s2.all)) SENIOR_ALL[name]=(SENIOR_ALL[name]||0)+cnt;
+    for(const [ym, data] of Object.entries(s1.byMonth)){
+      if(!SENIOR_BY_MONTH[ym]) SENIOR_BY_MONTH[ym]={};
+      for(const [name,cnt] of Object.entries(data)) SENIOR_BY_MONTH[ym][name]=(SENIOR_BY_MONTH[ym][name]||0)+cnt;
+    }
+    for(const [ym, data] of Object.entries(s2.byMonth)){
+      if(!SENIOR_BY_MONTH[ym]) SENIOR_BY_MONTH[ym]={};
+      for(const [name,cnt] of Object.entries(data)) SENIOR_BY_MONTH[ym][name]=(SENIOR_BY_MONTH[ym][name]||0)+cnt;
+    }
+    _seniorLoaded = true;
+    console.log('Senior data loaded:', Object.keys(SENIOR_ALL).length, 'people');
+  } catch(e) {
+    console.warn('loadSeniorData failed:', e);
+  }
+}
+
 const OP_SHIFT = {
   'all':     [["Макалюк Вікторія",12862.6,6477.4,19340.0],["Макалюк Володимир",10030.8,8938.8,18969.6],["Щербакова Олена",0,15485.3,15485.3],["Бараш Костянтин",7540.3,6965.0,14505.3],["Ременчук Юлія",7350.7,6709.5,14060.2],["Пивовар Олександр",3803.2,5295.1,9098.3],["Степанчук Владислав",8910.3,0,8910.3],["Пінчук Олександр",4156.4,2872.1,7028.5],["Гарбар Денис",5501.9,246.5,5748.4],["Бондарчук Дмитро",2419.1,3312.0,5731.1],["Нужда Олексій",3668.7,1247.4,4916.1],["Хімич Богдан",1045.8,952.1,1997.9],["Хоменко Артем",909.9,556.6,1466.5],["Нестер Сергій",863.1,372.9,1236.0],["Борисов Дмитро",629.4,0,629.4],["Середа Андрій",54.5,168.1,222.6],["Кирилюк Олександр",112.0,109.1,221.1],["Якубенко Владислав",215.0,0,215.0],["Криволапчук Олександр",0.0,166.6,166.6]],
   '2025-11': [["Макалюк Вікторія",7349.8,2382.7,9732.5],["Степанчук Владислав",8910.3,0,8910.3],["Макалюк Володимир",3562.7,2478.4,6041.1],["Бондарчук Дмитро",1468.2,2134.4,3602.6],["Ременчук Юлія",1245.7,1555.5,2801.2],["Щербакова Олена",0,2683.0,2683.0],["Бараш Костянтин",1291.9,935.8,2227.7],["Борисов Дмитро",181.3,0,181.3]],
@@ -2251,6 +2384,8 @@ function renderOpTotal(key) {
     const pct = (kg / total * 100).toFixed(1);
     const bw  = Math.round(kg / data[0][1] * 70);
     const rc  = i===0 ? 'var(--accent)' : i===1 ? '#aaa' : i===2 ? 'var(--warn)' : 'var(--muted)';
+    const seniorData = key === 'all' ? SENIOR_ALL : (SENIOR_BY_MONTH[key] || {});
+    const seniorCnt = seniorData[name] || 0;
     tbody.innerHTML += `<tr>
       <td style="color:${rc};font-family:'Bebas Neue',sans-serif;font-size:18px;width:28px;text-align:center">${i+1}</td>
       <td>${name}</td>
@@ -2259,6 +2394,9 @@ function renderOpTotal(key) {
         <div style="width:${bw}px;height:4px;border-radius:2px;background:var(--accent2);min-width:2px"></div>
         <span>${pct}%</span>
       </div></td>
+      <td style="text-align:center;color:${seniorCnt>0?'var(--warn)':'var(--muted)'}">
+        ${seniorCnt>0?'👑 '+seniorCnt:'—'}
+      </td>
     </tr>`;
   });
 
