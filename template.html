@@ -1789,8 +1789,10 @@ let OP_BY_MONTH_DYN = null; // перекроет OP_BY_MONTH
 
 async function loadOperatorData(){
   if(_opLoaded) return;
-  const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
-  const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+  // _AllData_Product знаходиться в ГОЛОВНОМУ файлі (не в Журналах!)
+  const MAIN_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+  const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4'; // Журнал лок1 (fallback)
+  const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI'; // Журнал лок2 (fallback)
   async function fetchCSV(sid,sheet){
     const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
     const r=await fetch(url); if(!r.ok) return [];
@@ -1818,6 +1820,11 @@ async function loadOperatorData(){
       }
     }
     console.log(`parseOps: dataStart=${dataStart} ci_date=${ci_date} ci_op=${ci_op} ci_weight=${ci_weight} total=${rows.length}`);
+    // Debug first 3 data rows
+    for(let di=dataStart;di<Math.min(dataStart+3,rows.length);di++){
+      const dr=rows[di];
+      console.log(`  row[${di}]: date=${JSON.stringify(dr[ci_date])} op=${JSON.stringify(dr[ci_op])} w=${JSON.stringify(dr[ci_weight])}`);
+    }
     for(let i=dataStart;i<rows.length;i++){
       const row=rows[i]; if(!row||row.length<3) continue;
       const dRaw=String(row[ci_date]||'').trim(); if(!dRaw) continue;
@@ -1837,11 +1844,16 @@ async function loadOperatorData(){
     return {allMap,byMonthMap};
   }
   try {
-    console.log('Loading operator data...');
-    let [r1,r2]=await Promise.all([fetchCSV(sid1,'_AllData_Product'),fetchCSV(sid2,'_AllData_Product')]);
-    // Якщо _AllData_Product недоступний — fallback на Аналіз вкладів
-    if(!r1.length) { console.warn('_AllData_Product empty, trying Аналіз вкладів'); r1=await fetchCSV(sid1,'Аналіз вкладів'); }
-    if(!r2.length) { console.warn('_AllData_Product empty loc2, trying Аналіз вкладів'); r2=await fetchCSV(sid2,'Аналіз вкладів'); }
+    console.log('Loading operator data from MAIN_SID...');
+    // Головний файл містить _AllData_Product з ОБОМА локаціями + свіжі дані
+    let r1=await fetchCSV(MAIN_SID,'_AllData_Product');
+    let r2=[]; // обидві локації вже в r1
+    if(!r1.length){
+      // Fallback: Аналіз вкладів з Журналів (тільки старі дані до березня)
+      console.warn('MAIN_SID _AllData_Product empty, trying journals fallback');
+      const [f1,f2]=await Promise.all([fetchCSV(sid1,'Аналіз вкладів'),fetchCSV(sid2,'Аналіз вкладів')]);
+      r1=f1; r2=f2;
+    }
     console.log('Op rows:', r1.length, r2.length);
     const p1=parseOps(r1), p2=parseOps(r2);
     const allMap={}, byMonthMap={};
@@ -1922,10 +1934,13 @@ async function loadSeniorData() {
     return {all, byMonth};
   }
   try {
-    const [r1, r2] = await Promise.all([
-      fetchCSV(sid1, '_AllData_Product'),
-      fetchCSV(sid2, '_AllData_Product'),
-    ]);
+    // Senior data теж у головному файлі
+    const SENIOR_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+    const r_senior = await fetchCSV(SENIOR_SID, '_AllData_Product');
+    const [r1, r2] = r_senior.length ? [r_senior, []] : [
+      await fetchCSV(sid1, '_AllData_Product'),
+      await fetchCSV(sid2, '_AllData_Product'),
+    ];
     const s1 = parseSenior(r1), s2 = parseSenior(r2);
     // Merge
     for(const [name, cnt] of Object.entries(s1.all)) SENIOR_ALL[name]=(SENIOR_ALL[name]||0)+cnt;
@@ -3094,7 +3109,7 @@ async function loadNormsFromSheets(){
       if(!rows||rows.length<2) return {};
       const norms = {}; // line -> { vid -> {date, norm} }
       for(let i=1;i<rows.length;i++){
-        const row=rows[i]; if(!row||row.length<6) continue;
+        const row=rows[i]; if(!row||row.length<4) continue; // Мінімум: дата, лінія, вид
         const dRaw=row[1]; if(!dRaw) continue;
         const d=lParseDate(String(dRaw)); if(!d) continue;
         const line=String(row[2]||'').trim().toUpperCase(); if(!line) continue;
@@ -3113,14 +3128,15 @@ async function loadNormsFromSheets(){
     }
     const [r1,r2]=await Promise.all([fetchCSV(sid1,'НОРМЫ'),fetchCSV(sid2,'НОРМЫ')]);
     const n1=parseNormsRows(r1), n2=parseNormsRows(r2);
-    // Merge (беремо свіжіші)
+    // Merge n1 і n2 — обидва словники вже містять найсвіжіші норми по даті
+    // Просто об'єднуємо (якщо лінія в обох — беремо з n2 як "новіший" журнал для лок2)
     for(const [line,vids] of Object.entries(n1)){
       if(!HM_NORMS[line]) HM_NORMS[line]={};
       for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm;
     }
     for(const [line,vids] of Object.entries(n2)){
       if(!HM_NORMS[line]) HM_NORMS[line]={};
-      for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm;
+      for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm; // n2 перезаписує якщо є свіжіші
     }
     const cnt=Object.values(HM_NORMS).reduce((s,v)=>s+Object.keys(v).length,0);
     if(statusEl) statusEl.textContent=`✓ Норми: ${cnt} записів для ${Object.keys(HM_NORMS).length} ліній`;
