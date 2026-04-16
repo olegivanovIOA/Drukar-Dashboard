@@ -147,15 +147,23 @@ def parse_production_from_alldata(rows):
         # Парсимо дату
         date_val = row[0]
         ym = None
+        date_str = None  # повна дата для ключа унікальності
         if hasattr(date_val, 'strftime'):
             ym = date_val.strftime('%Y-%m')
+            date_str = date_val.strftime('%Y-%m-%d')
+        elif isinstance(date_val, (int, float)) and 40000 < date_val < 60000:
+            from datetime import date as _date, timedelta as _td
+            dt = _date(1899, 12, 30) + _td(days=int(date_val))
+            ym = dt.strftime('%Y-%m')
+            date_str = dt.strftime('%Y-%m-%d')
         elif isinstance(date_val, str) and len(date_val) >= 7:
             try:
                 ym = _dt.strptime(date_val[:10], '%Y-%m-%d').strftime('%Y-%m')
+                date_str = date_val[:10]
             except:
                 try:
-                    # формат dd.mm.yyyy
                     ym = _dt.strptime(date_val[:10], '%d.%m.%Y').strftime('%Y-%m')
+                    date_str = _dt.strptime(date_val[:10], '%d.%m.%Y').strftime('%Y-%m-%d')
                 except: pass
         if not ym or ym < '2025-11': continue
 
@@ -163,8 +171,8 @@ def parse_production_from_alldata(rows):
         line    = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ''  # E=Лінія
         vid     = str(row[5]).strip().upper() if len(row) > 5 and row[5] else ''  # F=Вид
 
-        # Ключ унікальності лінії
-        line_key = (ym, shift, line, vid)
+        # Ключ унікальності: повна дата + зміна + лінія (не місяць!)
+        line_key = (date_str, shift, line)
         if line_key in seen_lines: continue
         seen_lines.add(line_key)
 
@@ -570,7 +578,12 @@ def parse_sales(rows):
     total_ret = sum(monthly_ret.values())
 
     # Best month — динамічно шукаємо максимум по сумі opt+ret
-    best_ym  = max(months_sorted, key=lambda m: monthly_opt.get(m,0)+monthly_ret.get(m,0))
+    # Виключаємо поточний місяць (неповний), якщо він останній
+    from datetime import datetime as _now_dt
+    current_ym = _now_dt.utcnow().strftime('%Y-%m')
+    closed_months = [m for m in months_sorted if m < current_ym]
+    search_months = closed_months if closed_months else months_sorted
+    best_ym  = max(search_months, key=lambda m: monthly_opt.get(m,0)+monthly_ret.get(m,0))
     best_tot = monthly_opt.get(best_ym,0) + monthly_ret.get(best_ym,0)
     best_o   = monthly_opt.get(best_ym,0)
     best_r   = monthly_ret.get(best_ym,0)
