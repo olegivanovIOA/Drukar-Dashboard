@@ -266,17 +266,19 @@
 
   <!-- ══ UTILIZATION HEATMAP ══ -->
   <div class="card" style="margin-top:14px">
-    <div class="card-header">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
       <div>
         <div class="card-title" id="utilTitle">Завантаженість ліній · %</div>
         <div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму · 12 год × 2 зміни × днів у місяці × норма кг/год</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
-        <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#16a34a)"></div>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
-        <div id="utilMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap;margin-left:8px">
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
+        <div id="utilMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
+          <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#16a34a)"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
         </div>
       </div>
     </div>
@@ -1096,12 +1098,13 @@ async function loadProductionCharts(){
     return {petg,pla};
   }
 
+  // SHEET_ID = _AllData_Product (той самий що для HM)
+  const PROD_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
   try{
-    // Аналіз вкладів першим (правильні дані), потім Журнал як fallback
-    let r1=await fetchSheet(sid1,'Аналіз вкладів');
-    if(!r1.length) r1=await fetchSheet(sid1,'Журнал.Локация1');
-    let r2=await fetchSheet(sid2,'Аналіз вкладів');
-    if(!r2.length) r2=await fetchSheet(sid2,'Журнал.Локация2');
+    let r1=await fetchSheet(PROD_SID,'_AllData_Product');
+    // Якщо недоступний — fallback на Аналіз вкладів з Журналів
+    if(!r1.length) r1=await fetchSheet(sid1,'Аналіз вкладів');
+    const r2=[]; // _AllData_Product вже містить обидві локації
     const [r1_,r2_]=[r1,r2];
     const d1=parseVidByMonth(r1_), d2=parseVidByMonth(r2_);
     // Merge both locations
@@ -1151,11 +1154,15 @@ async function loadShiftData(){
       const txt=await r.text(); if(txt.includes('<html')) return [];
       return lParseCSV(txt);
     }
-    // Always use Аналіз вкладів — single header row, clean data, correct shift labels
-    const [r1,r2]=await Promise.all([
-      fetchSheet(sid1,'Аналіз вкладів'),
-      fetchSheet(sid2,'Аналіз вкладів'),
-    ]);
+    // Використовуємо _AllData_Product (містить обидві локації)
+    const SHIFT_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+    let shiftRows=await fetchSheet(SHIFT_SID,'_AllData_Product');
+    if(!shiftRows.length) {
+      // Fallback — Аналіз вкладів з Журналів
+      const [f1,f2]=await Promise.all([fetchSheet(sid1,'Аналіз вкладів'),fetchSheet(sid2,'Аналіз вкладів')]);
+      shiftRows=[...f1,...f2.slice(1)]; // пропускаємо заголовок другого
+    }
+    const [r1,r2]=[shiftRows,[]];
     function calcShifts(rows){
       if(!rows||rows.length<3) return {day:0,night:0};
       // Scan first 3 rows for headers
@@ -1278,13 +1285,15 @@ async function buildHeatmap(){
         return monthly;
       }
 
-      // Аналіз вкладів першим (корректні дані), потім Журнал як fallback
-      let rows1=await fetchSheet(sid1,'Аналіз вкладів');
-      if(!rows1.length||!rows1[0].some(c=>String(c||'').toLowerCase().includes('лін')))
-        rows1=await fetchSheet(sid1,'Журнал.Локация1');
-      let rows2=await fetchSheet(sid2,'Аналіз вкладів');
-      if(!rows2.length||!rows2[0].some(c=>String(c||'').toLowerCase().includes('лін')))
-        rows2=await fetchSheet(sid2,'Журнал.Локация2');
+      // _AllData_Product — єдине джерело правди (містить обидві локації + апрель і далі)
+      const HM_ALLDATA_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+      let rows1=await fetchSheet(HM_ALLDATA_SID,'_AllData_Product');
+      let rows2=[]; // обидві локації вже в rows1
+      // Fallback якщо _AllData_Product недоступний
+      if(!rows1.length){
+        rows1=await fetchSheet(sid1,'Аналіз вкладів');
+        rows2=await fetchSheet(sid2,'Аналіз вкладів');
+      }
 
       const m1=parseJournal(rows1), m2=parseJournal(rows2);
       // Merge
@@ -1534,10 +1543,13 @@ async function buildHeatmapWeekly(monthIdx){
     }
 
     // Завантажуємо дані
-    let rows1=await fetchRows(sid1,'Аналіз вкладів');
-    let rows2=await fetchRows(sid2,'Аналіз вкладів');
-    if(!rows1.length) rows1=await fetchRows(sid1,'Журнал.Локация1');
-    if(!rows2.length) rows2=await fetchRows(sid2,'Журнал.Локация2');
+    const WK_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+    let rows1=await fetchRows(WK_SID,'_AllData_Product');
+    let rows2=[];
+    if(!rows1.length){
+      rows1=await fetchRows(sid1,'Аналіз вкладів');
+      rows2=await fetchRows(sid2,'Аналіз вкладів');
+    }
 
     const w1=parseWeekly(rows1,weeks);
     const w2=parseWeekly(rows2,weeks);
@@ -1792,8 +1804,8 @@ async function loadOperatorData(){
     let dataStart=1, ci_date=0, ci_shift=1, ci_op=2, ci_contrib=3, ci_line=4, ci_weight=7;
     for(let hi=0;hi<Math.min(5,rows.length);hi++){
       const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
-      const hasDate=hdr.some(h=>h==='дата'||h==='date');
-      const hasOp=hdr.some(h=>h.includes('оператор')||h.includes('operator'));
+      const hasDate=hdr.some(h=>h==='дата'||h==='date'||h.includes('дата')||h.includes('date'));
+      const hasOp=hdr.some(h=>h.includes('оператор')||h.includes('operator')||h.includes('oper'));
       if(hasDate||hasOp){
         dataStart=hi+1;
         const iDate=hdr.findIndex(h=>h==='дата'||h==='date'); if(iDate>=0) ci_date=iDate;
@@ -2356,13 +2368,17 @@ async function lFetchSheet(id, sheet, label) {
 
 function lParseDate(raw) {
   if (!raw) return null;
-  const n = parseFloat(raw.replace(',','.'));
+  const s = String(raw).trim();
+  // Excel serial number
+  const n = parseFloat(s.replace(',','.'));
   if (!isNaN(n) && n > 40000 && n < 60000) return lExcelDate(n);
-  const c = raw.replace(/\./g,'-').replace(/\//g,'-');
-  let m = c.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-  m = c.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  // ISO datetime: 2026-04-01 or 2026-04-01T00:00:00 or 2026-04-01 0:00:00
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  // DD.MM.YYYY or DD/MM/YYYY
+  const c = s.replace(/[./]/g,'-').split(' ')[0]; // strip time part
+  m = c.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
   return null;
 }
 
@@ -3137,7 +3153,6 @@ async function buildUtilHeatmap(){
   }
 
   const cols = HM_LABELS.length;
-  // Восстанавливаем YM из HM_LABELS: "Лис 25" → "2025-11" etc.
   const UA_REV = {'Січ':'01','Лют':'02','Бер':'03','Кві':'04','Тра':'05','Чер':'06',
                    'Лип':'07','Сер':'08','Вер':'09','Жов':'10','Лис':'11','Гру':'12'};
   function labelToYm(lbl){
@@ -3147,8 +3162,22 @@ async function buildUtilHeatmap(){
     return mo ? yr+'-'+mo : null;
   }
   const colYms = HM_LABELS.map(labelToYm);
-  const colDays = colYms.map(ym => ym ? daysInMonth(ym) : 30);
+  // Для поточного місяця — тільки до вчорашнього дня
+  const _today = new Date();
+  const _curYm = _today.getFullYear()+'-'+String(_today.getMonth()+1).padStart(2,'0');
+  const _yesterday = _today.getDate() - 1; // скільки днів вже "завершено"
+  const colDays = colYms.map(ym => {
+    if(!ym) return 30;
+    if(ym === _curYm) return Math.max(_yesterday, 1); // поточний місяць: до вчора
+    return daysInMonth(ym);
+  });
 
+  // Субтитл — показуємо якщо поточний місяць обрізаний
+  const _curColIdx = colYms.indexOf(_curYm);
+  if(_curColIdx >= 0 && _yesterday > 0){
+    const subEl = document.getElementById('utilSubtitle');
+    if(subEl) subEl.textContent = `% від теоретичного максимуму · поточний місяць — до ${String(_yesterday).padStart(2,'0')}.${colYms[_curColIdx]?.slice(5,7)}.${colYms[_curColIdx]?.slice(0,4)}`;
+  }
   // Рассчитываем % для каждой линии × месяц
   // Норма: берём из HM_NORMS (середня по всіх видах для лінії), fallback = norm з поля
   function getLineNorm(ln) {
@@ -3156,7 +3185,12 @@ async function buildUtilHeatmap(){
       const vals = Object.values(HM_NORMS[ln]).filter(v=>v>0);
       if(vals.length) return vals.reduce((a,b)=>a+b,0)/vals.length;
     }
-    return 1500; // fallback default
+    // Fallback: середня по всіх відомих лініях (якщо норми завантажені)
+    if(HM_NORMS && Object.keys(HM_NORMS).length > 0) {
+      const allVals = Object.values(HM_NORMS).flatMap(vids=>Object.values(vids)).filter(v=>v>0);
+      if(allVals.length) return allVals.reduce((a,b)=>a+b,0)/allVals.length;
+    }
+    return 151; // абсолютний fallback ~151 кг/зміну
   }
   const utilData = {};
   lines.forEach(ln => {
@@ -3320,6 +3354,22 @@ async function buildUtilHeatmapWeekly(monthIdx){
       return weeks;
     }
     const weeks = getWeeks(parseInt(yr), parseInt(mo));
+    // Для поточного місяця: обрізаємо тижні по "вчора"
+    const _now = new Date();
+    const _curYmW = _now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
+    if(ym === _curYmW){
+      const _ydayStr = new Date(_now - 86400000).toISOString().slice(0,10);
+      // Оновлюємо кінець кожного тижня і видаляємо майбутні
+      for(let wi=weeks.length-1;wi>=0;wi--){
+        if(weeks[wi].from > _ydayStr){ weeks.splice(wi,1); continue; }
+        if(weeks[wi].to > _ydayStr){
+          weeks[wi].to = _ydayStr;
+          const wStart=new Date(weeks[wi].from); const wEnd=new Date(_ydayStr);
+          weeks[wi].days = Math.round((wEnd-wStart)/86400000)+1;
+          weeks[wi].label = weeks[wi].label.replace(/\d+\)/, _ydayStr.slice(8)+')');
+        }
+      }
+    }
 
     const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
     const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
@@ -3351,8 +3401,9 @@ async function buildUtilHeatmapWeekly(monthIdx){
       Object.values(res).forEach(arr=>arr.forEach((_,i)=>{arr[i]=Math.round(arr[i]);}));
       return res;
     }
-    let r1=await fetchR(sid1,'Аналіз вкладів'); if(!r1.length) r1=await fetchR(sid1,'Журнал.Локация1');
-    let r2=await fetchR(sid2,'Аналіз вкладів'); if(!r2.length) r2=await fetchR(sid2,'Журнал.Локация2');
+    const UW_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+    let r1=await fetchR(UW_SID,'_AllData_Product'); let r2=[];
+    if(!r1.length){ r1=await fetchR(sid1,'Аналіз вкладів'); r2=await fetchR(sid2,'Аналіз вкладів'); }
     const w1=parseWk(r1), w2=parseWk(r2);
     const merged={};
     for(const [ln,v] of Object.entries(w1)){if(!merged[ln])merged[ln]=new Array(weeks.length).fill(0);v.forEach((kg,i)=>merged[ln][i]+=kg);}
@@ -3384,7 +3435,9 @@ async function buildUtilHeatmapWeekly(monthIdx){
         prevLoc=loc;
       }
       const kgArr=merged[ln]||new Array(wcols).fill(0);
-      const lineN=HM_NORMS&&HM_NORMS[ln]?Object.values(HM_NORMS[ln]).filter(v=>v>0).reduce((a,b,_,arr)=>a+b/arr.length,0)||norm:norm;
+      const _lineVals=HM_NORMS&&HM_NORMS[ln]?Object.values(HM_NORMS[ln]).filter(v=>v>0):[];
+      const _allNorms=HM_NORMS&&Object.keys(HM_NORMS).length?Object.values(HM_NORMS).flatMap(v=>Object.values(v)).filter(v=>v>0):[];
+      const lineN=_lineVals.length?_lineVals.reduce((a,b)=>a+b,0)/_lineVals.length:(_allNorms.length?_allNorms.reduce((a,b)=>a+b,0)/_allNorms.length:151);
       const pctArr=kgArr.map((kg,i)=>{const maxKg=lineN*2*weeks[i].days;return maxKg?Math.min(Math.round(kg/maxKg*100),999):0;});
       const avg=Math.round(pctArr.reduce((a,b)=>a+b,0)/wcols);
       html+=`<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
