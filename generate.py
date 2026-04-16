@@ -637,8 +637,57 @@ def jv(v):
 def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None):
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
+    # KPI — останній закритий місяць
+    from datetime import datetime as _dt_kpi
+    _cur_ym = _dt_kpi.utcnow().strftime('%Y-%m')
+    _closed = [(i,m) for i,m in enumerate(MONTH_ORDER) if m < _cur_ym and data['total_prod'][i] is not None]
+    if _closed:
+        _ki, _km = _closed[-1]
+        _prev = _closed[-2] if len(_closed)>1 else None
+        _UA = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+               '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+        _by, _bm = _km.split('-')
+        _kpi_label = f"{_UA[_bm]} '{_by[2:]}"
+        _tot = data['total_prod'][_ki] or 0
+        _petg = data['petg_prod'][_ki] or 0
+        _pla = data['pla_prod'][_ki] or 0
+        def _fmt(v): return f"{round(v):,}".replace(',', ' ')
+        if _prev:
+            _pi, _pm = _prev
+            _prev_tot = data['total_prod'][_pi] or 0
+            _prev_petg = data['petg_prod'][_pi] or 0
+            _UA2 = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                    '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+            _py, _pm2 = _pm.split('-')
+            _prev_label = f"{_UA2[_pm2]} '{_py[2:]}"
+            if _prev_tot > 0:
+                _pct = round((_tot - _prev_tot) / _prev_tot * 100, 1)
+                _arrow = '▲' if _pct >= 0 else '▼'
+                _cls = 'delta-up' if _pct >= 0 else 'delta-down'
+                _delta_tot = f"{_arrow} {'+' if _pct>=0 else ''}{_pct}% vs {_prev_label} ({_fmt(_prev_tot)} кг)"
+                _pct_p = round((_petg - _prev_petg) / _prev_petg * 100, 1) if _prev_petg > 0 else 0
+                _arr_p = '▲' if _pct_p >= 0 else '▼'
+                _cls_p = 'delta-up' if _pct_p >= 0 else 'delta-down'
+                _delta_petg = f"{_arr_p} {'+' if _pct_p>=0 else ''}{_pct_p}% vs {_prev_label}"
+            else:
+                _delta_tot = '—'; _cls = 'delta-up'; _delta_petg = '—'; _cls_p = 'delta-up'
+        else:
+            _delta_tot = '—'; _cls = 'delta-up'; _delta_petg = '—'; _cls_p = 'delta-up'
+    else:
+        _kpi_label = '—'; _fmt = lambda v: '—'
+        _tot=_petg=_pla=0; _delta_tot='—'; _cls='delta-up'; _delta_petg='—'; _cls_p='delta-up'
+        _fmt = lambda v: str(round(v))
+
     subs = {
         '{{UPDATED}}':         data['updated'],
+        '{{KPI_MONTH_LABEL}}':  _kpi_label,
+        '{{KPI_TOTAL_KG}}':      _fmt(_tot),
+        '{{KPI_PETG_KG}}':       _fmt(_petg),
+        '{{KPI_PLA_KG}}':        _fmt(_pla),
+        '{{KPI_TOTAL_DELTA}}':   _delta_tot,
+        '{{KPI_TOTAL_DELTA_CLASS}}': _cls,
+        '{{KPI_PETG_DELTA}}':    _delta_petg,
+        '{{KPI_PETG_DELTA_CLASS}}':  _cls_p,
         '{{PETG_PROD}}':       jv(data['petg_prod']),
         '{{PLA_PROD}}':        jv(data['pla_prod']),
         '{{TOTAL_PROD}}':      jv(data['total_prod']),
