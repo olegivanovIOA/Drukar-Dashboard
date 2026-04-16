@@ -950,7 +950,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     {type:'bar',label:'PETG',data:_PETG,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
     {type:'bar',label:'PLA',data:_PLA,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
     {type:'line',label:'Тренд Всього',data:trendline(_TOT),borderColor:'rgba(37,99,235,.6)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' т':v+' кг'},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;if(!v&&v!==0)return null;const t=(v/1000).toFixed(1);const k=v.toLocaleString('uk');return (ctx.dataset.label||'')+': '+t+' т / '+k+' кг';}}}}}}}}});
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' т':v+' кг'},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;if(!v&&v!==0)return null;const t=(v/1000).toFixed(1);const k=v.toLocaleString('uk');return (ctx.dataset.label||'')+': '+t+' т / '+k+' кг';}}}}}}});
   (function(){
     const finLabels=MS.filter((_,i)=>FIN_INCOME[i]!==null);
     const finInc=FIN_INCOME.filter(v=>v!==null);
