@@ -368,6 +368,97 @@ def parse_calc_extended(rows):
     return result
 
 
+
+def parse_lines_heatmap_from_alldata(rows):
+    """
+    Агрегує кг готової продукції по лінії × місяць з _AllData_Product.
+    Структура: A=Дата(0), B=Зміна(1), C=Оператор(2), D=Вклад%(3),
+               E=Лінія(4), F=Вид(5), H=Вес кг(вклад)(7)
+    Локація визначається по LINES_SHEET_ID/LINES_SHEET_ID2 порівнянням.
+    """
+    import re as _re
+    from collections import defaultdict
+    from datetime import date as _date, timedelta, datetime as _dt
+
+    UA_SHORT = {
+        '01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+        '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'
+    }
+
+    if not rows or len(rows) < 2:
+        print("  HM: _AllData_Product empty")
+        return [], {}
+
+    monthly = defaultdict(lambda: defaultdict(float))
+    seen = set()
+
+    for row in rows[1:]:
+        if not row or len(row) < 8: continue
+
+        # Дата
+        date_val = row[0]
+        dt = None; date_str = None
+        if hasattr(date_val, 'strftime'):
+            dt = date_val; date_str = dt.strftime('%Y-%m-%d')
+        elif isinstance(date_val, (int, float)) and 40000 < date_val < 60000:
+            dt = _date(1899, 12, 30) + timedelta(days=int(date_val))
+            date_str = dt.strftime('%Y-%m-%d')
+        elif isinstance(date_val, str):
+            for fmt in ('%d.%m.%Y','%Y-%m-%d'):
+                try:
+                    dt = _dt.strptime(str(date_val)[:10], fmt).date()
+                    date_str = dt.strftime('%Y-%m-%d'); break
+                except: pass
+        if not dt or not date_str: continue
+        ym = date_str[:7]
+        if ym < '2025-11': continue
+
+        shift = str(row[1]).strip() if row[1] else ''
+        line  = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ''
+        if not line: continue
+        m = _re.match(r'.*?(\d+)$', line)
+        if m: line = f'ЛІНІЯ {m.group(1)}'
+
+        # Дедупликація (дата, зміна, лінія)
+        key = (date_str, shift, line)
+        if key in seen: continue
+        seen.add(key)
+
+        try:
+            contrib = float(str(row[3]).replace('%','').replace(',','.').strip())
+            if contrib > 1.5: contrib /= 100.0
+            if contrib <= 0: contrib = 1.0
+        except: contrib = 1.0
+
+        try: weight = float(str(row[7]).replace(',','.').strip()) / contrib
+        except: continue
+        if weight <= 0: continue
+
+        monthly[line][ym] += weight
+
+    if not monthly:
+        print("  HM from _AllData_Product: no data")
+        return [], {}
+
+    all_months = sorted(
+        ym for ym in set(m for d in monthly.values() for m in d)
+        if ym >= '2025-11'
+    )
+
+    hm_labels = [f"{UA_SHORT[ym.split('-')[1]]} {ym.split('-')[0][2:]}" for ym in all_months]
+
+    def line_num(ln):
+        m = _re.search(r'(\d+)', ln)
+        return int(m.group(1)) if m else 999
+
+    hm_data = {}
+    for line in sorted(monthly.keys(), key=line_num):
+        hm_data[line] = [round(monthly[line].get(ym, 0)) for ym in all_months]
+
+    total_kg = sum(sum(v.values()) for v in monthly.values())
+    print(f"  HM from _AllData_Product: {len(hm_data)} lines x {len(all_months)} months, total={round(total_kg):,} kg")
+    return hm_labels, hm_data
+
 def parse_norms(rows):
     """
     Читає лист НОРМЫ з Журнал.Локация1.
@@ -972,12 +1063,8 @@ if __name__ == '__main__':
                     print(f"  Lines HM: '{name}' failed: {e}")
             return []
 
-        SHEET1_CANDIDATES = ["Журнал.Локация1", "Аналіз вкладів", "_AllData"]
-        SHEET2_CANDIDATES = ["Журнал.Локация2", "Аналіз вкладів", "_AllData"]
-
-        rows1 = fetch_lines_sheet(LINES_SHEET_ID,  SHEET1_CANDIDATES)
-        rows2 = fetch_lines_sheet(LINES_SHEET_ID2, SHEET2_CANDIDATES)
-        hm_labels, hm_data = parse_lines_heatmap([rows1, rows2])
+        # Тепловая карта — из _AllData_Product (уже загружен, дедупликация правильная)
+        hm_labels, hm_data = parse_lines_heatmap_from_alldata(prod_rows)
         print(f"  Lines HM result: {len(hm_labels)} months, {len(hm_data)} lines")
         # Читаємо норми з листа НОРМЫ
         try:
