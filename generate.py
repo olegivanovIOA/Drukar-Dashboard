@@ -368,6 +368,62 @@ def parse_calc_extended(rows):
     return result
 
 
+def parse_norms(rows):
+    """
+    Читає лист НОРМЫ з Журнал.Локация1.
+    Структура: B=Дата(1), C=Лінія(2), D=Продукція(3), E=МАКСИМУМ(4), F=Норма готовой прод. кг(5)
+    Повертає dict: {лінія: {вид: норма_кг_за_зміну}}
+    Беремо найсвіжіші норми для кожної пари лінія+вид.
+    """
+    from collections import defaultdict
+    import re as _re
+    from datetime import datetime as _dt, date as _date, timedelta
+
+    if not rows or len(rows) < 2:
+        return {}
+
+    norms = {}  # (line, vid) -> (date, norm_kg)
+
+    for row in rows[1:]:
+        if not row or len(row) < 6: continue
+        # Дата (col B = index 1)
+        date_val = row[1]
+        dt = None
+        if hasattr(date_val, 'strftime'):
+            dt = date_val
+        elif isinstance(date_val, (int, float)) and 40000 < date_val < 60000:
+            dt = _date(1899, 12, 30) + timedelta(days=int(date_val))
+        elif isinstance(date_val, str):
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try: dt = _dt.strptime(str(date_val)[:10], fmt).date(); break
+                except: pass
+        if dt is None: continue
+
+        line = str(row[2]).strip().upper() if row[2] else ''
+        vid  = str(row[3]).strip() if row[3] else ''
+        if not line or not vid: continue
+
+        # Норма готовой прод. кг (col F = index 5)
+        try:
+            norm = float(str(row[5]).replace(',', '.').replace(' ', '').replace('\xa0', ''))
+            if norm <= 0: continue
+        except: continue
+
+        # Беремо найсвіжіші норми
+        key = (line, vid)
+        if key not in norms or dt > norms[key][0]:
+            norms[key] = (dt, norm)
+
+    # Формуємо результат
+    result = {}
+    for (line, vid), (dt, norm) in norms.items():
+        if line not in result: result[line] = {}
+        result[line][vid] = norm
+
+    print(f"  Norms parsed: {sum(len(v) for v in result.values())} entries for {len(result)} lines")
+    return result
+
+
 def parse_lines_heatmap(rows_list):
     """
     Агрегує кг готової продукції по лінії × місяць.
@@ -634,7 +690,8 @@ def jv(v):
 
 
 
-def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None):
+def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None, line_norms=None):
+    if line_norms is None: line_norms = {}
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     # KPI — останній закритий місяць
@@ -706,6 +763,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{CALC_WASTE_PCT}}':  str(calc['waste_pct']),
         '{{CALC_EX_GRANULE}}': str(calc_ext['granule']),
         '{{HM_LABELS}}':       jv(hm_labels or []),
+        '{{HM_NORMS}}':        jv(line_norms or {}),
         '{{HM_DATA}}':         jv(hm_data or {}),
     }
     if sales:
@@ -842,12 +900,19 @@ if __name__ == '__main__':
         rows2 = fetch_lines_sheet(LINES_SHEET_ID2, SHEET2_CANDIDATES)
         hm_labels, hm_data = parse_lines_heatmap([rows1, rows2])
         print(f"  Lines HM result: {len(hm_labels)} months, {len(hm_data)} lines")
+        # Читаємо норми з листа НОРМЫ
+        try:
+            norms_rows = fetch_csv(LINES_SHEET_ID, 'НОРМЫ')
+            line_norms = parse_norms(norms_rows)
+        except Exception as e_n:
+            print(f"  WARNING norms: {e_n}")
+            line_norms = {}
     except Exception as e:
         import traceback
         print(f"WARNING lines heatmap: {e}")
         traceback.print_exc()
 
-    html = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data)
+    html = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data, line_norms)
     with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")

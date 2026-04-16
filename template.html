@@ -28,10 +28,19 @@ function buildUtilHeatmap(){
   const colDays = MONTH_ORDER_UTIL.slice(0, cols).map(ym => daysInMonth(ym));
 
   // Рассчитываем % для каждой линии × месяц
+  // Норма: берём из HM_NORMS (середня по всіх видах для лінії), fallback = norm з поля
+  function getLineNorm(ln) {
+    if(HM_NORMS && HM_NORMS[ln]) {
+      const vals = Object.values(HM_NORMS[ln]).filter(v=>v>0);
+      if(vals.length) return vals.reduce((a,b)=>a+b,0)/vals.length;
+    }
+    return norm; // fallback to manual input
+  }
   const utilData = {};
   lines.forEach(ln => {
+    const lineNorm = getLineNorm(ln);
     utilData[ln] = HM_DATA[ln].map((kg, i) => {
-      const maxKg = norm * 2 * colDays[i];
+      const maxKg = lineNorm * 2 * colDays[i];
       if(!maxKg) return 0;
       return Math.min(Math.round(kg / maxKg * 100), 999);
     });
@@ -416,7 +425,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
   <button class="tab active" onclick="switchTab('overview',this)">Огляд</button>
   <button class="tab" onclick="switchTab('production',this)">Виробництво</button>
   <button class="tab" onclick="switchTab('quality',this)">Якість</button>
-  <button class="tab" onclick="switchTab('costs',this)">Фінанси</button>
+  <button class="tab" onclick="switchTab('costs',this)">Собівартість</button>
   <button class="tab" onclick="switchTab('operators',this)">Оператори</button>
   <button class="tab" onclick="switchTab('calculator',this)">🧮 Калькулятор</button>
   <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
@@ -610,22 +619,28 @@ async function buildUtilHeatmapWeekly(monthIdx){
   <div class="section-title">Аналіз операторів</div>
   <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">МІСЯЦЬ:</span>
+    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">РІК:</span>
+      <button class="month-btn" onclick="opFilterYear('all',this)" id="opYearAll" style="font-size:10px">Всі</button>
+      <button class="month-btn" onclick="opFilterYear('2025',this)" id="opYear2025" style="font-size:10px">2025</button>
+      <button class="month-btn active" onclick="opFilterYear('2026',this)" id="opYear2026" style="font-size:10px">2026</button>
+    </div>
     <div class="month-switcher" style="margin-bottom:0" id="opMonthSwitcher">
       <button class="month-btn active" onclick="setOpMonth('all',this)">Всі місяці</button>
-      <button class="month-btn" onclick="setOpMonth('2025-11',this)">Лис 25</button>
-      <button class="month-btn" onclick="setOpMonth('2025-12',this)">Гру 25</button>
-      <button class="month-btn" onclick="setOpMonth('2026-01',this)">Січ 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-02',this)">Лют 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-03',this)">Бер 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-04',this)">Кві 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-05',this)">Тра 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-06',this)">Чер 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-07',this)">Лип 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-08',this)">Сер 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-09',this)">Вер 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-10',this)">Жов 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-11',this)">Лис 26</button>
-      <button class="month-btn" onclick="setOpMonth('2026-12',this)">Гру 26</button>
+      <button class="month-btn" onclick="setOpMonth('2025-11',this)" data-year="2025" style="display:none">Лис 25</button>
+      <button class="month-btn" onclick="setOpMonth('2025-12',this)" data-year="2025" style="display:none">Гру 25</button>
+      <button class="month-btn" onclick="setOpMonth('2026-01',this)" data-year="2026">Січ 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-02',this)" data-year="2026">Лют 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-03',this)" data-year="2026">Бер 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-04',this)" data-year="2026">Кві 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-05',this)" data-year="2026">Тра 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-06',this)" data-year="2026">Чер 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-07',this)" data-year="2026">Лип 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-08',this)" data-year="2026">Сер 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-09',this)" data-year="2026">Вер 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-10',this)" data-year="2026">Жов 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-11',this)" data-year="2026">Лис 26</button>
+      <button class="month-btn" onclick="setOpMonth('2026-12',this)" data-year="2026">Гру 26</button>
     </div>
     <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-left:16px">ВИГЛЯД:</span>
     <div class="month-switcher" style="margin-bottom:0" id="opViewSwitcher">
@@ -711,6 +726,17 @@ async function buildUtilHeatmapWeekly(monthIdx){
       </select>
     </div>
     <button class="lines-btn" id="lBtnRun" onclick="lRunAnalysis()">▶ АНАЛІЗ</button>
+  </div>
+  <!-- Фільтр по лініях -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 20px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Лінії:</span>
+    <button class="topn-btn active" onclick="lSelectAllLines(this)" id="lLineAll" style="font-size:10px">ВСІ</button>
+    <button class="topn-btn" onclick="lSelectLocLines('1',this)" style="font-size:10px">ЛОК. 1</button>
+    <button class="topn-btn" onclick="lSelectLocLines('2',this)" style="font-size:10px">ЛОК. 2</button>
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+    <div id="lLineCheckboxes" style="display:flex;gap:6px;flex-wrap:wrap">
+      <!-- Заповнюється динамічно після завантаження даних -->
+    </div>
   </div>
 
   <div class="lines-topn">
@@ -1199,6 +1225,7 @@ const OP_ALL=[["Щербакова Олена",10223.1],["Макалюк Вік�
 const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Макалюк Володимир",2448.5],["Бондарчук Дмитро",2066.1],["Щербакова Олена",1613.7],["Ременчук Юлія",1548.2],["Бараш Костянтин",1287.6],["Степанчук Владислав",1054.1],["Борисов Дмитро",103.4]],"2025-12":[["Ременчук Юлія",2641.3],["Макалюк Володимир",2398.3],["Бараш Костянтин",2281.3],["Щербакова Олена",2171.2],["Пінчук Олександр",1476.7],["Макалюк Вікторія",1412.8],["Бондарчук Дмитро",1212.4],["Пивовар Олександр",838.1],["Борисов Дмитро",169.5]],"2026-01":[["Макалюк Вікторія",2468.8],["Щербакова Олена",2337.1],["Макалюк Володимир",1901.9],["Ременчук Юлія",1524.8],["Бараш Костянтин",1477.4],["Пивовар Олександр",1297.3],["Гарбар Денис",577.8],["Пінчук Олександр",522.5],["Нужда Олексій",322.3]],"2026-02":[["Щербакова Олена",2384.7],["Бараш Костянтин",2077.3],["Макалюк Вікторія",1859.0],["Макалюк Володимир",1541.6],["Гарбар Денис",1518.9],["Пивовар Олександр",1517.9],["Ременчук Юлія",1516.7],["Нужда Олексій",1368.7],["Пінчук Олександр",1226.8],["Хімич Богдан",314.8],["Борисов Дмитро",99.7]],"2026-03":[["Щербакова Олена",1716.4],["Гарбар Денис",1229.4],["Криволапчук Олександр",1192.2],["Макалюк Вікторія",1114.1],["Макалюк Володимир",1110.2],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Ременчук Юлія",1073.3],["Пивовар Олександр",1007.9],["Бараш Костянтин",980.2],["Хімич Богдан",868.9],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Нужда Олексій",811.9],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6]]};
 const HM_LABELS={{HM_LABELS}};
 const HM_DATA={{HM_DATA}};
+const HM_NORMS={{HM_NORMS}}; // {line: {vid: norm_kg_per_shift}}
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
@@ -1216,7 +1243,19 @@ function trendline(data){
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}location.hash=id;}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){renderOpTotal('all'); document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');}else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}else if(id==='okr'){initOkr();}}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){
+    // Ставимо останній повний місяць (або 'all' якщо немає даних)
+    const opMonths = Object.keys(OP_BY_MONTH).sort();
+    const curYm = new Date().toISOString().slice(0,7);
+    const closedOp = opMonths.filter(m=>m<curYm);
+    const defOp = closedOp.length ? closedOp[closedOp.length-1] : 'all';
+    renderOpTotal(defOp);
+    const opBtns = document.querySelectorAll('#opMonthSwitcher .month-btn');
+    opBtns.forEach(b=>{
+      const isDefault = defOp==='all' ? b.getAttribute('onclick')?.includes("'all'") : b.getAttribute('onclick')?.includes("'"+defOp+"'");
+      if(isDefault) b.classList.add('active'); else b.classList.remove('active');
+    });
+  }else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}else if(id==='okr'){initOkr();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
@@ -1261,7 +1300,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 function initProduction(){
   // PETG/PLA charts built dynamically after data load (see loadProductionCharts)
   loadProductionCharts();
-  buildUtilHeatmap();
+  // buildUtilHeatmap called inside buildHeatmap after data loads
   const lns=[{"n":"ЛІНІЯ 1","kg":37510.8},{"n":"ЛІНІЯ 2","kg":17030.1},{"n":"ЛІНІЯ 8","kg":6511.4},{"n":"ЛІНІЯ 3","kg":5824.3},{"n":"ЛІНІЯ 4","kg":5001.8},{"n":"ЛІНІЯ 6","kg":2844.5},{"n":"ЛІНІЯ 5","kg":2337.1},{"n":"ЛІНІЯ 7","kg":907.0}];
   new Chart(document.getElementById('lineChart'),{type:'bar',data:{labels:lns.map(l=>l.n),datasets:[{label:'кг',data:lns.map(l=>l.kg),backgroundColor:lns.map((_,i)=>`rgba(71,180,255,${0.85-i*0.1})`),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   buildHeatmap();
@@ -1610,7 +1649,19 @@ async function buildHeatmap(){
       btn.onclick=function(){onHmMonthChange(String(i),this);};
       btnWrap.appendChild(btn);
     });
+    // Також наповнюємо utilMonthBtns
+    const uBtnWrap=document.getElementById('utilMonthBtns');
+    if(uBtnWrap && uBtnWrap.children.length<=1){
+      HM_LABELS.forEach((lbl,i)=>{
+        const ub=document.createElement('button');
+        ub.className='month-btn'; ub.style.cssText='font-size:9px;padding:3px 8px';
+        ub.textContent=lbl; ub.onclick=function(){onUtilMonthChange(String(i),this);};
+        uBtnWrap.appendChild(ub);
+      });
+    }
   }
+  // Після завантаження даних рендеримо і utilization heatmap
+  buildUtilHeatmap();
 }
 
 // ── Обробник зміни місяця ──────────────────────────────────────
@@ -1840,7 +1891,7 @@ async function buildHeatmapWeekly(monthIdx){
 }
 
 function initQuality(){
-  new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
 }
 function initCosts(){
@@ -1859,6 +1910,19 @@ function initCosts(){
   new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.2/50)*50:600;})(),min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
 }
 function setCostMonth(key,btn){document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const d=COSTS[key];const tbody=document.getElementById('costTableBody');tbody.innerHTML='';d.items.forEach(([name,sum,pct])=>{tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;});tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;if(costCI)costCI.destroy();costCI=new Chart(document.getElementById('costBreakChart'),{type:'bar',data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:['#2563eb','#2563eb','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'],borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...GR,ticks:{...GR.ticks,callback:v=>v+'%'}},y:{...GR,ticks:{...GR.ticks,font:{size:9}}}}}});}
+function opFilterYear(year, btn){
+  ['opYearAll','opYear2025','opYear2026'].forEach(id=>{
+    const b=document.getElementById(id); if(b) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  document.querySelectorAll('#opMonthSwitcher .month-btn[data-year]').forEach(b=>{
+    b.style.display=(year==='all'||b.dataset.year===year)?'':'none';
+  });
+  document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('#opMonthSwitcher .month-btn').classList.add('active');
+  renderOpTotal('all');
+}
+
 function setOpMonth(key, btn) {
   document.querySelectorAll('#opMonthSwitcher .month-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -2236,6 +2300,59 @@ function renderOpTotal(key) {
 })();
 
 let lAllData = [], lTopN = 1, lLoading = false;
+let lSelectedLines = new Set(); // пустой = все линии
+
+function lGetSelectedLines(){
+  return lSelectedLines.size === 0 ? null : lSelectedLines;
+}
+
+function lBuildLineCheckboxes(lines){
+  const wrap = document.getElementById('lLineCheckboxes');
+  if(!wrap) return;
+  const allLines = [...new Set(lines.map(r=>r.line))].sort((a,b)=>{
+    const na=parseInt(a.match(/\d+/)||0), nb=parseInt(b.match(/\d+/)||0);
+    return na-nb;
+  });
+  wrap.innerHTML = allLines.map(ln=>`
+    <button class="topn-btn ${lSelectedLines.size===0||lSelectedLines.has(ln)?'active':''}"
+      onclick="lToggleLine('${ln}',this)" style="font-size:10px">${ln.replace('ЛІНІЯ ','Л')}</button>
+  `).join('');
+}
+
+function lToggleLine(ln, btn){
+  if(lSelectedLines.has(ln)){
+    lSelectedLines.delete(ln);
+    btn.classList.remove('active');
+  } else {
+    lSelectedLines.add(ln);
+    btn.classList.add('active');
+  }
+  // Оновлюємо стан кнопки ВСІ
+  const allBtn = document.getElementById('lLineAll');
+  if(allBtn) allBtn.classList.toggle('active', lSelectedLines.size===0);
+  if(lAllData.length) lRender();
+}
+
+function lSelectAllLines(btn){
+  lSelectedLines.clear();
+  document.getElementById('lLineAll').classList.add('active');
+  document.querySelectorAll('#lLineCheckboxes .topn-btn').forEach(b=>b.classList.add('active'));
+  if(lAllData.length) lRender();
+}
+
+function lSelectLocLines(loc, btn){
+  // Знаходимо лінії локації
+  const locLines = [...new Set(lAllData
+    .filter(r=>r.loc&&r.loc.includes(loc))
+    .map(r=>r.line))];
+  lSelectedLines = new Set(locLines);
+  document.getElementById('lLineAll').classList.remove('active');
+  document.querySelectorAll('#lLineCheckboxes .topn-btn').forEach(b=>{
+    const ln = 'ЛІНІЯ ' + b.textContent.replace('Л','');
+    b.classList.toggle('active', lSelectedLines.has(ln) || locLines.some(l=>b.textContent===l.replace('ЛІНІЯ ','Л')));
+  });
+  if(lAllData.length) lRender();
+}
 
 function lSetTopN(n, btn) {
   lTopN = n;
@@ -2350,31 +2467,31 @@ async function lRunAnalysis() {
   try { d1 = await lFetchSheet(id1, sheet, name1); } catch(e) { errors.push(e.message); }
   try { d2 = await lFetchSheet(id2, sheet, 'Локація 2'); } catch(e) { errors.push(e.message); }
   lAllData = [...d1, ...d2];
-  const filtered = lAllData.filter(r => {
+  lBuildLineCheckboxes(lAllData);
+  const filtered = lFilterData(lAllData, dateFrom, dateTo, vid);
+  lLoading = false;
+  btn.disabled = false; btn.textContent = '▶ АНАЛІЗ';
+  lRenderResults(filtered, errors);
+}
+
+function lFilterData(data, dateFrom, dateTo, vid) {
+  const selLines = lGetSelectedLines();
+  return data.filter(r => {
     if (dateFrom && r.date < dateFrom) return false;
     if (dateTo   && r.date > dateTo)   return false;
+    if (selLines && !selLines.has(r.line)) return false;
     if (vid === 'ALL') return true;
     if (vid === 'PETG') return r.vid.toUpperCase().startsWith('PETG');
     if (vid === 'PLA')  return r.vid.toUpperCase().startsWith('PLA');
     return r.vid.toUpperCase() === vid.toUpperCase();
   });
-  lLoading = false;
-  btn.disabled = false; btn.textContent = '▶ АНАЛІЗ';
-  lRenderResults(filtered, errors);
 }
 
 function lRender() {
   const dateFrom = document.getElementById('lDateFrom').value;
   const dateTo   = document.getElementById('lDateTo').value;
   const vid      = document.getElementById('lVid').value;
-  const filtered = lAllData.filter(r => {
-    if (dateFrom && r.date < dateFrom) return false;
-    if (dateTo   && r.date > dateTo)   return false;
-    if (vid === 'ALL') return true;
-    if (vid === 'PETG') return r.vid.toUpperCase().startsWith('PETG');
-    if (vid === 'PLA')  return r.vid.toUpperCase().startsWith('PLA');
-    return r.vid.toUpperCase() === vid.toUpperCase();
-  });
+  const filtered = lFilterData(lAllData, dateFrom, dateTo, vid);
   lRenderResults(filtered, []);
 }
 
@@ -2680,13 +2797,15 @@ function initOkr() {
     peopleEl.innerHTML = '<div style="padding:20px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted)">Немає даних по людях</div>';
     return;
   }
-  const maxRealized = Math.max(...OKR_PEOPLE.map(p => p.realized_pct), 1);
+  const sortedPeople = [...OKR_PEOPLE].sort((a,b) => b.score - a.score);
+  const maxScore = Math.max(...sortedPeople.map(p => p.score), 0.001);
+  const maxRealized = Math.max(...sortedPeople.map(p => p.realized_pct), 1);
   peopleEl.innerHTML = `<table><thead><tr>
-    <th>#</th><th>Учасник</th><th>Реаліз. потенціалу</th><th style="text-align:right">%</th><th style="text-align:right">Абс. вклад</th>
+    <th>#</th><th>Учасник</th><th>Абс. вклад (score)</th><th style="text-align:right">Реаліз. %</th><th style="text-align:right">Score</th>
   </tr></thead><tbody>` +
-  OKR_PEOPLE.map((p, i) => {
+  sortedPeople.map((p, i) => {
     const color = p.realized_pct >= 75 ? 'var(--good)' : p.realized_pct >= 25 ? 'var(--accent)' : 'var(--muted)';
-    const barW = maxRealized > 0 ? (p.realized_pct / maxRealized * 100).toFixed(1) : 0;
+    const barW = maxScore > 0 ? (p.score / maxScore * 100).toFixed(1) : 0;
     return `<tr>
       <td style="color:var(--muted)">${i+1}</td>
       <td style="color:var(--text);font-weight:600">${p.name}</td>
