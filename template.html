@@ -970,8 +970,8 @@ function initTab(id){if(id==='production')initProduction();else if(id==='quality
     const curYm = new Date().toISOString().slice(0,7);
     const closedOp = opMonths.filter(m=>m<curYm);
     const defOp = closedOp.length ? closedOp[closedOp.length-1] : 'all';
-    loadSeniorData();
-    loadOperatorData().then(()=>{
+    // Чекаємо на ОБА завантаження перед рендером
+    Promise.all([loadSeniorData(), loadOperatorData()]).then(()=>{
       // Після завантаження — визначаємо дефолтний місяць по СВІЖИХ даних
       const dynMonths = OP_BY_MONTH_DYN ? Object.keys(OP_BY_MONTH_DYN).sort() : [];
       const allOpMonths = [...new Set([...Object.keys(OP_BY_MONTH), ...dynMonths])].sort();
@@ -1728,7 +1728,15 @@ function setOpMonth(key, btn) {
   if (curOpView === 'shift') {
     renderShiftView(key);
   } else {
-    renderOpTotal(key);
+    // Якщо дані ще вантажяться — дочекатись і перерендерити
+    if(!_opLoaded || !_seniorLoaded){
+      Promise.all([
+        _opLoaded ? Promise.resolve() : loadOperatorData(),
+        _seniorLoaded ? Promise.resolve() : loadSeniorData()
+      ]).then(()=>renderOpTotal(key));
+    } else {
+      renderOpTotal(key);
+    }
   }
 }
 
@@ -1906,31 +1914,59 @@ async function loadSeniorData() {
     return lParseCSV(txt);
   }
   function parseSenior(rows) {
-    // _AllData_Product: A=Дата(0), B=Зміна(1), E=Лінія(4), R=Старший зміни(17)
+    // _AllData_Product: col17 = 1 (прапорець) означає що col2 (Оператор) є Старшим зміни
+    // Дедупліцюємо по (дата, зміна, оператор) — не по лінії
+    // Автодетекція заголовку
     const all = {}, byMonth = {};
-    const seen = new Set(); // dedup: (ym, shift, line) — один старший на зміну-лінію
+    const seen = new Set();
     if(!rows||rows.length<2) return {all, byMonth};
-    for(let i=1;i<rows.length;i++){
-      const row = rows[i]; if(!row||row.length<18) continue;
-      // Дата
-      const dRaw = row[0];
-      const d = dRaw ? lParseDate(String(dRaw)) : null;
-      if(!d) continue;
+    // Знайдемо колонки
+    let ci_date=0, ci_shift=1, ci_op=2, ci_senior=17, dataStart=1;
+    for(let hi=0;hi<Math.min(5,rows.length);hi++){
+      const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
+      if(hdr.some(h=>h.includes('дата')||h==='date')){
+        dataStart=hi+1;
+        const iD=hdr.findIndex(h=>h.includes('дата')||h==='date'); if(iD>=0) ci_date=iD;
+        const iS=hdr.findIndex(h=>h.includes('смен')||h.includes('зміна')); if(iS>=0) ci_shift=iS;
+        const iO=hdr.findIndex(h=>h.includes('оператор')); if(iO>=0) ci_op=iO;
+        const iSr=hdr.findIndex(h=>h.includes('старший')); if(iSr>=0) ci_senior=iSr;
+        break;
+      }
+    }
+    for(let i=dataStart;i<rows.length;i++){
+      const row = rows[i]; if(!row||row.length<3) continue;
+      const dRaw = String(row[ci_date]||'').trim(); if(!dRaw) continue;
+      const d = lParseDate(dRaw); if(!d) continue;
       const ym = d.slice(0,7);
       if(ym < '2025-11') continue;
-      const shift = String(row[1]||'').trim();
-      const line  = String(row[4]||'').trim().toUpperCase();
-      const senior = String(row[17]||'').trim();
-      if(!senior || senior === '0' || senior === 'null') continue;
-      // Дедупликація — один старший на (дата, зміна, лінія)
-      const key = d+'|'+shift+'|'+line;
+      // col ci_senior може бути:
+      //   1) ім'я рядком "Іванов Іван" → це і є старший
+      //   2) числовий флаг 1 / TRUE → старший = col ci_op (поточний оператор)
+      //   3) 0 / FALSE / пусто → не старший
+      const seniorRaw = String(row[ci_senior]||'').trim();
+      if(!seniorRaw || seniorRaw==='0' || seniorRaw.toLowerCase()==='false' || seniorRaw==='') continue;
+      const seniorNum = parseFloat(seniorRaw);
+      let seniorName;
+      if(!isNaN(seniorNum)){
+        // Числовий флаг: 1=TRUE, 0=FALSE
+        if(seniorNum !== 1) continue;
+        // Ім'я = поточний оператор
+        seniorName = String(row[ci_op]||'').trim();
+      } else {
+        // Рядок з ім'ям — використовуємо напряму (наприклад "Сорока Ігор")
+        seniorName = seniorRaw;
+      }
+      if(!seniorName || seniorName==='null' || seniorName.includes('IFERROR')) continue;
+      const shift = String(row[ci_shift]||'').trim();
+      // Дедупліцюємо по (дата, зміна, ім'я старшого)
+      const key = d+'|'+shift+'|'+seniorName;
       if(seen.has(key)) continue;
       seen.add(key);
-      // Рахуємо
-      all[senior] = (all[senior]||0) + 1;
+      all[seniorName] = (all[seniorName]||0) + 1;
       if(!byMonth[ym]) byMonth[ym] = {};
-      byMonth[ym][senior] = (byMonth[ym][senior]||0) + 1;
+      byMonth[ym][seniorName] = (byMonth[ym][seniorName]||0) + 1;
     }
+    console.log('Senior shifts:', Object.entries(byMonth).map(([m,d])=>`${m}:${Object.values(d).reduce((a,b)=>a+b,0)}`).join(', '));
     return {all, byMonth};
   }
   try {
