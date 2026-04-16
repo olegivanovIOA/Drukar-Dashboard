@@ -6,14 +6,72 @@
 <title>DRUKAR — Виробничий Дашборд</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
 // ══════════════ UTILIZATION HEATMAP ══════════════
-function buildUtilHeatmap(){
-  const norm = parseFloat(document.getElementById('utilNorm')?.value) || 1500;
+
+// Завантаження норм з листа НОРМЫ
+async function loadNormsFromSheets(){
+  const statusEl = document.getElementById('utilNormStatus');
+  const sid1 = '1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
+  const sid2 = '1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+  try {
+    async function fetchCSV(sid, sheet){
+      const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+      const r=await fetch(url); if(!r.ok) return [];
+      const txt=await r.text(); if(txt.includes('<html')) return [];
+      return lParseCSV(txt);
+    }
+    // Парсимо НОРМЫ: B=Дата(1), C=Лінія(2), D=Продукція(3), F=Норма готовой прод. кг(5)
+    function parseNormsRows(rows){
+      if(!rows||rows.length<2) return {};
+      const norms = {}; // line -> { vid -> {date, norm} }
+      for(let i=1;i<rows.length;i++){
+        const row=rows[i]; if(!row||row.length<6) continue;
+        const dRaw=row[1]; if(!dRaw) continue;
+        const d=lParseDate(String(dRaw)); if(!d) continue;
+        const line=String(row[2]||'').trim().toUpperCase(); if(!line) continue;
+        const vid=String(row[3]||'').trim(); if(!vid) continue;
+        let norm=parseFloat(String(row[5]||'').replace(',','.')); if(!norm||norm<=0) continue;
+        if(!norms[line]) norms[line]={};
+        if(!norms[line][vid]||d>norms[line][vid].d) norms[line][vid]={d,norm};
+      }
+      // Flatten: line -> vid -> norm_kg
+      const result={};
+      for(const [line,vids] of Object.entries(norms)){
+        result[line]={};
+        for(const [vid,{norm}] of Object.entries(vids)) result[line][vid]=norm;
+      }
+      return result;
+    }
+    const [r1,r2]=await Promise.all([fetchCSV(sid1,'НОРМЫ'),fetchCSV(sid2,'НОРМЫ')]);
+    const n1=parseNormsRows(r1), n2=parseNormsRows(r2);
+    // Merge (беремо свіжіші)
+    for(const [line,vids] of Object.entries(n1)){
+      if(!HM_NORMS[line]) HM_NORMS[line]={};
+      for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm;
+    }
+    for(const [line,vids] of Object.entries(n2)){
+      if(!HM_NORMS[line]) HM_NORMS[line]={};
+      for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm;
+    }
+    const cnt=Object.values(HM_NORMS).reduce((s,v)=>s+Object.keys(v).length,0);
+    if(statusEl) statusEl.textContent=`✓ Норми: ${cnt} записів для ${Object.keys(HM_NORMS).length} ліній`;
+    console.log('Norms loaded:', HM_NORMS);
+  } catch(e) {
+    if(statusEl) statusEl.textContent='⚠ Норми: помилка завантаження, fallback 1500 кг';
+    console.warn('loadNormsFromSheets:', e);
+  }
+}
+
+async function buildUtilHeatmap(){
   const wrap = document.getElementById('utilHeatmapWrap');
   if(!wrap) return;
   const lines = Object.keys(HM_DATA);
   if(!lines.length || !HM_LABELS.length){
-    wrap.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:16px">Немає даних</div>';
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:16px">Немає даних теплової карти</div>';
     return;
+  }
+  // Якщо норми не завантажені з generate.py — завантажуємо з Sheets
+  if(!HM_NORMS || !Object.keys(HM_NORMS).length){
+    await loadNormsFromSheets();
   }
 
   // Кількість днів у кожному місяці
@@ -44,7 +102,7 @@ function buildUtilHeatmap(){
       const vals = Object.values(HM_NORMS[ln]).filter(v=>v>0);
       if(vals.length) return vals.reduce((a,b)=>a+b,0)/vals.length;
     }
-    return norm; // fallback to manual input
+    return 1500; // fallback default
   }
   const utilData = {};
   lines.forEach(ln => {
@@ -167,7 +225,7 @@ function onUtilMonthChange(val, btn){
 }
 
 async function buildUtilHeatmapWeekly(monthIdx){
-  const norm = parseFloat(document.getElementById('utilNorm')?.value) || 1500;
+  const norm = 1500; // fallback, реальні норми беруться з HM_NORMS
   const wrap = document.getElementById('utilHeatmapWrap');
   if(!wrap) return;
   const MONTH_ORDER_UTIL = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04',
@@ -435,7 +493,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 16.04.2026 08:47 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 16.04.2026 08:55 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -571,11 +629,8 @@ async function buildUtilHeatmapWeekly(monthIdx){
       </div>
     </div>
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">НОРМА КГ/ЗМІНУ:</span>
-      <input id="utilNorm" type="number" value="1500" min="100" max="5000" step="50"
-        style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;width:80px;outline:none"
-        oninput="buildUtilHeatmap()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">кг × 2 зміни × днів = теоретичний макс/місяць</span>
+      <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">⟳ Завантаження норм...</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">Норми беруться з листа НОРМЫ · Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%</span>
     </div>
     <div id="utilHeatmapWrap"></div>
     <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
@@ -1241,8 +1296,8 @@ const COSTS={
 };
 const OP_ALL=[["Щербакова Олена",10223.1],["Макалюк Вікторія",9466.3],["Макалюк Володимир",9400.6],["Ременчук Юлія",8304.3],["Бараш Костянтин",8103.8],["Пивовар Олександр",4661.2],["Гарбар Денис",3326.1],["Бондарчук Дмитро",3278.5],["Пінчук Олександр",3226.0],["Нужда Олексій",2502.9],["Криволапчук Олександр",1192.2],["Хімич Богдан",1183.7],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Степанчук Владислав",1054.1],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6],["Борисов Дмитро",372.5]];
 const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Макалюк Володимир",2448.5],["Бондарчук Дмитро",2066.1],["Щербакова Олена",1613.7],["Ременчук Юлія",1548.2],["Бараш Костянтин",1287.6],["Степанчук Владислав",1054.1],["Борисов Дмитро",103.4]],"2025-12":[["Ременчук Юлія",2641.3],["Макалюк Володимир",2398.3],["Бараш Костянтин",2281.3],["Щербакова Олена",2171.2],["Пінчук Олександр",1476.7],["Макалюк Вікторія",1412.8],["Бондарчук Дмитро",1212.4],["Пивовар Олександр",838.1],["Борисов Дмитро",169.5]],"2026-01":[["Макалюк Вікторія",2468.8],["Щербакова Олена",2337.1],["Макалюк Володимир",1901.9],["Ременчук Юлія",1524.8],["Бараш Костянтин",1477.4],["Пивовар Олександр",1297.3],["Гарбар Денис",577.8],["Пінчук Олександр",522.5],["Нужда Олексій",322.3]],"2026-02":[["Щербакова Олена",2384.7],["Бараш Костянтин",2077.3],["Макалюк Вікторія",1859.0],["Макалюк Володимир",1541.6],["Гарбар Денис",1518.9],["Пивовар Олександр",1517.9],["Ременчук Юлія",1516.7],["Нужда Олексій",1368.7],["Пінчук Олександр",1226.8],["Хімич Богдан",314.8],["Борисов Дмитро",99.7]],"2026-03":[["Щербакова Олена",1716.4],["Гарбар Денис",1229.4],["Криволапчук Олександр",1192.2],["Макалюк Вікторія",1114.1],["Макалюк Володимир",1110.2],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Ременчук Юлія",1073.3],["Пивовар Олександр",1007.9],["Бараш Костянтин",980.2],["Хімич Богдан",868.9],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Нужда Олексій",811.9],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6]]};
-const HM_LABELS=[];
-const HM_DATA={};
+const HM_LABELS=["Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26"];
+const HM_DATA={"ЛІНІЯ 1":[7494,8937,8108,8058,7956,4389],"ЛІНІЯ 2":[5591,5592,1344,2499,4976,2425],"ЛІНІЯ 3":[5111,3642,161,3936,5118,3066],"ЛІНІЯ 4":[3598,3171,3976,4180,5086,2497],"ЛІНІЯ 5":[0,5019,4748,6938,6645,3726],"ЛІНІЯ 6":[0,0,5726,6624,6664,3461],"ЛІНІЯ 7":[0,0,0,0,3339,2778],"ЛІНІЯ 8":[0,0,0,0,6092,2784]};
 const HM_NORMS={"ЛІНІЯ 1":{"PETG 2.5":151.0,"PETG 3.0":154.0},"ЛІНІЯ 2":{"PLA 3.0":97.0,"PETG 3.0":128.0,"PLA 2.5":87.0},"ЛІНІЯ 3":{"PETG 2.5":123.2,"PETG 3.0":107.0,"PETG 3.0 RED":123.2,"PLA 3.0":115.0},"ЛІНІЯ 4":{"PLA 3.0":145.0,"PETG 3.0":98.0,"PLA 2.5":90.2},"ЛІНІЯ 5":{"PETG 3.0":144.0},"ЛІНІЯ 6":{"PETG 3.0":141.0}}; // {line: {vid: norm_kg_per_shift}}
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
@@ -1267,7 +1322,7 @@ function initTab(id){if(id==='production')initProduction();else if(id==='quality
     const curYm = new Date().toISOString().slice(0,7);
     const closedOp = opMonths.filter(m=>m<curYm);
     const defOp = closedOp.length ? closedOp[closedOp.length-1] : 'all';
-    loadSeniorData(); renderOpTotal(defOp);
+    loadOperatorData().then(()=>renderOpTotal(defOp)); loadSeniorData();
     const opBtns = document.querySelectorAll('#opMonthSwitcher .month-btn');
     opBtns.forEach(b=>{
       const isDefault = defOp==='all' ? b.getAttribute('onclick')?.includes("'all'") : b.getAttribute('onclick')?.includes("'"+defOp+"'");
@@ -2049,6 +2104,82 @@ function calcUpdate(){
 }
 
 // ═══════════════════════ SHIFT DATA ═══════════════════════
+
+// Динамическая загрузка данных операторов из _AllData_Product
+let _opLoaded = false;
+let OP_ALL_DYN = null;      // перекроет OP_ALL после загрузки
+let OP_BY_MONTH_DYN = null; // перекроет OP_BY_MONTH
+
+async function loadOperatorData(){
+  if(_opLoaded) return;
+  const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
+  const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+  async function fetchCSV(sid,sheet){
+    const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+    const r=await fetch(url); if(!r.ok) return [];
+    const txt=await r.text(); if(txt.includes('<html')) return [];
+    return lParseCSV(txt);
+  }
+  function parseOps(rows){
+    // _AllData_Product: A=Дата(0), B=Зміна(1), C=Оператор(2), D=Вклад%(3), E=Лінія(4), H=Вес(7), R=Старший(17)
+    const allMap={}, byMonthMap={};
+    const seen=new Set();
+    if(!rows||rows.length<2) return {allMap,byMonthMap};
+    for(let i=1;i<rows.length;i++){
+      const row=rows[i]; if(!row||row.length<8) continue;
+      const dRaw=row[0]; const d=dRaw?lParseDate(String(dRaw)):null; if(!d) continue;
+      const ym=d.slice(0,7); if(ym<'2025-11') continue;
+      const shift=String(row[1]||'').trim();
+      const line=String(row[4]||'').trim().toUpperCase();
+      const op=String(row[2]||'').trim(); if(!op||op==='null') continue;
+      // contrib
+      let contrib=parseFloat(String(row[3]||'').replace('%','').replace(',','.'));
+      if(contrib>1.5) contrib/=100; if(!contrib||contrib<=0) contrib=1;
+      // weight
+      const wRaw=parseFloat(String(row[7]||'').replace(',','.')); if(!wRaw||wRaw<=0) continue;
+      const kg=wRaw/contrib;
+      // Зважуємо за вкладом оператора (contrib × kg = реальний вклад оператора)
+      const opKg=wRaw; // вес вже помножений на вклад — це частка оператора
+
+      if(!allMap[op]) allMap[op]=0;
+      allMap[op]+=opKg;
+      if(!byMonthMap[ym]) byMonthMap[ym]={};
+      if(!byMonthMap[ym][op]) byMonthMap[ym][op]=0;
+      byMonthMap[ym][op]+=opKg;
+    }
+    return {allMap,byMonthMap};
+  }
+  try {
+    const [r1,r2]=await Promise.all([fetchCSV(sid1,'_AllData_Product'),fetchCSV(sid2,'_AllData_Product')]);
+    const p1=parseOps(r1), p2=parseOps(r2);
+    const allMap={}, byMonthMap={};
+    for(const [k,v] of Object.entries(p1.allMap)) allMap[k]=(allMap[k]||0)+v;
+    for(const [k,v] of Object.entries(p2.allMap)) allMap[k]=(allMap[k]||0)+v;
+    for(const [ym,data] of Object.entries(p1.byMonthMap)){
+      if(!byMonthMap[ym]) byMonthMap[ym]={};
+      for(const [k,v] of Object.entries(data)) byMonthMap[ym][k]=(byMonthMap[ym][k]||0)+v;
+    }
+    for(const [ym,data] of Object.entries(p2.byMonthMap)){
+      if(!byMonthMap[ym]) byMonthMap[ym]={};
+      for(const [k,v] of Object.entries(data)) byMonthMap[ym][k]=(byMonthMap[ym][k]||0)+v;
+    }
+    // Конвертуємо в масиви [[name, kg], ...] відсортовані по спадінню
+    OP_ALL_DYN=Object.entries(allMap).sort((a,b)=>b[1]-a[1]).map(([n,v])=>[n,Math.round(v)]);
+    OP_BY_MONTH_DYN={};
+    for(const [ym,data] of Object.entries(byMonthMap)){
+      OP_BY_MONTH_DYN[ym]=Object.entries(data).sort((a,b)=>b[1]-a[1]).map(([n,v])=>[n,Math.round(v)]);
+    }
+    _opLoaded=true;
+    console.log('Operators loaded:', Object.keys(OP_BY_MONTH_DYN));
+  } catch(e) { console.warn('loadOperatorData:', e); }
+}
+
+function getOpAll(){ return OP_ALL_DYN || OP_ALL; }
+function getOpByMonth(ym){ 
+  if(OP_BY_MONTH_DYN && OP_BY_MONTH_DYN[ym]) return OP_BY_MONTH_DYN[ym];
+  return OP_BY_MONTH[ym] || [];
+}
+
 // Старший зміни: завантажується асинхронно з _AllData_Product
 let SENIOR_ALL = {}; // { name: total_count }
 let SENIOR_BY_MONTH = {}; // { ym: { name: count } }
@@ -2369,7 +2500,7 @@ function initQuote() {
 
 // ── RENDER OPERATOR TOTAL VIEW ──
 function renderOpTotal(key) {
-  const data = key === 'all' ? OP_ALL : (OP_BY_MONTH[key] || []);
+  const data = key === 'all' ? getOpAll() : getOpByMonth(key);
   const total = data.reduce((s, [,v]) => s + v, 0);
   const mIdx = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'].indexOf(key);
   const title = key === 'all'
