@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DRUKAR — Виробничий Дашборд</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
   :root{
@@ -1671,24 +1670,39 @@ function initCosts(){
     const lastPLA=CPKG_PLA.map((v,i)=>v!==null?i:-1).filter(i=>i>=0).pop()??-1;
     const avgPETGArr=MS.map((_,i)=>(i>=firstPETG&&i<=lastPETG)?avgPETG:null);
     const avgPLAArr=MS.map((_,i)=>(i>=firstPLA&&i<=lastPLA)?avgPLA:null);
+    // Кастомний плагін підписів — тільки для цього графіку
+    const barLabelsPlugin={id:'barLabels',afterDraw(chart){
+      const ctx=chart.ctx;
+      chart.data.datasets.forEach((ds,di)=>{
+        if(ds.type!=='bar')return;
+        const meta=chart.getDatasetMeta(di);
+        meta.data.forEach((bar,i)=>{
+          const val=ds.data[i];
+          if(!val)return;
+          const color=di===0?'#1d4ed8':'#9a8800';
+          ctx.save();
+          ctx.font='600 10px IBM Plex Mono,monospace';
+          ctx.fillStyle=color;
+          ctx.textAlign='center';
+          ctx.textBaseline='bottom';
+          ctx.fillText(val+'₴', bar.x, bar.y-3);
+          ctx.restore();
+        });
+      });
+    }};
     new Chart(document.getElementById('costPerKgChart'),{
-      plugins:[ChartDataLabels],
+      plugins:[barLabelsPlugin],
       data:{labels:MS,datasets:[
-        {type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3,
-          datalabels:{display:true,anchor:'end',align:'end',offset:2,color:'#1d4ed8',font:{size:10,weight:'600'},formatter:v=>v?v+'₴':null}},
-        {type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3,
-          datalabels:{display:true,anchor:'end',align:'end',offset:2,color:'#9a8800',font:{size:10,weight:'600'},formatter:v=>v?v+'₴':null}},
-        {type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true,datalabels:{display:false}},
-        {type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true,datalabels:{display:false}},
-        {type:'line',label:'Сер. PETG ∅'+avgPETG+'₴',data:avgPETGArr,borderColor:'rgba(37,99,235,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false,datalabels:{display:false}},
-        {type:'line',label:'Сер. PLA ∅'+avgPLA+'₴',data:avgPLAArr,borderColor:'rgba(161,145,0,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false,datalabels:{display:false}}
+        {type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
+        {type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
+        {type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},
+        {type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},
+        {type:'line',label:'Сер. PETG ∅'+avgPETG+'₴',data:avgPETGArr,borderColor:'rgba(37,99,235,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false},
+        {type:'line',label:'Сер. PLA ∅'+avgPLA+'₴',data:avgPLAArr,borderColor:'rgba(161,145,0,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false}
       ]},
       options:{responsive:true,maintainAspectRatio:false,
-        plugins:{
-          legend:{position:'top',labels:{boxWidth:12}},
-          datalabels:{display:false}
-        },
-        layout:{padding:{top:22}},
+        plugins:{legend:{position:'top',labels:{boxWidth:12}}},
+        layout:{padding:{top:20}},
         scales:{x:GR,y:{...GR,
           max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.28/50)*50:700;})(),
           min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),
