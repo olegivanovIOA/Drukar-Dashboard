@@ -293,13 +293,22 @@ def parse_production(rows):
     # Себестоимость/кг — строки после заголовка
     cpkg_petg = [None]*MONTH_COUNT
     cpkg_pla  = [None]*MONTH_COUNT
+    found_sebest = False
     for i, row in enumerate(rows):
-        if 'себестоимость 1 кг' in ' '.join(str(c) for c in row).lower():
+        row_str = ' '.join(str(c) for c in row).lower()
+        if 'себестоимость 1 кг' in row_str or 'себестоимість 1 кг' in row_str:
+            found_sebest = True
+            print(f"  Себестоимость header found at row {i}: {row[:6]}")
             if i+1 < len(rows):
                 cpkg_petg = extract_row_by_month(rows[i+1], col_map)
+                print(f"  PETG raw row[{i+1}]: {rows[i+1][:20]}")
             if i+2 < len(rows):
                 cpkg_pla  = extract_row_by_month(rows[i+2], col_map)
+                print(f"  PLA  raw row[{i+2}]: {rows[i+2][:20]}")
             break
+    if not found_sebest:
+        print(f"  WARNING: 'Себестоимость 1 кг' row NOT FOUND in {len(rows)} rows!")
+        print(f"  First 30 rows col A: {[str(r[0])[:30] if r else '' for r in rows[:30]]}")
 
     # Суммарный НФ% и Брак%
     nf_pct=[]; waste_pct=[]
@@ -333,6 +342,8 @@ def parse_production(rows):
 
     # Print summary
     print(f"\n  PETG prod: {data['petg_prod']}")
+    print(f"  Cost PETG: {data['cost_petg_kg']}")
+    print(f"  Cost PLA:  {data['cost_pla_kg']}")
     print(f"  PLA prod:  {data['pla_prod']}")
     print(f"  Income:    {data['income']}")
     return data
