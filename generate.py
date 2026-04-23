@@ -23,23 +23,42 @@ MONTH_ORDER = [
     '2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'
 ]
 
-def fetch_csv(sheet_id, sheet_name):
+def fetch_csv(sheet_id, sheet_name, retries=3, timeout=60):
     url = (f"https://docs.google.com/spreadsheets/d/{sheet_id}"
            f"/gviz/tq?tqx=out:csv&sheet={requests.utils.quote(sheet_name)}")
     print(f"Fetching: {sheet_name}")
-    r = requests.get(url, timeout=30)
-    r.raise_for_status()
-    return list(csv.reader(io.StringIO(r.text)))
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, timeout=timeout)
+            r.raise_for_status()
+            return list(csv.reader(io.StringIO(r.text)))
+        except Exception as e:
+            last_err = e
+            print(f"  Attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                import time; time.sleep(5 * attempt)
+    raise last_err
 
-def fetch_xlsx(sheet_id, dest_path):
+def fetch_xlsx(sheet_id, dest_path, retries=3, timeout=90):
     """Скачивает Google Sheets как .xlsx файл."""
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     print(f"Fetching xlsx: {sheet_id}")
-    r = requests.get(url, timeout=60)
-    r.raise_for_status()
-    with open(dest_path, 'wb') as f:
-        f.write(r.content)
-    print(f"  Saved {len(r.content):,} bytes → {dest_path}")
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, timeout=timeout)
+            r.raise_for_status()
+            with open(dest_path, 'wb') as f:
+                f.write(r.content)
+            print(f"  Saved {len(r.content):,} bytes → {dest_path}")
+            return
+        except Exception as e:
+            last_err = e
+            print(f"  Attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                import time; time.sleep(5 * attempt)
+    raise last_err
 
 def f(v, default=None):
     try:
