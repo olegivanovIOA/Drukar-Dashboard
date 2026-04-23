@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DRUKAR — Виробничий Дашборд</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
   :root{
@@ -1659,7 +1660,43 @@ function initCosts(){
       {type:'line',label:'Тренд Витрат',data:te,borderColor:'rgba(255,107,71,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
   })()
-  new Chart(document.getElementById('costPerKgChart'),{data:{labels:MS,datasets:[{type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},{type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},{type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},{type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.2/50)*50:600;})(),min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),ticks:{...GR.ticks,callback:v=>v+' \u20B4'}}}}});
+  (()=>{
+    const petgVals=CPKG_PETG.filter(v=>v!==null);
+    const plaVals=CPKG_PLA.filter(v=>v!==null);
+    const avgPETG=petgVals.length?Math.round(petgVals.reduce((a,b)=>a+b,0)/petgVals.length):null;
+    const avgPLA=plaVals.length?Math.round(plaVals.reduce((a,b)=>a+b,0)/plaVals.length):null;
+    const firstPETG=CPKG_PETG.findIndex(v=>v!==null);
+    const lastPETG=CPKG_PETG.map((v,i)=>v!==null?i:-1).filter(i=>i>=0).pop()??-1;
+    const firstPLA=CPKG_PLA.findIndex(v=>v!==null);
+    const lastPLA=CPKG_PLA.map((v,i)=>v!==null?i:-1).filter(i=>i>=0).pop()??-1;
+    const avgPETGArr=MS.map((_,i)=>(i>=firstPETG&&i<=lastPETG)?avgPETG:null);
+    const avgPLAArr=MS.map((_,i)=>(i>=firstPLA&&i<=lastPLA)?avgPLA:null);
+    new Chart(document.getElementById('costPerKgChart'),{
+      plugins:[ChartDataLabels],
+      data:{labels:MS,datasets:[
+        {type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3,
+          datalabels:{display:true,anchor:'end',align:'end',offset:2,color:'#1d4ed8',font:{size:10,weight:'600'},formatter:v=>v?v+'₴':null}},
+        {type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3,
+          datalabels:{display:true,anchor:'end',align:'end',offset:2,color:'#9a8800',font:{size:10,weight:'600'},formatter:v=>v?v+'₴':null}},
+        {type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true,datalabels:{display:false}},
+        {type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true,datalabels:{display:false}},
+        {type:'line',label:'Сер. PETG ∅'+avgPETG+'₴',data:avgPETGArr,borderColor:'rgba(37,99,235,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false,datalabels:{display:false}},
+        {type:'line',label:'Сер. PLA ∅'+avgPLA+'₴',data:avgPLAArr,borderColor:'rgba(161,145,0,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false,datalabels:{display:false}}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{position:'top',labels:{boxWidth:12}},
+          datalabels:{display:false}
+        },
+        layout:{padding:{top:22}},
+        scales:{x:GR,y:{...GR,
+          max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.28/50)*50:700;})(),
+          min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),
+          ticks:{...GR.ticks,callback:v=>v+' ₴'}
+        }}
+      }
+    });
+  })();
 }
 function setCostMonth(key,btn){
   document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));
