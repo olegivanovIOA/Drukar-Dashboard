@@ -1688,7 +1688,7 @@ function initCosts(){
       {type:'line',label:'Тренд Доходу',data:td,borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},
       {type:'line',label:'Тренд Витрат',data:te,borderColor:'rgba(255,107,71,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
-  })()
+  })();
   (()=>{
     const petgVals=CPKG_PETG.filter(v=>v!==null);
     const plaVals=CPKG_PLA.filter(v=>v!==null);
