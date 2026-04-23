@@ -135,6 +135,28 @@
   .scenario-val{color:var(--text)}
   @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.grid-3{grid-template-columns:1fr 1fr}.calc-wrap{grid-template-columns:1fr}}
   @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr};#quoteText{font-size:11px;-webkit-line-clamp:2}.grid-2,.grid-3,.grid-31,.calc-wrap{grid-template-columns:1fr}.main{padding:14px}.scenarios-grid{grid-template-columns:1fr}}
+  @media(max-width:480px){
+    .kpi-row{grid-template-columns:1fr!important}
+    .kpi-value{font-size:24px}
+    .tabs{padding:8px 10px 0;gap:1px;top:48px}
+    .tab{font-size:10px;padding:6px 8px}
+    header{padding:8px 12px}
+    .logo div:first-child{font-size:14px}
+    .main{padding:10px}
+    .card{padding:12px}
+    .grid-2,.grid-3,.grid-31{grid-template-columns:1fr!important}
+    .section-title{font-size:9px}
+    .cw-lg,.cw-md{height:220px!important}
+    .month-switcher{gap:4px}
+    .month-btn{font-size:10px;padding:4px 8px}
+    .lines-controls{grid-template-columns:1fr!important}
+    .lines-summary{grid-template-columns:1fr 1fr!important}
+    .hmap-cell{font-size:9px;height:26px}
+    .hmap-label{font-size:10px}
+    table{font-size:11px}
+    .card-title{font-size:13px}
+    .card-subtitle{font-size:11px}
+  }
   @keyframes pulse-icon{0%,100%{filter:drop-shadow(0 0 4px rgba(37,99,235,.4))}50%{filter:drop-shadow(0 0 10px rgba(37,99,235,.9))}}
 </style>
 </head>
@@ -965,8 +987,16 @@ function trendline(data){
 }
 let opCI=null,costCI=null;
 const rendered={};
-function switchTab(id,el){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');el.classList.add('active');if(!rendered[id]){rendered[id]=true;initTab(id);}location.hash=id;}
-function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}else if(id==='operators'){
+function switchTab(id,el){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  el.classList.add('active');
+  // Зберігаємо таб в hash БЕЗ scroll-jump
+  history.replaceState(null,'','#'+id);
+  if(!rendered[id]){rendered[id]=true;initTab(id);}
+}
+function initTab(id){if(id==='production')initProduction();else if(id==='quality')initQuality();else if(id==='costs'){requestAnimationFrame(()=>{initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));});}else if(id==='operators'){
     // Ставимо останній повний місяць (або 'all' якщо немає даних)
     const opMonths = Object.keys(OP_BY_MONTH).sort();
     const curYm = new Date().toISOString().slice(0,7);
