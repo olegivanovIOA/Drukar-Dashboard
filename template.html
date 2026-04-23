@@ -178,8 +178,8 @@
       <div class="kpi-delta {{KPI_PETG_DELTA_CLASS}}">{{KPI_PETG_DELTA}}</div>
     </div>
     <div class="kpi-card kpi-alert" style="--accent-bar:var(--bad)">
-      <div class="kpi-label">НФ — Аномалія Січ '26</div>
-      <div class="kpi-value" style="color:var(--bad)">30.0%</div>
+      <div class="kpi-label">НФ PLA — Аномалія Бер '26</div>
+      <div class="kpi-value" style="color:var(--bad)">7.16%</div>
       <div class="kpi-unit">від обсягу виробництва</div>
       <div class="kpi-delta delta-down">▼ норма &lt; 4%</div>
     </div>
@@ -189,11 +189,11 @@
       <div class="kpi-unit">тис. грн</div>
       <div class="kpi-delta delta-up">▲ Листопад: -69 тис.</div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--warn)">
-      <div class="kpi-label">Собів-сть PETG · Лют</div>
-      <div class="kpi-value">245.9</div>
+    <div class="kpi-card" style="--accent-bar:var(--bad)">
+      <div class="kpi-label">Собів-сть PETG · Бер '26</div>
+      <div class="kpi-value" style="color:var(--bad)">478.1</div>
       <div class="kpi-unit">грн/кг без ПДВ</div>
-      <div class="kpi-delta delta-up">▼ -9.6% vs Січ (272 ₴)</div>
+      <div class="kpi-delta delta-down">▼ +53.0% vs Лют (312 ₴)</div>
     </div>
   </div>
 
@@ -1670,7 +1670,6 @@ function initCosts(){
     const lastPLA=CPKG_PLA.map((v,i)=>v!==null?i:-1).filter(i=>i>=0).pop()??-1;
     const avgPETGArr=MS.map((_,i)=>(i>=firstPETG&&i<=lastPETG)?avgPETG:null);
     const avgPLAArr=MS.map((_,i)=>(i>=firstPLA&&i<=lastPLA)?avgPLA:null);
-    // Кастомний плагін підписів — тільки для цього графіку
     const barLabelsPlugin={id:'barLabels',afterDraw(chart){
       const ctx=chart.ctx;
       chart.data.datasets.forEach((ds,di)=>{
