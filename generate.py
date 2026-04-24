@@ -1062,34 +1062,10 @@ if __name__ == '__main__':
             print(f"  col_map_kg:  {col_map_kg}")
             print(f"  col_map_grn: {col_map_grn}")
 
-            def sebest_row_grn(keyword):
-                """Витягує значення грн по місяцях."""
-                row = get_row(fin_rows, keyword)
-                if not row:
-                    print(f"  WARNING: row '{keyword}' not found")
-                    return [None]*MONTH_COUNT
-                result = [None]*MONTH_COUNT
-                for i, mk in enumerate(MONTH_ORDER):
-                    ci = col_map_grn.get(mk)
-                    if ci is not None and ci < len(row):
-                        result[i] = f(row[ci])
-                return result
 
-            def sebest_row_kg(keyword):
-                row = get_row(fin_rows, keyword)
-                if not row: return [None]*MONTH_COUNT
-                result = [None]*MONTH_COUNT
-                for i, mk in enumerate(MONTH_ORDER):
-                    ci = col_map_kg.get(mk)
-                    if ci is not None and ci < len(row):
-                        result[i] = f(row[ci])
-                return result
-
-            data["income"]   = sebest_row_grn('ДОХОД, грн')
-            data["expenses"] = sebest_row_grn('Разом (всі витрати)')
-            data["profit"]   = sebest_row_grn('Операційний')
-
-            # Собівартість/кг — після рядка "Себестоимость 1 кг"
+            data["cost_petg_kg"] = [round(v,2) if v else None for v in cpkg_petg]
+            data["cost_pla_kg"]  = [round(v,2) if v else None for v in cpkg_pla]
+            # income/expenses/profit вже прочитані в parse_production з _AllData_Sebest
             cpkg_petg = [None]*MONTH_COUNT
             cpkg_pla  = [None]*MONTH_COUNT
             for i, row in enumerate(fin_rows):
