@@ -1024,20 +1024,41 @@ if __name__ == '__main__':
     try:
         prod_rows = fetch_csv(SHEET_ID, "_AllData_Product")
         data = parse_production_from_alldata(prod_rows)
-        # Фінансові дані — окремо з _Drukar_Product
+        # Фінансові дані — з _AllData_Sebest (там є всі місяці включно з березнем)
         try:
-            fin_rows = fetch_csv(SHEET_ID, "_Drukar_Product")
-            print(f"  _Drukar_Product: {len(fin_rows)} rows")
-            print(f"  Header row[0]: {fin_rows[0][:10] if fin_rows else 'EMPTY'}")
-            print(f"  Header row[1]: {fin_rows[1][:10] if len(fin_rows)>1 else 'EMPTY'}")
-            fin = parse_production(fin_rows)
-            print(f"  Cost PETG: {fin['cost_petg_kg']}")
-            print(f"  Cost PLA:  {fin['cost_pla_kg']}")
-            data["income"]       = fin["income"]
-            data["expenses"]     = fin["expenses"]
-            data["profit"]       = fin["profit"]
-            data["cost_petg_kg"] = fin["cost_petg_kg"]
-            data["cost_pla_kg"]  = fin["cost_pla_kg"]
+            fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
+            print(f"  _AllData_Sebest: {len(fin_rows)} rows")
+            print(f"  row[0][:8]: {fin_rows[0][:8] if fin_rows else 'EMPTY'}")
+            col_map, _ = detect_month_columns(fin_rows)
+            print(f"  col_map: {col_map}")
+
+            def sebest_vals(kw):
+                row = get_row(fin_rows, kw)
+                if row:
+                    return extract_row_by_month(row, col_map)
+                print(f"  WARNING: row '{kw}' not found")
+                return [None]*MONTH_COUNT
+
+            data["income"]       = sebest_vals('ДОХОД, грн')
+            data["expenses"]     = sebest_vals('Разом (всі витрати)')
+            data["profit"]       = sebest_vals('Операційний')
+
+            # Собівартість/кг — після заголовка "Себестоимость 1 кг"
+            cpkg_petg = [None]*MONTH_COUNT
+            cpkg_pla  = [None]*MONTH_COUNT
+            for i, row in enumerate(fin_rows):
+                joined = ' '.join(str(c) for c in row).lower()
+                if 'себест' in joined and '1 кг' in joined:
+                    print(f"  Sebest header at row {i}: {row[:6]}")
+                    if i+1 < len(fin_rows):
+                        cpkg_petg = extract_row_by_month(fin_rows[i+1], col_map)
+                    if i+2 < len(fin_rows):
+                        cpkg_pla  = extract_row_by_month(fin_rows[i+2], col_map)
+                    break
+            print(f"  Cost PETG: {cpkg_petg}")
+            print(f"  Cost PLA:  {cpkg_pla}")
+            data["cost_petg_kg"] = [round(v,2) if v else None for v in cpkg_petg]
+            data["cost_pla_kg"]  = [round(v,2) if v else None for v in cpkg_pla]
         except Exception as e:
             print(f"  WARNING fin data: {e}")
             import traceback; traceback.print_exc()
