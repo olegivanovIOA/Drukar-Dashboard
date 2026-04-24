@@ -1024,37 +1024,93 @@ if __name__ == '__main__':
     try:
         prod_rows = fetch_csv(SHEET_ID, "_AllData_Product")
         data = parse_production_from_alldata(prod_rows)
-        # Фінансові дані — з _AllData_Sebest (там є всі місяці включно з березнем)
+        # Фінансові дані — з _AllData_Sebest
+        # Структура: рядок 1 = заголовки місяців (кожен займає 3 col: кг, грн, %)
+        # Собівартість — колонка "грн" (друга з трьох для кожного місяця)
         try:
             fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
             print(f"  _AllData_Sebest: {len(fin_rows)} rows")
-            print(f"  row[0][:8]: {fin_rows[0][:8] if fin_rows else 'EMPTY'}")
-            col_map, _ = detect_month_columns(fin_rows)
-            print(f"  col_map: {col_map}")
 
-            def sebest_vals(kw):
-                row = get_row(fin_rows, kw)
-                if row:
-                    return extract_row_by_month(row, col_map)
-                print(f"  WARNING: row '{kw}' not found")
-                return [None]*MONTH_COUNT
+            # Знаходимо рядок з місяцями (рядок 0 або 1)
+            month_keywords = [
+                ('ноябрь 2026','2026-11'),('листопад 2026','2026-11'),
+                ('декабрь 2026','2026-12'),('грудень 2026','2026-12'),
+                ('ноябрь','2025-11'),('листопад','2025-11'),
+                ('декабрь','2025-12'),('грудень','2025-12'),
+                ('январь','2026-01'),('січень','2026-01'),
+                ('февраль','2026-02'),('лютий','2026-02'),
+                ('март','2026-03'),('березень','2026-03'),
+                ('апрель','2026-04'),('квітень','2026-04'),
+                ('май','2026-05'),('травень','2026-05'),
+                ('июнь','2026-06'),('червень','2026-06'),
+                ('июль','2026-07'),('липень','2026-07'),
+                ('август','2026-08'),('серпень','2026-08'),
+                ('сентябрь','2026-09'),('вересень','2026-09'),
+                ('октябрь','2026-10'),('жовтень','2026-10'),
+            ]
+            # col_map_grn: month_key → колонка "Грн, без ПДВ" (col місяця + 1)
+            col_map_grn = {}
+            col_map_kg  = {}
+            for row in fin_rows[:5]:
+                for ci, cell in enumerate(row):
+                    cell_l = str(cell).lower().strip()
+                    for kw, mk in month_keywords:
+                        if kw in cell_l and mk not in col_map_kg:
+                            col_map_kg[mk]  = ci        # перша колонка = кг
+                            col_map_grn[mk] = ci + 1    # друга = грн
+                            break
+            print(f"  col_map_kg:  {col_map_kg}")
+            print(f"  col_map_grn: {col_map_grn}")
 
-            data["income"]       = sebest_vals('ДОХОД, грн')
-            data["expenses"]     = sebest_vals('Разом (всі витрати)')
-            data["profit"]       = sebest_vals('Операційний')
+            def sebest_row_grn(keyword):
+                """Витягує значення грн по місяцях."""
+                row = get_row(fin_rows, keyword)
+                if not row:
+                    print(f"  WARNING: row '{keyword}' not found")
+                    return [None]*MONTH_COUNT
+                result = [None]*MONTH_COUNT
+                for i, mk in enumerate(MONTH_ORDER):
+                    ci = col_map_grn.get(mk)
+                    if ci is not None and ci < len(row):
+                        result[i] = f(row[ci])
+                return result
 
-            # Собівартість/кг — після заголовка "Себестоимость 1 кг"
+            def sebest_row_kg(keyword):
+                row = get_row(fin_rows, keyword)
+                if not row: return [None]*MONTH_COUNT
+                result = [None]*MONTH_COUNT
+                for i, mk in enumerate(MONTH_ORDER):
+                    ci = col_map_kg.get(mk)
+                    if ci is not None and ci < len(row):
+                        result[i] = f(row[ci])
+                return result
+
+            data["income"]   = sebest_row_grn('ДОХОД, грн')
+            data["expenses"] = sebest_row_grn('Разом (всі витрати)')
+            data["profit"]   = sebest_row_grn('Операційний')
+
+            # Собівартість/кг — після рядка "Себестоимость 1 кг"
             cpkg_petg = [None]*MONTH_COUNT
             cpkg_pla  = [None]*MONTH_COUNT
             for i, row in enumerate(fin_rows):
                 joined = ' '.join(str(c) for c in row).lower()
                 if 'себест' in joined and '1 кг' in joined:
-                    print(f"  Sebest header at row {i}: {row[:6]}")
+                    print(f"  Sebest header at row {i}")
                     if i+1 < len(fin_rows):
-                        cpkg_petg = extract_row_by_month(fin_rows[i+1], col_map)
+                        # собівартість в грн/кг — колонка "Грн, без ПДВ"
+                        r = fin_rows[i+1]
+                        for j, mk in enumerate(MONTH_ORDER):
+                            ci = col_map_grn.get(mk)
+                            if ci is not None and ci < len(r):
+                                cpkg_petg[j] = f(r[ci])
                     if i+2 < len(fin_rows):
-                        cpkg_pla  = extract_row_by_month(fin_rows[i+2], col_map)
+                        r = fin_rows[i+2]
+                        for j, mk in enumerate(MONTH_ORDER):
+                            ci = col_map_grn.get(mk)
+                            if ci is not None and ci < len(r):
+                                cpkg_pla[j] = f(r[ci])
                     break
+
             print(f"  Cost PETG: {cpkg_petg}")
             print(f"  Cost PLA:  {cpkg_pla}")
             data["cost_petg_kg"] = [round(v,2) if v else None for v in cpkg_petg]
