@@ -1027,7 +1027,12 @@ if __name__ == '__main__':
         # Фінансові дані — окремо з _Drukar_Product
         try:
             fin_rows = fetch_csv(SHEET_ID, "_Drukar_Product")
+            print(f"  _Drukar_Product: {len(fin_rows)} rows")
+            print(f"  Header row[0]: {fin_rows[0][:10] if fin_rows else 'EMPTY'}")
+            print(f"  Header row[1]: {fin_rows[1][:10] if len(fin_rows)>1 else 'EMPTY'}")
             fin = parse_production(fin_rows)
+            print(f"  Cost PETG: {fin['cost_petg_kg']}")
+            print(f"  Cost PLA:  {fin['cost_pla_kg']}")
             data["income"]       = fin["income"]
             data["expenses"]     = fin["expenses"]
             data["profit"]       = fin["profit"]
@@ -1035,6 +1040,7 @@ if __name__ == '__main__':
             data["cost_pla_kg"]  = fin["cost_pla_kg"]
         except Exception as e:
             print(f"  WARNING fin data: {e}")
+            import traceback; traceback.print_exc()
     except Exception as e:
         print(f"ERROR: {e}")
         import traceback; traceback.print_exc()
