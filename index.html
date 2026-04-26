@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 26.04.2026 03:28 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 26.04.2026 05:42 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -206,16 +206,16 @@
       <div class="kpi-delta delta-down">▼ норма &lt; 4%</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--good)">
-      <div class="kpi-label">Прибуток · Лют '26</div>
-      <div class="kpi-value" style="color:var(--good)">1 994</div>
+      <div class="kpi-label">Прибуток · Бер '26</div>
+      <div class="kpi-value" style="color:var(--good)">196</div>
       <div class="kpi-unit">тис. грн</div>
-      <div class="kpi-delta delta-up">▲ Листопад: -69 тис.</div>
+      <div class="kpi-delta delta-up">▲ Лют: -285 тис.</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--bad)">
       <div class="kpi-label">Собів-сть PETG · Бер '26</div>
-      <div class="kpi-value" style="color:var(--bad)">478.1</div>
+      <div class="kpi-value" style="color:var(--warn)">322.1</div>
       <div class="kpi-unit">грн/кг без ПДВ</div>
-      <div class="kpi-delta delta-down">▼ +53.0% vs Лют (312 ₴)</div>
+      <div class="kpi-delta delta-up">▲ +3.1% vs Лют (312 ₴)</div>
     </div>
   </div>
 
@@ -946,9 +946,9 @@ const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,null,null,null,null,null,null,null,nu
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
-const FIN_INCOME=[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
-const FIN_EXPENSES=[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
-const FIN_PROFIT=[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
+const FIN_INCOME=[5489189,null,7849699,10243355,15823153,null,null,null,null,null,null,null,null,null];
+const FIN_EXPENSES=[6192978,null,9401988,10528739,15627010,null,null,null,null,null,null,null,null,null];
+const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT=40.3;
 const OKR_DATA=[{"name": "ОКР1. Лидерство в Украине", "short": "Лидерство в Украине", "pct": 37.5, "weight": 18, "weight_pct": 12.7}, {"name": "ОКР2. Маркетинг и продажи", "short": "Маркетинг и продажи", "pct": 16.9, "weight": 21, "weight_pct": 14.8}, {"name": "ОКР3. Эффективность процессов", "short": "Эффективность процессов", "pct": 56.0, "weight": 28, "weight_pct": 19.7}, {"name": "ОКР4. Mature Team", "short": "Mature Team", "pct": 66.6, "weight": 27, "weight_pct": 19.0}, {"name": "ОКР5. Эффективная система планирования", "short": "Эффективная система планирования", "pct": 58.5, "weight": 15, "weight_pct": 10.6}, {"name": "ОКР6. Безопасность / Устойчивость", "short": "Безопасность / Устойчивость", "pct": 56.9, "weight": 8, "weight_pct": 5.6}, {"name": "ОКР7. Глобальная экспансия", "short": "Глобальная экспансия", "pct": 0.0, "weight": 11, "weight_pct": 7.7}, {"name": "ОКР8. Новые продукты", "short": "Новые продукты", "pct": 0.0, "weight": 14, "weight_pct": 9.9}];
@@ -1518,10 +1518,10 @@ async function buildHeatmapWeekly(monthIdx){
       return lParseCSV(txt);
     }
 
-    function parseWeekly(rows,weeks){
+    function parseWeekly(rows,weeks,forceJournal=false){
       if(!rows||rows.length<3) return {};
       const hdr=[...rows[0],...(rows[1]||[])].map(h=>String(h||'').toLowerCase());
-      const isAnaliz=hdr.some(h=>h.includes('вклад %')||h.includes('вклад%'));
+      const isAnaliz=!forceJournal&&hdr.some(h=>h.includes('вклад %')||h.includes('вклад%'));
       // Після вставки нової колонки F:
       // Аналіз вкладів: A=Дата(0), B=Смена(1), C=Оператор(2), D=Вклад%(3), E=Лінія(4), F=Вид(5), H=Вес(7)
       // Журнал: A=Дата(0), F=Старший(5), G=Зміна(6), H=Лінія(7), J=Вага(9) — після вставки F
@@ -1589,8 +1589,10 @@ async function buildHeatmapWeekly(monthIdx){
       rows2=await fetchRows(sid2,'Аналіз вкладів');
     }
 
-    const w1=parseWeekly(rows1,weeks);
-    const w2=parseWeekly(rows2,weeks);
+    // rows1 з _AllData_Product — це журнал, не Аналіз вкладів
+    const fromAllData=!rows2.length; // якщо rows2 порожній — rows1 з AllData_Product
+    const w1=parseWeekly(rows1,weeks,fromAllData);
+    const w2=parseWeekly(rows2,weeks,false);
 
     // Merge
     const merged={};
