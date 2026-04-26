@@ -938,8 +938,8 @@ const NF_PLA={{PLA_NF}};
 const W_PETG={{PETG_WASTE}};
 const W_PLA={{PLA_WASTE}};
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
-const CPKG_PETG={{COST_PETG_KG}};
-const CPKG_PLA={{COST_PLA_KG}};
+const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
+const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
 const FIN_INCOME=[5489189,null,7849699,10243355,15823153,null,null,null,null,null,null,null,null,null];
 const FIN_EXPENSES=[6192978,null,9401988,10528739,15627010,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
@@ -1512,65 +1512,64 @@ async function buildHeatmapWeekly(monthIdx){
       return lParseCSV(txt);
     }
 
-    function parseWeekly(rows,weeks,forceJournal=false){
-      if(!rows||rows.length<3) return {};
-      const hdr=[...rows[0],...(rows[1]||[])].map(h=>String(h||'').toLowerCase());
-      const isAnaliz=!forceJournal&&hdr.some(h=>h.includes('вклад %')||h.includes('вклад%'));
-      // Після вставки нової колонки F:
-      // Аналіз вкладів: A=Дата(0), B=Смена(1), C=Оператор(2), D=Вклад%(3), E=Лінія(4), F=Вид(5), H=Вес(7)
-      // Журнал: A=Дата(0), F=Старший(5), G=Зміна(6), H=Лінія(7), J=Вага(9) — після вставки F
-      const ci_date=0;
-      const ci_line=isAnaliz?4:7;
-      const ci_weight=isAnaliz?7:9;
-      const ci_contrib=isAnaliz?3:-1;
-      const data_start=isAnaliz?1:2;
+    function parseWeekly(rows,weeks){
+      // _AllData_Product структура:
+      // A(0)=Дата, B(1)=Зміна, C(2)=Оператор, D(3)=Вклад%, E(4)=Лінія, H(7)=Вес*Вклад%
+      // Реальний вес лінії за зміну = SUM(H) / SUM(D) для унікальної (дата|зміна|лінія)
+      if(!rows||rows.length<2) return {};
+
+      // Агрегуємо: key=дата|зміна|лінія → {sumH, sumD}
+      const agg={}; // key → {sumH, sumD}
+      const weekOf={}; // key → wi
+
+      for(let i=1;i<rows.length;i++){
+        const row=rows[i];
+        const dRaw=row[0];
+        if(!dRaw) continue;
+        const d=lParseDate(String(dRaw));
+        if(!d||d.slice(0,7)!==ym) continue;
+
+        // Номер лінії
+        let line=String(row[4]||'').toUpperCase().trim();
+        if(!line) continue;
+        const nm=line.match(/\d+/);
+        if(!nm) continue;
+        const lineNum=parseInt(nm[0]);
+        if(lineNum<1||lineNum>8) continue; // тільки лінії 1-8
+        line='ЛІНІЯ '+lineNum;
+
+        const shift=String(row[1]||'').trim();
+        const key=d+'|'+shift+'|'+line;
+
+        // Вклад% (col D=3)
+        let contrib=parseFloat(String(row[3]||'').replace('%','').replace(',','.'));
+        if(isNaN(contrib)||contrib<=0) continue;
+        if(contrib>1.5) contrib/=100; // якщо в % а не в частках
+
+        // Вес*Вклад% (col H=7)
+        const wh=parseFloat(String(row[7]||'').replace(',','.'));
+        if(isNaN(wh)||wh<=0) continue;
+
+        if(!agg[key]) agg[key]={sumH:0,sumD:0,line};
+        agg[key].sumH+=wh;
+        agg[key].sumD+=contrib;
+
+        if(!weekOf[key]){
+          const wi=weeks.findIndex(w=>d>=w.from&&d<=w.to);
+          weekOf[key]=wi;
+        }
+      }
 
       // result: line → week_idx → kg
       const result={};
-      const seen=new Set(); // dedup для журналу
-      let curDate=null;
-
-      for(let i=data_start;i<rows.length;i++){
-        const row=rows[i];
-        const dRaw=row[ci_date];
-        if(dRaw){
-          const d=lParseDate(String(dRaw));
-          if(d) curDate=d;
-        }
-        if(!curDate) continue;
-        if(curDate.slice(0,7)!==ym) continue;
-
-        let line=String(row[ci_line]||'').toUpperCase().trim();
-        if(!line) continue;
-        const nm=line.match(/\d+$/);
-        if(nm) line='ЛІНІЯ '+nm[0];
-
-        // dedup для журналу
-        const contrib_raw=ci_contrib>=0?row[ci_contrib]:null;
-        let contrib=1;
-        if(contrib_raw){
-          contrib=parseFloat(String(contrib_raw).replace('%','').replace(',','.'));
-          if(contrib>1.5) contrib/=100;
-          if(contrib<=0) contrib=1;
-        }
-        const shiftRaw=isAnaliz?String(row[1]||''):String(row[6]||'');
-        const lineKey=curDate+'|'+shiftRaw+'|'+line;
-        if(!isAnaliz && seen.has(lineKey)) continue;
-        if(!isAnaliz) seen.add(lineKey);
-
-        const wRaw=parseFloat(String(row[ci_weight]||'').replace(',','.'));
-        if(isNaN(wRaw)||wRaw<=0) continue;
-        const kg=isAnaliz?(contrib>0?wRaw/contrib:wRaw):wRaw;
-
-        // Визначаємо тиждень
-        const wi=weeks.findIndex(w=>curDate>=w.from&&curDate<=w.to);
-        if(wi<0) continue;
-
+      Object.entries(agg).forEach(([key,{sumH,sumD,line}])=>{
+        const wi=weekOf[key]??-1;
+        if(wi<0) return;
+        const kg=sumD>0?Math.round(sumH/sumD):0;
+        if(kg<=0) return;
         if(!result[line]) result[line]=new Array(weeks.length).fill(0);
         result[line][wi]+=kg;
-      }
-      // Округлення
-      Object.values(result).forEach(arr=>arr.forEach((_,i)=>{arr[i]=Math.round(arr[i]);}));
+      });
       return result;
     }
 
@@ -1583,10 +1582,8 @@ async function buildHeatmapWeekly(monthIdx){
       rows2=await fetchRows(sid2,'Аналіз вкладів');
     }
 
-    // rows1 з _AllData_Product — це журнал, не Аналіз вкладів
-    const fromAllData=!rows2.length; // якщо rows2 порожній — rows1 з AllData_Product
-    const w1=parseWeekly(rows1,weeks,fromAllData);
-    const w2=parseWeekly(rows2,weeks,false);
+    const w1=parseWeekly(rows1,weeks);
+    const w2=parseWeekly(rows2,weeks);
 
     // Merge
     const merged={};
