@@ -206,16 +206,16 @@
       <div class="kpi-delta delta-down">▼ норма &lt; 4%</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--good)">
-      <div class="kpi-label">Прибуток · Лют '26</div>
-      <div class="kpi-value" style="color:var(--good)">1 994</div>
+      <div class="kpi-label">Прибуток · Бер '26</div>
+      <div class="kpi-value" style="color:var(--good)">196</div>
       <div class="kpi-unit">тис. грн</div>
-      <div class="kpi-delta delta-up">▲ Листопад: -69 тис.</div>
+      <div class="kpi-delta delta-up">▲ Лют: -285 тис.</div>
     </div>
     <div class="kpi-card" style="--accent-bar:var(--bad)">
       <div class="kpi-label">Собів-сть PETG · Бер '26</div>
-      <div class="kpi-value" style="color:var(--bad)">478.1</div>
+      <div class="kpi-value" style="color:var(--warn)">322.1</div>
       <div class="kpi-unit">грн/кг без ПДВ</div>
-      <div class="kpi-delta delta-down">▼ +53.0% vs Лют (312 ₴)</div>
+      <div class="kpi-delta delta-up">▲ +3.1% vs Лют (312 ₴)</div>
     </div>
   </div>
 
@@ -940,9 +940,9 @@ const W_PLA={{PLA_WASTE}};
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG={{COST_PETG_KG}};
 const CPKG_PLA={{COST_PLA_KG}};
-const FIN_INCOME={{INCOME}};
-const FIN_EXPENSES={{EXPENSES}};
-const FIN_PROFIT={{PROFIT}};
+const FIN_INCOME=[5489189,null,7849699,10243355,15823153,null,null,null,null,null,null,null,null,null];
+const FIN_EXPENSES=[6192978,null,9401988,10528739,15627010,null,null,null,null,null,null,null,null,null];
+const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT={{OKR_COMPANY_PCT}};
 const OKR_DATA={{OKR_DATA}};
@@ -1512,10 +1512,10 @@ async function buildHeatmapWeekly(monthIdx){
       return lParseCSV(txt);
     }
 
-    function parseWeekly(rows,weeks){
+    function parseWeekly(rows,weeks,forceJournal=false){
       if(!rows||rows.length<3) return {};
       const hdr=[...rows[0],...(rows[1]||[])].map(h=>String(h||'').toLowerCase());
-      const isAnaliz=hdr.some(h=>h.includes('вклад %')||h.includes('вклад%'));
+      const isAnaliz=!forceJournal&&hdr.some(h=>h.includes('вклад %')||h.includes('вклад%'));
       // Після вставки нової колонки F:
       // Аналіз вкладів: A=Дата(0), B=Смена(1), C=Оператор(2), D=Вклад%(3), E=Лінія(4), F=Вид(5), H=Вес(7)
       // Журнал: A=Дата(0), F=Старший(5), G=Зміна(6), H=Лінія(7), J=Вага(9) — після вставки F
@@ -1583,8 +1583,10 @@ async function buildHeatmapWeekly(monthIdx){
       rows2=await fetchRows(sid2,'Аналіз вкладів');
     }
 
-    const w1=parseWeekly(rows1,weeks);
-    const w2=parseWeekly(rows2,weeks);
+    // rows1 з _AllData_Product — це журнал, не Аналіз вкладів
+    const fromAllData=!rows2.length; // якщо rows2 порожній — rows1 з AllData_Product
+    const w1=parseWeekly(rows1,weeks,fromAllData);
+    const w2=parseWeekly(rows2,weeks,false);
 
     // Merge
     const merged={};
