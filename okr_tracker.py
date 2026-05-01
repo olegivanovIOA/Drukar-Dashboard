@@ -23,9 +23,13 @@ DEFAULT_SUPPORT_COEFF = 0.3
 
 def to_progress(v):
     try:
-        f = float(v)
+        # Handle "33,5%" (comma as decimal separator) and "100%" etc.
+        s = str(v).strip().replace(' ', '')
+        has_pct = s.endswith('%')
+        s = s.replace('%', '').replace(',', '.')
+        f = float(s)
         if f != f: return None
-        if f > 1.0: f = f / 100.0
+        if has_pct or f > 1.0: f = f / 100.0
         return round(min(max(f, 0.0), 1.0), 4)
     except:
         return None
@@ -96,7 +100,7 @@ def parse_main_sheet(xl):
     okr_weights = parse_okr_weights(raw)
 
     # [PATCH] збільшено ліміт з 185 до 210 щоб захопити OKR7/OKR8
-    df = xl.parse('OKR_2026', header=0).iloc[:210].copy()
+    df = xl.parse('OKR_2026', header=0).iloc[:209].copy()  # rows 209+ are scoring summary
 
     def row_type(row):
         okr  = str(row.get('ОКР', '') or '').strip()
@@ -115,6 +119,23 @@ def parse_main_sheet(xl):
     df['_type'] = df.apply(row_type, axis=1)
     df['_okr']  = df['ОКР'].where(df['ОКР'].notna()).ffill()
     df['_kr']   = df['КР'].where(df['КР'].notna()).ffill()
+
+    # ── Rename OKR3 first group to new numbering (post-restructuring) ──
+    # Rows 77-81: old КР3.6-3.10 → now КР3.11-3.14 and КР3.4
+    kr3_remap = {
+        'КР3.6. Каждый сотрудник знает свои задачи, привязанные к срокам': 'КР3.11. Кожен знає свої задачі та терміни',
+        'КР3.7. Внедрена и работает система OKR':                           'КР3.12. Впроваджена та працює система OKR',
+        'КР3.8. Система метрик состояний, процессов':                       'КР3.13. Система метрик станів і процесів',
+        'КР3.9. Норма линий на локации':                                    'КР3.14. Норма ліній на локації',
+        'КР3.10. Увеличение производительности линий на 100%':             'КР3.4. Збільшення продуктивності ліній на 100%',
+    }
+    for idx, row in df.iterrows():
+        kr_v = str(row['_kr']).strip() if pd.notna(row['_kr']) else ''
+        if not kr_v: continue
+        for old_kr, new_kr in kr3_remap.items():
+            if kr_v.startswith(old_kr[:35]):
+                df.at[idx, '_kr'] = new_kr
+                break
 
     rows = []
     for _, r in df[df['_type'].notna()].iterrows():
@@ -256,7 +277,8 @@ def calc_kr_progress(rows, okr_name, kr_name):
 def calc_okr_progress(rows, okr_name):
     """AVERAGE по всіх KR — відповідає формулі Dashboard =AVERAGE(D10:D14)"""
     krs = list({r['kr'] for r in rows
-                if r['okr'] == okr_name and r['kr'] and r['type'] in ('KR', 'TASK')})
+                if r['okr'] == okr_name and r['kr'] and r['type'] in ('KR', 'TASK')
+                })
     if not krs:
         okr_rows = [r for r in rows if r['type'] == 'OKR' and r['okr'] == okr_name]
         return round(safe_float(okr_rows[0]['progress']) if okr_rows else 0.0, 4)
@@ -369,7 +391,7 @@ def run(filepath=None):
     print("\n📋 ПРОГРЕСС ПО KR:\n")
     krs_seen = {}
     for r in rows:
-        if r['type'] == 'KR' and r['kr']:
+        if r['type'] == 'KR' and r['kr'] :
             key = (r['okr'], r['kr'])
             if key not in krs_seen:
                 krs_seen[key] = True
@@ -420,7 +442,7 @@ def to_dashboard_json(result):
     kr_data = []
     seen = set()
     for r in rows:
-        if r['type'] == 'KR' and r['kr']:
+        if r['type'] == 'KR' and r['kr'] :
             key = (r['okr'], r['kr'])
             if key not in seen:
                 seen.add(key)
@@ -429,10 +451,13 @@ def to_dashboard_json(result):
                 kr_data.append({'okr': r['okr'], 'okr_short': okr_short,
                                  'kr': r['kr'], 'pct': round(p * 100, 1)})
 
+    # Filter out non-person entries (e.g. "Значимость", short words, formulas)
+    EXCLUDE_NAMES = {'Значимость', 'nan', '', 'До-обсудить', 'ТОП'}
     people = sorted(
         [{'name': p, 'realized_pct': round(d['realized'] * 100, 1),
           'score': round(d['score'], 4), 'max': round(d['max'], 4)}
-         for p, d in person_contribs.items()],
+         for p, d in person_contribs.items()
+         if p not in EXCLUDE_NAMES and len(p) > 2 and not p[0].isdigit()],
         key=lambda x: -x['realized_pct']
     )
 
