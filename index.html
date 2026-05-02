@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 15:14 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 15:21 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -906,7 +906,7 @@
         </thead>
         <tbody id="fc-growth-table">
           <tr data-channel="opt1">
-            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Опт1 (Ст), т/міс</td>
+            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Опт1 (Ст) т</td>
             <td style="padding:4px 2px" id="fc-td-opt1-5"><input class="fc-input" data-ch="opt1" data-m="5" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
             <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="6" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
             <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="7" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
@@ -928,7 +928,7 @@
             <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="12" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
           </tr>
           <tr data-channel="ret">
-            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Розниця, т/міс</td>
+            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Розниця т</td>
             <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="5" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
             <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="6" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
             <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="7" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
@@ -941,8 +941,9 @@
         </tbody>
       </table>
     </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
-      💡 Введіть додаткові тонни понад органічний тренд для кожного каналу. Значення накопичуються помісячно. Зміна оновлює графік автоматично.
+    <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:11px;color:var(--muted)">💡 Введіть додаткові тонни понад органічний тренд (накопично). Зміна оновлює графік автоматично.</div>
+      <button onclick="fcResetInputs()" style="padding:5px 14px;border:1px solid var(--card-border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer;font-size:12px;white-space:nowrap">🔄 Обнулити</button>
     </div>
   </div>
 </div>
@@ -3751,6 +3752,16 @@ async function buildUtilHeatmapWeekly(monthIdx){
 // ═══════════════════════════════════════════════════
 let _fcChart = null;
 
+function fcResetInputs() {
+  document.querySelectorAll('.fc-input').forEach(el => { el.value = 0; });
+  try {
+    const vals = {};
+    document.querySelectorAll('.fc-input').forEach(i => { vals[i.dataset.ch+'_'+i.dataset.m] = 0; });
+    localStorage.setItem('drukar_fc_growth', JSON.stringify(vals));
+  } catch(e) {}
+  _fcRender();
+}
+
 function initForecast() {
   // Restore saved values from localStorage
   try {
@@ -3907,10 +3918,19 @@ function _fcRender() {
             data.datasets.forEach(ds=>{if(ds.stack===sid) tot+=(+ds.data[i]||0);});
             if(tot<=0)return;
             const xp=x.getPixelForValue(i)+(sid==='fact'?-9:9);
+            const yp=y.getPixelForValue(tot)-6;
             c.save();
-            c.fillStyle=sid==='proj'&&tot>250?'#fbbf24':'rgba(200,220,255,0.9)';
-            c.font='bold 10px sans-serif';c.textAlign='center';
-            c.fillText(tot.toFixed(0),xp,y.getPixelForValue(tot)-5);
+            // Background pill
+            const lbl=tot.toFixed(0)+' т';
+            c.font='bold 10px sans-serif';
+            const tw=c.measureText(lbl).width;
+            c.fillStyle=sid==='proj'&&tot>250?'rgba(251,191,36,0.85)':'rgba(37,99,235,0.75)';
+            c.beginPath();
+            c.roundRect(xp-tw/2-3,yp-10,tw+6,13,3);
+            c.fill();
+            c.fillStyle='#ffffff';
+            c.textAlign='center';
+            c.fillText(lbl,xp,yp);
             c.restore();
           });
         });
