@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 17:50 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 18:46 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -884,9 +884,9 @@
     <div class="card" style="padding:12px;min-width:140px">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Орієнтири</div>
       <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
-        <div><div style="color:var(--muted);font-size:10px">Зараз</div><div style="font-weight:700;font-size:16px">~47 т/міс</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Зараз</div><div id="fc-now" style="font-weight:700;font-size:16px">~47 т/міс</div></div>
         <div><div style="color:var(--muted);font-size:10px">Ціль грудень</div><div style="font-weight:700;font-size:16px;color:#ef4444">320 т</div></div>
-        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div style="font-weight:700;font-size:16px;color:#f97316">~95 т</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div id="fc-trend-dec" style="font-weight:700;font-size:16px;color:#f97316">~95 т</div></div>
         <div><div style="color:var(--muted);font-size:10px">Gap грудень</div><div style="font-weight:700;font-size:16px;color:#f59e0b" id="fc-gap-side">— т</div></div>
       </div>
     </div>
@@ -4055,11 +4055,12 @@ function _fcRender() {
       }},
       {id:'colLabels',afterDraw(chart){
         const {ctx:c,scales:{x,y},data}=chart;
-        // Для кожного індексу рахуємо суму по кожному стеку окремо
+        // Для кожного індексу рахуємо суму по кожному стеку окремо (Gap виключаємо)
         data.labels.forEach((_,i)=>{
           const stacks={};
           data.datasets.forEach(ds=>{
             if(!ds.stack) return;
+            if(ds.label==='Gap до 320 т') return; // не рахуємо gap в мітці
             const v=ds.data[i];
             if(v===null||v===undefined||isNaN(+v)) return;
             stacks[ds.stack]=(stacks[ds.stack]||0)+(+v);
@@ -4105,6 +4106,7 @@ function _fcRender() {
   const decProj=decBase+decExp+decNew;
   const decGap=Math.max(0,GOAL-decProj);
   const gPct=lastFact>0?((decProj-lastFact)/lastFact*100):0;
+  const trendDec=+trendAt(12).toFixed(0);
 
   const el=id=>document.getElementById(id);
   if(el('fc-fact-total'))  el('fc-fact-total').textContent=factTotal.toFixed(0);
@@ -4116,6 +4118,9 @@ function _fcRender() {
     el('fc-growth-pct').textContent=(gPct>=0?'+':'')+gPct.toFixed(0)+'%';
     el('fc-growth-pct').style.color=gPct>=0?'#16a34a':'#ef4444';
   }
+  // Орієнтири: Зараз і Тренд грудень
+  if(el('fc-now'))       el('fc-now').textContent='~'+lastFact+' т/міс';
+  if(el('fc-trend-dec')) el('fc-trend-dec').textContent='~'+trendDec+' т';
 }
 
 </script>
