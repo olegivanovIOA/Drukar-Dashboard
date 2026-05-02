@@ -877,10 +877,10 @@
     <div class="card" style="padding:12px;min-width:140px">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Орієнтири</div>
       <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
-        <div><div style="color:var(--muted);font-size:10px">Зараз</div><div id="fc-now" style="font-weight:700;font-size:16px">~47 т/міс</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Зараз</div><div id="fc-now-d" style="font-weight:700;font-size:16px">~47 т/міс</div></div>
         <div><div style="color:var(--muted);font-size:10px">Ціль грудень</div><div style="font-weight:700;font-size:16px;color:#ef4444">320 т</div></div>
-        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div id="fc-trend-dec" style="font-weight:700;font-size:16px;color:#f97316">~95 т</div></div>
-        <div><div style="color:var(--muted);font-size:10px">Gap грудень</div><div style="font-weight:700;font-size:16px;color:#f59e0b" id="fc-gap-side">— т</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div id="fc-trend-d" style="font-weight:700;font-size:16px;color:#f97316">~95 т</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Gap грудень</div><div id="fc-gap-d" style="font-weight:700;font-size:16px;color:#f59e0b">— т</div></div>
       </div>
     </div>
 
@@ -1033,10 +1033,10 @@
       <div class="card" style="padding:10px 12px">
         <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Орієнтири</div>
         <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;align-items:center">
-          <span style="color:var(--muted)">Зараз:</span><span style="font-weight:700">~47 т/міс</span>
+          <span style="color:var(--muted)">Зараз:</span><span id="fc-now-m" style="font-weight:700">~47 т/міс</span>
           <span style="color:var(--muted)">Ціль Гру:</span><span style="font-weight:700;color:#ef4444">320 т</span>
-          <span style="color:var(--muted)">Тренд Гру:</span><span style="font-weight:700;color:#f97316">~95 т</span>
-          <span style="color:var(--muted)">Gap Гру:</span><span style="font-weight:700;color:#f59e0b" id="fc-gap-side">— т</span>
+          <span style="color:var(--muted)">Тренд Гру:</span><span id="fc-trend-m" style="font-weight:700;color:#f97316">~95 т</span>
+          <span style="color:var(--muted)">Gap Гру:</span><span id="fc-gap-m" style="font-weight:700;color:#f59e0b">— т</span>
         </div>
       </div>
 
@@ -3895,7 +3895,8 @@ async function buildUtilHeatmapWeekly(monthIdx){
 // ═══════════════════════════════════════════════════
 // FORECAST — Прогноз продажів в тоннах
 // ═══════════════════════════════════════════════════
-let _fcChart = null;
+// _fcCharts — масив для підтримки двох canvas (десктоп + мобайл)
+window._fcCharts = window._fcCharts || [];
 
 function fcResetInputs() {
   document.querySelectorAll('.fc-input').forEach(el => { el.value = 0; });
@@ -3908,7 +3909,7 @@ function fcResetInputs() {
 }
 
 function initForecast() {
-  // Restore saved values from localStorage
+  // Restore saved values from localStorage — в обидва набори інпутів
   try {
     const saved = JSON.parse(localStorage.getItem('drukar_fc_growth') || '{}');
     document.querySelectorAll('.fc-input').forEach(el => {
@@ -3919,9 +3920,14 @@ function initForecast() {
 
   _fcRender();
 
-  // Save + re-render on input change
+  // Save + re-render on input change — слухаємо всі інпути з обох табів
   document.querySelectorAll('.fc-input').forEach(el => {
     el.addEventListener('input', () => {
+      // Синхронізуємо значення між десктоп/мобайл версіями одного поля
+      const key = el.dataset.ch + '_' + el.dataset.m;
+      document.querySelectorAll(`.fc-input[data-ch="${el.dataset.ch}"][data-m="${el.dataset.m}"]`).forEach(twin => {
+        if (twin !== el) twin.value = el.value;
+      });
       // Save all values to localStorage
       try {
         const vals = {};
@@ -3997,11 +4003,10 @@ function _fcRender() {
   });
 
   const labels=ALL.map(m=>UA[m]);
-  const ctx=document.getElementById('forecastChart');
-  if(!ctx) return;
-  if(_fcChart){_fcChart.destroy();_fcChart=null;}
 
-  _fcChart=new Chart(ctx,{
+  // Функція побудови конфігу графіка (спільна для обох canvas)
+  function buildChartConfig(){
+    return {
     type:'bar',
     data:{labels,datasets:[
       {label:'Факт Опт1(Ст)', data:dsFactO1, backgroundColor:'#2563eb',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
@@ -4025,7 +4030,7 @@ function _fcRender() {
         tooltip:{mode:'index',callbacks:{
           label:c=>{if(c.dataset.label==='Ціль 320 т'||c.raw===null)return null;
                     return c.dataset.label+': '+(+c.raw).toFixed(1)+' т';},
-          footer:items=>{const t=items.filter(i=>i.dataset.stack&&i.raw>0).reduce((s,i)=>s+(+i.raw||0),0);
+          footer:items=>{const t=items.filter(i=>i.dataset.stack&&i.dataset.label!=='Gap до 320 т'&&i.raw>0).reduce((s,i)=>s+(+i.raw||0),0);
                          return t>0?'Разом: '+t.toFixed(1)+' т':'';}
         }}},
       scales:{
@@ -4048,19 +4053,18 @@ function _fcRender() {
       }},
       {id:'colLabels',afterDraw(chart){
         const {ctx:c,scales:{x,y},data}=chart;
-        // Для кожного індексу рахуємо суму по кожному стеку окремо (Gap виключаємо)
+        // Рахуємо суму стеків БЕЗ Gap
         data.labels.forEach((_,i)=>{
           const stacks={};
           data.datasets.forEach(ds=>{
             if(!ds.stack) return;
-            if(ds.label==='Gap до 320 т') return; // не рахуємо gap в мітці
+            if(ds.label==='Gap до 320 т') return; // Gap не рахуємо в мітці
             const v=ds.data[i];
             if(v===null||v===undefined||isNaN(+v)) return;
             stacks[ds.stack]=(stacks[ds.stack]||0)+(+v);
           });
           Object.entries(stacks).forEach(([sid,tot])=>{
             if(tot<=0) return;
-            // Знаходимо перший бар цього стека щоб отримати x-позицію
             let xPos=null;
             for(let di=0;di<data.datasets.length;di++){
               if(data.datasets[di].stack===sid){
@@ -4090,6 +4094,14 @@ function _fcRender() {
         });
       }}
     ]
+  };}
+
+  // Малюємо на всіх canvas з id="forecastChart" (десктоп + мобайл)
+  if(!window._fcCharts) window._fcCharts=[];
+  window._fcCharts.forEach(ch=>{try{ch.destroy();}catch(e){}});
+  window._fcCharts=[];
+  document.querySelectorAll('#forecastChart').forEach(canvas=>{
+    window._fcCharts.push(new Chart(canvas, buildChartConfig()));
   });
 
   // KPI
@@ -4100,20 +4112,23 @@ function _fcRender() {
   const decGap=Math.max(0,GOAL-decProj);
   const gPct=lastFact>0?((decProj-lastFact)/lastFact*100):0;
   const trendDec=+trendAt(12).toFixed(0);
+  const gapColor=decGap>150?'#ef4444':decGap>80?'#f59e0b':'#16a34a';
 
   const el=id=>document.getElementById(id);
   if(el('fc-fact-total'))  el('fc-fact-total').textContent=factTotal.toFixed(0);
   if(el('fc-dec-proj'))    el('fc-dec-proj').textContent=decProj.toFixed(0);
-  if(el('fc-gap')){el('fc-gap').textContent=decGap.toFixed(0);
-    el('fc-gap').style.color=decGap>150?'#ef4444':decGap>80?'#f59e0b':'#16a34a';}
-  if(el('fc-gap-side'))    el('fc-gap-side').textContent=decGap.toFixed(0)+' т';
   if(el('fc-growth-pct')){
     el('fc-growth-pct').textContent=(gPct>=0?'+':'')+gPct.toFixed(0)+'%';
     el('fc-growth-pct').style.color=gPct>=0?'#16a34a':'#ef4444';
   }
-  // Орієнтири: Зараз і Тренд грудень
-  if(el('fc-now'))       el('fc-now').textContent='~'+lastFact+' т/міс';
-  if(el('fc-trend-dec')) el('fc-trend-dec').textContent='~'+trendDec+' т';
+  // Орієнтири — десктоп
+  if(el('fc-now-d'))    el('fc-now-d').textContent='~'+lastFact+' т/міс';
+  if(el('fc-trend-d'))  el('fc-trend-d').textContent='~'+trendDec+' т';
+  if(el('fc-gap-d')){   el('fc-gap-d').textContent=decGap.toFixed(0)+' т'; el('fc-gap-d').style.color=gapColor; }
+  // Орієнтири — мобайл
+  if(el('fc-now-m'))    el('fc-now-m').textContent='~'+lastFact+' т/міс';
+  if(el('fc-trend-m'))  el('fc-trend-m').textContent='~'+trendDec+' т';
+  if(el('fc-gap-m')){   el('fc-gap-m').textContent=decGap.toFixed(0)+' т'; el('fc-gap-m').style.color=gapColor; }
 }
 
 </script>
