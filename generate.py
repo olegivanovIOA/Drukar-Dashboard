@@ -718,7 +718,8 @@ def parse_sales(rows):
         except: kg = 0
         if revenue <= 0: continue
         ym = d.strftime('%Y-%m')
-        data_rows.append({'ym':ym, 'channel':channel, 'product':product, 'plastic':plastic, 'revenue':revenue, 'kg':kg})
+        op_type = str(row[6]).strip() if len(row) > 6 else ''
+        data_rows.append({'ym':ym, 'channel':channel, 'product':product, 'plastic':plastic, 'revenue':revenue, 'kg':kg, 'op_type':op_type})
 
     if not data_rows:
         print("  WARNING: no sales data parsed")
@@ -727,12 +728,28 @@ def parse_sales(rows):
     # Sort months
     months_sorted = sorted(set(r['ym'] for r in data_rows))
 
-    # Monthly by channel
+    # Monthly by channel — revenue and kg
     monthly_opt = defaultdict(float)
     monthly_ret = defaultdict(float)
+    monthly_opt1_kg = defaultdict(float)  # Опт_СТРИМТЕХНО
+    monthly_opt2_kg = defaultdict(float)  # Опт_EASY
+    monthly_ret_kg  = defaultdict(float)  # Розниця
+
+    # Маппінг типу операції → канал kg
+    def get_kg_channel(op_type):
+        t = str(op_type).strip()
+        if 'СТРИМТЕХНО' in t or 'Стримтехно' in t: return 'opt1'
+        if 'EASY' in t or 'Easy' in t:               return 'opt2'
+        if 'Розниц' in t or 'розниц' in t:           return 'ret'
+        return None
+
     for r in data_rows:
         if r['channel'] == 'Опт':     monthly_opt[r['ym']] += r['revenue']
         elif r['channel'] == 'Розница': monthly_ret[r['ym']] += r['revenue']
+        ch = get_kg_channel(r.get('op_type', ''))
+        if ch == 'opt1': monthly_opt1_kg[r['ym']] += r['kg']
+        elif ch == 'opt2': monthly_opt2_kg[r['ym']] += r['kg']
+        elif ch == 'ret':  monthly_ret_kg[r['ym']]  += r['kg']
 
     def mk_labels(months):
         UA_SHORT = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
@@ -789,11 +806,18 @@ def parse_sales(rows):
     for m in months_sorted:
         donut_by_month[m] = [round(monthly_opt.get(m,0)), round(monthly_ret.get(m,0))]
 
+    sales_opt1_kg = [round(monthly_opt1_kg.get(m, 0) / 1000, 3) for m in months_sorted]
+    sales_opt2_kg = [round(monthly_opt2_kg.get(m, 0) / 1000, 3) for m in months_sorted]
+    sales_ret_kg  = [round(monthly_ret_kg.get(m, 0)  / 1000, 3) for m in months_sorted]
+
     result = {
         'sales_labels':      labels,
         'sales_months':      months_sorted,
         'sales_opt':         sales_opt,
         'sales_ret':         sales_ret,
+        'sales_opt1_kg':     sales_opt1_kg,
+        'sales_opt2_kg':     sales_opt2_kg,
+        'sales_ret_kg':      sales_ret_kg,
         'top_labels':        [x[0] for x in top10],
         'top_data':          [round(x[1]) for x in top10],
         'petg_price_labels': mk_labels(petg_months),
@@ -973,6 +997,9 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{SALES_LABELS}}':       jv(sales['sales_labels']),
             '{{SALES_OPT}}':          jv(sales['sales_opt']),
             '{{SALES_RET}}':          jv(sales['sales_ret']),
+            '{{SALES_OPT1_KG}}':      jv(sales.get('sales_opt1_kg', [])),
+            '{{SALES_OPT2_KG}}':      jv(sales.get('sales_opt2_kg', [])),
+            '{{SALES_RET_KG}}':       jv(sales.get('sales_ret_kg', [])),
             '{{TOP_PRODUCTS_LABELS}}':jv(sales['top_labels']),
             '{{TOP_PRODUCTS_DATA}}':  jv(sales['top_data']),
             '{{PETG_PRICE_LABELS}}':  jv(sales['petg_price_labels']),
@@ -991,6 +1018,9 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{SALES_LABELS}}':       '[]',
             '{{SALES_OPT}}':          '[]',
             '{{SALES_RET}}':          '[]',
+            '{{SALES_OPT1_KG}}':      '[]',
+            '{{SALES_OPT2_KG}}':      '[]',
+            '{{SALES_RET_KG}}':       '[]',
             '{{TOP_PRODUCTS_LABELS}}':'[]',
             '{{TOP_PRODUCTS_DATA}}':  '[]',
             '{{PETG_PRICE_LABELS}}':  '[]',

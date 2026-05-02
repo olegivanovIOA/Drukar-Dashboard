@@ -179,6 +179,7 @@
   <button class="tab" onclick="switchTab('calculator',this)">🧮 Калькулятор</button>
   <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
   <button class="tab" onclick="switchTab('sales',this)">💰 Продажі</button>
+  <button class="tab" onclick="switchTab('forecast',this)">📈 Прогноз</button>
   <button class="tab" onclick="switchTab('okr',this)">🎯 OKR 2026</button>
   <button class="tab" onclick="switchTab('inventory',this)">📦 Склад</button>
 </div>
@@ -802,6 +803,119 @@
   </div>
 </div>
 
+<!-- ══════════════ FORECAST ══════════════ -->
+<div id="tab-forecast" class="tab-content">
+  <div style="padding:16px 0 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h2 style="margin:0;font-size:18px;font-weight:700;color:var(--text)">📈 Прогноз продажів 2026 · тонни</h2>
+    <span class="badge badge-blue">Ціль грудня: 320 т</span>
+  </div>
+
+  <!-- Chart -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div>
+        <div class="card-title">Продажі в тоннах · факт + прогноз + ціль</div>
+        <div class="card-subtitle">Стековий графік: факт / органічний ріст / gap до 320 т</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#2563eb;display:inline-block"></span>Факт Опт1</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#60a5fa;display:inline-block"></span>Факт Опт2</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#93c5fd;display:inline-block"></span>Факт Розниця</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#6ee7b7;display:inline-block"></span>Прогноз (тренд)</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#16a34a;display:inline-block"></span>Органічний ріст</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#fbbf24;display:inline-block"></span>Gap до плану</span>
+      </div>
+    </div>
+    <div style="position:relative;height:340px"><canvas id="forecastChart"></canvas></div>
+  </div>
+
+  <!-- KPI рядок -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+    <div class="card" style="text-align:center;padding:14px">
+      <div class="kpi-label">Факт (Jan–квітень)</div>
+      <div class="kpi-value" id="fc-fact-total" style="font-size:28px">—</div>
+      <div class="kpi-unit">тонн</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px">
+      <div class="kpi-label">Прогноз грудень</div>
+      <div class="kpi-value" id="fc-dec-proj" style="font-size:28px">—</div>
+      <div class="kpi-unit">тонн (тренд + ріст)</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px">
+      <div class="kpi-label">Gap до 320 т</div>
+      <div class="kpi-value" id="fc-gap" style="font-size:28px;color:#f59e0b">—</div>
+      <div class="kpi-unit">тонн треба залучити</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px">
+      <div class="kpi-label">Зростання до грудня</div>
+      <div class="kpi-value" id="fc-growth-pct" style="font-size:28px">—</div>
+      <div class="kpi-unit">% vs останній факт</div>
+    </div>
+  </div>
+
+  <!-- Ручний ввід органічного росту -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:4px">⚙️ Органічний ріст — ручний ввід % по місяцях</div>
+    <div class="card-subtitle" style="margin-bottom:14px">Введіть очікуваний % приросту відносно попереднього місяця для кожного каналу (травень–грудень 2026)</div>
+
+    <div style="overflow-x:auto">
+      <table style="border-collapse:collapse;width:100%;font-size:12px">
+        <thead>
+          <tr style="background:var(--card-border)">
+            <th style="padding:8px 12px;text-align:left;font-weight:600">Канал</th>
+            <th style="padding:8px 6px;text-align:center">Тра</th>
+            <th style="padding:8px 6px;text-align:center">Чер</th>
+            <th style="padding:8px 6px;text-align:center">Лип</th>
+            <th style="padding:8px 6px;text-align:center">Сер</th>
+            <th style="padding:8px 6px;text-align:center">Вер</th>
+            <th style="padding:8px 6px;text-align:center">Жов</th>
+            <th style="padding:8px 6px;text-align:center">Лис</th>
+            <th style="padding:8px 6px;text-align:center">Гру</th>
+          </tr>
+        </thead>
+        <tbody id="fc-growth-table">
+          <tr data-channel="opt1">
+            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Опт1 (СТРІМТЕХНО) %</td>
+            <td style="padding:4px 2px" id="fc-td-opt1-5"><input class="fc-input" data-ch="opt1" data-m="5" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="6" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="7" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="8" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="9" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="10" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="11" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="12" type="number" min="0" max="100" step="0.5" value="5" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+          </tr>
+          <tr data-channel="opt2">
+            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Опт2 (EASY) %</td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="5" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="6" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="7" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="8" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="9" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="10" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="11" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="12" type="number" min="0" max="100" step="0.5" value="7" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+          </tr>
+          <tr data-channel="ret">
+            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Розниця %</td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="5" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="6" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="7" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="8" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="9" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="10" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="11" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="12" type="number" min="0" max="100" step="0.5" value="10" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+      💡 % вводиться відносно попереднього місяця накопично. Зміна будь-якого значення оновлює графік автоматично.
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ OKR 2026 ══════════════ -->
 <div id="tab-okr" class="tab-content">
   <div class="section-title">Стратегічні цілі 2026 — OKR Трекінг</div>
@@ -954,6 +1068,9 @@ const SALES_MONTHS={{SALES_MONTHS}};
 const DONUT_BY_MONTH={{DONUT_BY_MONTH}};
 const SALES_OPT={{SALES_OPT}};
 const SALES_RET={{SALES_RET}};
+const SALES_OPT1_KG={{SALES_OPT1_KG}};
+const SALES_OPT2_KG={{SALES_OPT2_KG}};
+const SALES_RET_KG={{SALES_RET_KG}};
 const TOP_PRODUCTS_LABELS={{TOP_PRODUCTS_LABELS}};
 const TOP_PRODUCTS_DATA={{TOP_PRODUCTS_DATA}};
 const PETG_PRICE_LABELS={{PETG_PRICE_LABELS}};
@@ -1017,14 +1134,14 @@ function initTab(id){if(id==='production')initProduction();else if(id==='quality
       });
       renderOpTotal(finalDef);
     });
-  }else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}else if(id==='okr'){initOkr();}}
+  }else if(id==='calculator'){calcUpdate();}else if(id==='lines'){lInitTab();}else if(id==='sales'){initSales();}else if(id==='forecast'){initForecast();}else if(id==='okr'){initOkr();}}
 
 window.addEventListener('DOMContentLoaded',()=>{
   rendered.overview=true;
   initQuote();
   // Restore active tab from URL hash
   const hash=location.hash.replace('#','');
-  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales','okr','inventory'];
+  const validTabs=['overview','production','quality','costs','operators','calculator','lines','sales','forecast','okr','inventory'];
   if(hash&&validTabs.includes(hash)){
     const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
     if(btn){switchTab(hash,btn);}
@@ -3595,5 +3712,274 @@ async function buildUtilHeatmapWeekly(monthIdx){
 }
 // ══════════════ /UTILIZATION HEATMAP ══════════════
 
+
+
+
+// ═══════════════════════════════════════════════════
+// FORECAST — Прогноз продажів в тоннах
+// ═══════════════════════════════════════════════════
+let _fcChart = null;
+
+function initForecast() {
+  // Restore saved values from localStorage
+  try {
+    const saved = JSON.parse(localStorage.getItem('drukar_fc_growth') || '{}');
+    document.querySelectorAll('.fc-input').forEach(el => {
+      const key = el.dataset.ch + '_' + el.dataset.m;
+      if (saved[key] !== undefined) el.value = saved[key];
+    });
+  } catch(e) {}
+
+  _fcRender();
+
+  // Save + re-render on input change
+  document.querySelectorAll('.fc-input').forEach(el => {
+    el.addEventListener('input', () => {
+      // Save all values to localStorage
+      try {
+        const vals = {};
+        document.querySelectorAll('.fc-input').forEach(i => {
+          vals[i.dataset.ch + '_' + i.dataset.m] = i.value;
+        });
+        localStorage.setItem('drukar_fc_growth', JSON.stringify(vals));
+      } catch(e) {}
+      _fcRender();
+    });
+  });
+}
+
+function _fcGetGrowth() {
+  // Returns {opt1:{5:5, 6:5,...}, opt2:{...}, ret:{...}}
+  const g = {opt1:{}, opt2:{}, ret:{}};
+  document.querySelectorAll('.fc-input').forEach(el => {
+    const ch = el.dataset.ch;
+    const m  = parseInt(el.dataset.m);
+    g[ch][m] = parseFloat(el.value) || 0;
+  });
+  return g;
+}
+
+function _fcRender() {
+  // ── 1. Факт з Google Sheets ──────────────────────────
+  // SALES_MONTHS = ['2026-01','2026-02',...] (sorted)
+  // SALES_OPT1_KG, SALES_OPT2_KG, SALES_RET_KG = тонни по місяцях
+  const UA_SHORT = {1:'Січ',2:'Лют',3:'Бер',4:'Кві',5:'Тра',6:'Чер',
+                    7:'Лип',8:'Сер',9:'Вер',10:'Жов',11:'Лис',12:'Гру'};
+
+  // Парсимо факт по місяцях (тільки 2026)
+  const factByMonth = {}; // {monthNum: {opt1, opt2, ret, total}}
+  (SALES_MONTHS || []).forEach((ym, i) => {
+    if (!ym.startsWith('2026')) return;
+    const m = parseInt(ym.split('-')[1]);
+    factByMonth[m] = {
+      opt1:  (SALES_OPT1_KG[i] || 0),
+      opt2:  (SALES_OPT2_KG[i] || 0),
+      ret:   (SALES_RET_KG[i]  || 0),
+    };
+    factByMonth[m].total = factByMonth[m].opt1 + factByMonth[m].opt2 + factByMonth[m].ret;
+  });
+
+  // Останній місяць факту
+  const factMonths = Object.keys(factByMonth).map(Number).sort((a,b)=>a-b);
+  const lastFactM  = factMonths[factMonths.length - 1] || 4;
+  const lastFact   = factByMonth[lastFactM] || {opt1:0, opt2:0, ret:0, total:0};
+
+  // ── 2. Лінійний тренд по кожному каналу (Jan–lastFactM) ──
+  function linTrend(vals) {
+    // vals = [v1, v2, ...] по місяцях (1-based index = місяць)
+    const n = vals.length;
+    if (n < 2) return {slope: 0, intercept: vals[0] || 0};
+    let sx=0, sy=0, sxy=0, sx2=0;
+    vals.forEach((v, i) => { sx+=i+1; sy+=v; sxy+=(i+1)*v; sx2+=(i+1)*(i+1); });
+    const slope = (n*sxy - sx*sy) / (n*sx2 - sx*sx);
+    const intercept = (sy - slope*sx) / n;
+    return {slope, intercept};
+  }
+
+  const opt1Fact = factMonths.map(m => factByMonth[m].opt1);
+  const opt2Fact = factMonths.map(m => factByMonth[m].opt2);
+  const retFact  = factMonths.map(m => factByMonth[m].ret);
+
+  const tOpt1 = linTrend(opt1Fact);
+  const tOpt2 = linTrend(opt2Fact);
+  const tRet  = linTrend(retFact);
+
+  function trendVal(t, x) { return Math.max(0, t.slope * x + t.intercept); }
+
+  // ── 3. Органічний ріст (ввід користувача) ────────────
+  const growth = _fcGetGrowth();
+
+  // ── 4. Будуємо масиви по всіх місяцях Jan–Dec 2026 ──
+  const ALL_MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const GOAL_DEC   = 320; // тонн у грудні
+
+  // Datasets:
+  // A) Факт: opt1, opt2, ret (Jan–lastFactM)
+  // B) Прогноз-тренд: (lastFactM+1)–Dec (без росту)
+  // C) Органічний ріст: накопично від тренду
+  // D) Gap: 320 - (тренд + ріст) у відповідний місяць
+
+  const dsFactOpt1 = [], dsFactOpt2 = [], dsFactRet = [];
+  const dsTrendOpt1 = [], dsTrendOpt2 = [], dsTrendRet = [];
+  const dsGrowth = [];  // incremental growth (total above trend)
+  const dsGap    = [];  // gap to 320t
+
+  // Прогнозні значення з урахуванням росту
+  let prevOpt1 = lastFact.opt1;
+  let prevOpt2 = lastFact.opt2;
+  let prevRet  = lastFact.ret;
+
+  ALL_MONTHS.forEach((m, i) => {
+    const isFact = m <= lastFactM;
+    const trendX = i + 1; // 1-based
+
+    if (isFact) {
+      // Факт
+      const f = factByMonth[m] || {opt1:0, opt2:0, ret:0};
+      dsFactOpt1.push(+(f.opt1.toFixed(2)));
+      dsFactOpt2.push(+(f.opt2.toFixed(2)));
+      dsFactRet.push(+(f.ret.toFixed(2)));
+      dsTrendOpt1.push(null);
+      dsTrendOpt2.push(null);
+      dsTrendRet.push(null);
+      dsGrowth.push(null);
+      dsGap.push(null);
+    } else {
+      // Тренд
+      const trOpt1 = trendVal(tOpt1, trendX);
+      const trOpt2 = trendVal(tOpt2, trendX);
+      const trRet  = trendVal(tRet,  trendX);
+      const trTotal = trOpt1 + trOpt2 + trRet;
+
+      // Органічний ріст: накопично від попереднього місяця
+      const gOpt1 = growth.opt1[m] || 0;
+      const gOpt2 = growth.opt2[m] || 0;
+      const gRet  = growth.ret[m]  || 0;
+
+      const newOpt1 = prevOpt1 * (1 + gOpt1/100);
+      const newOpt2 = prevOpt2 * (1 + gOpt2/100);
+      const newRet  = prevRet  * (1 + gRet/100);
+
+      // Ріст = різниця між новим значенням і трендом
+      const growthDelta = Math.max(0, (newOpt1 + newOpt2 + newRet) - trTotal);
+
+      // Gap = 320 - (тренд + ріст), але не менше 0
+      const projected = trTotal + growthDelta;
+      const gap = m === 12 ? Math.max(0, GOAL_DEC - projected) : null;
+
+      dsFactOpt1.push(null);
+      dsFactOpt2.push(null);
+      dsFactRet.push(null);
+      dsTrendOpt1.push(+(trOpt1.toFixed(2)));
+      dsTrendOpt2.push(+(trOpt2.toFixed(2)));
+      dsTrendRet.push(+(trRet.toFixed(2)));
+      dsGrowth.push(+(growthDelta.toFixed(2)));
+      dsGap.push(gap !== null ? +(gap.toFixed(2)) : null);
+
+      prevOpt1 = newOpt1;
+      prevOpt2 = newOpt2;
+      prevRet  = newRet;
+    }
+  });
+
+  const labels = ALL_MONTHS.map(m => UA_SHORT[m] + ' 26');
+
+  // ── 5. Рендер Chart.js ────────────────────────────────
+  const ctx = document.getElementById('forecastChart');
+  if (!ctx) return;
+
+  if (_fcChart) { _fcChart.destroy(); _fcChart = null; }
+
+  const GR = typeof gridStyle !== 'undefined' ? gridStyle : {
+    color: 'rgba(128,128,128,0.15)',
+    ticks: {color: '#aaa', font: {size: 11}},
+  };
+
+  _fcChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label:'Факт Опт1',    data:dsFactOpt1,  backgroundColor:'#2563eb', stack:'s', borderRadius:2},
+        {label:'Факт Опт2',    data:dsFactOpt2,  backgroundColor:'#60a5fa', stack:'s', borderRadius:2},
+        {label:'Факт Розниця', data:dsFactRet,   backgroundColor:'#93c5fd', stack:'s', borderRadius:2},
+        {label:'Тренд Опт1',   data:dsTrendOpt1, backgroundColor:'rgba(110,231,183,0.7)', stack:'s', borderRadius:2},
+        {label:'Тренд Опт2',   data:dsTrendOpt2, backgroundColor:'rgba(52,211,153,0.7)',  stack:'s', borderRadius:2},
+        {label:'Тренд Розниця',data:dsTrendRet,  backgroundColor:'rgba(16,185,129,0.7)',  stack:'s', borderRadius:2},
+        {label:'Органічний ріст', data:dsGrowth, backgroundColor:'#16a34a', stack:'s', borderRadius:2},
+        {label:'Gap до 320 т', data:dsGap,       backgroundColor:'#fbbf24', stack:'s', borderRadius:2},
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {display: false},
+        tooltip: {
+          mode: 'index',
+          callbacks: {
+            label: ctx => {
+              if (!ctx.raw && ctx.raw !== 0) return null;
+              return ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + ' т';
+            },
+            footer: items => {
+              const total = items.reduce((s, i) => s + (i.raw || 0), 0);
+              return 'РАЗОМ: ' + total.toFixed(1) + ' т';
+            }
+          }
+        },
+        // Goal line at 320t
+        annotation: undefined
+      },
+      scales: {
+        x: {stacked: true, ...GR},
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ...GR,
+          ticks: {
+            ...GR.ticks,
+            callback: v => v + ' т'
+          },
+          grid: {color: GR.color || 'rgba(128,128,128,0.15)'}
+        }
+      }
+    },
+    plugins: [{
+      id: 'goalLine',
+      afterDraw(chart) {
+        const {ctx: c, chartArea:{left,right,top,bottom}, scales:{y}} = chart;
+        const yPos = y.getPixelForValue(320);
+        if (yPos < top || yPos > bottom) return;
+        c.save();
+        c.setLineDash([6, 4]);
+        c.strokeStyle = '#ef4444';
+        c.lineWidth = 2;
+        c.beginPath(); c.moveTo(left, yPos); c.lineTo(right, yPos); c.stroke();
+        c.fillStyle = '#ef4444';
+        c.font = 'bold 11px sans-serif';
+        c.fillText('Ціль 320 т', right - 68, yPos - 6);
+        c.restore();
+      }
+    }]
+  });
+
+  // ── 6. KPI ──────────────────────────────────────────
+  const factTotal = factMonths.reduce((s, m) => s + (factByMonth[m]?.total || 0), 0);
+  const decIdx    = 11; // December = index 11
+  const decProj   = (dsTrendOpt1[decIdx]||0) + (dsTrendOpt2[decIdx]||0) + (dsTrendRet[decIdx]||0) + (dsGrowth[decIdx]||0);
+  const decGap    = Math.max(0, GOAL_DEC - decProj);
+  const growthPct = lastFact.total > 0 ? ((decProj - lastFact.total) / lastFact.total * 100) : 0;
+
+  const el = id => document.getElementById(id);
+  if (el('fc-fact-total'))  el('fc-fact-total').textContent  = factTotal.toFixed(1);
+  if (el('fc-dec-proj'))    el('fc-dec-proj').textContent    = decProj.toFixed(1);
+  if (el('fc-gap'))         el('fc-gap').textContent         = decGap.toFixed(1);
+  if (el('fc-gap'))         el('fc-gap').style.color         = decGap > 50 ? '#ef4444' : decGap > 20 ? '#f59e0b' : '#16a34a';
+  if (el('fc-growth-pct')) {
+    el('fc-growth-pct').textContent = (growthPct >= 0 ? '+' : '') + growthPct.toFixed(0) + '%';
+    el('fc-growth-pct').style.color = growthPct >= 0 ? '#16a34a' : '#ef4444';
+  }
+}
 
 </script>
