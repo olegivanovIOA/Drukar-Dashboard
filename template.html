@@ -3908,22 +3908,32 @@ function _fcRender() {
         ['fact','proj'].forEach(sid=>{
           data.labels.forEach((_,i)=>{
             let tot=0;
-            data.datasets.forEach(ds=>{if(ds.stack===sid) tot+=(+ds.data[i]||0);});
-            if(tot<=0)return;
-            const xp=x.getPixelForValue(i)+(sid==='fact'?-9:9);
-            const yp=y.getPixelForValue(tot)-6;
+            data.datasets.forEach(ds=>{
+              if(ds.stack===sid && ds.data[i]!==null && ds.data[i]!==undefined)
+                tot+=(+ds.data[i]||0);
+            });
+            if(tot<=0) return;
+            // Для proj — центр бару, без зміщення (два стеки стоять поруч)
+            const barW = chart.getDatasetMeta(0).data[i]?.width || 30;
+            const xp = x.getPixelForValue(i) + (sid==='fact' ? -barW/2 : barW/2);
+            const yp = y.getPixelForValue(tot) - 6;
             c.save();
-            // Background pill
-            const lbl=tot.toFixed(0)+' т';
-            c.font='bold 10px sans-serif';
-            const tw=c.measureText(lbl).width;
-            c.fillStyle=sid==='proj'&&tot>250?'rgba(251,191,36,0.85)':'rgba(37,99,235,0.75)';
+            const lbl = tot.toFixed(0)+' т';
+            c.font = 'bold 10px sans-serif';
+            const tw = c.measureText(lbl).width;
+            const bgCol = sid==='proj' && tot>250
+              ? 'rgba(251,191,36,0.9)'
+              : sid==='proj'
+                ? 'rgba(22,163,74,0.85)'
+                : 'rgba(37,99,235,0.8)';
+            c.fillStyle = bgCol;
             c.beginPath();
-            c.roundRect(xp-tw/2-3,yp-10,tw+6,13,3);
+            if(c.roundRect) c.roundRect(xp-tw/2-3, yp-10, tw+6, 13, 3);
+            else c.rect(xp-tw/2-3, yp-10, tw+6, 13);
             c.fill();
-            c.fillStyle='#ffffff';
-            c.textAlign='center';
-            c.fillText(lbl,xp,yp);
+            c.fillStyle = '#ffffff';
+            c.textAlign = 'center';
+            c.fillText(lbl, xp, yp);
             c.restore();
           });
         });
