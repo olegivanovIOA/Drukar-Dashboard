@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 15:21 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 15:36 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -3915,22 +3915,32 @@ function _fcRender() {
         ['fact','proj'].forEach(sid=>{
           data.labels.forEach((_,i)=>{
             let tot=0;
-            data.datasets.forEach(ds=>{if(ds.stack===sid) tot+=(+ds.data[i]||0);});
-            if(tot<=0)return;
-            const xp=x.getPixelForValue(i)+(sid==='fact'?-9:9);
-            const yp=y.getPixelForValue(tot)-6;
+            data.datasets.forEach(ds=>{
+              if(ds.stack===sid && ds.data[i]!==null && ds.data[i]!==undefined)
+                tot+=(+ds.data[i]||0);
+            });
+            if(tot<=0) return;
+            // Для proj — центр бару, без зміщення (два стеки стоять поруч)
+            const barW = chart.getDatasetMeta(0).data[i]?.width || 30;
+            const xp = x.getPixelForValue(i) + (sid==='fact' ? -barW/2 : barW/2);
+            const yp = y.getPixelForValue(tot) - 6;
             c.save();
-            // Background pill
-            const lbl=tot.toFixed(0)+' т';
-            c.font='bold 10px sans-serif';
-            const tw=c.measureText(lbl).width;
-            c.fillStyle=sid==='proj'&&tot>250?'rgba(251,191,36,0.85)':'rgba(37,99,235,0.75)';
+            const lbl = tot.toFixed(0)+' т';
+            c.font = 'bold 10px sans-serif';
+            const tw = c.measureText(lbl).width;
+            const bgCol = sid==='proj' && tot>250
+              ? 'rgba(251,191,36,0.9)'
+              : sid==='proj'
+                ? 'rgba(22,163,74,0.85)'
+                : 'rgba(37,99,235,0.8)';
+            c.fillStyle = bgCol;
             c.beginPath();
-            c.roundRect(xp-tw/2-3,yp-10,tw+6,13,3);
+            if(c.roundRect) c.roundRect(xp-tw/2-3, yp-10, tw+6, 13, 3);
+            else c.rect(xp-tw/2-3, yp-10, tw+6, 13);
             c.fill();
-            c.fillStyle='#ffffff';
-            c.textAlign='center';
-            c.fillText(lbl,xp,yp);
+            c.fillStyle = '#ffffff';
+            c.textAlign = 'center';
+            c.fillText(lbl, xp, yp);
             c.restore();
           });
         });
