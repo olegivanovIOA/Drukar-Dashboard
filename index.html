@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 04:11 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 04:18 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -3800,7 +3800,7 @@ function _fcRender() {
   (SALES_MONTHS||[]).forEach((ym,i) => {
     if (!ym.startsWith('2026')) return;
     const m = parseInt(ym.split('-')[1]);
-    const o1 = +(SALES_OPT1_KG[i]||0), o2 = +(SALES_OPT2_KG[i]||0), rt = +(SALES_RET_KG[i]||0);
+    const o1=+(SALES_OPT1_KG[i]||0), o2=+(SALES_OPT2_KG[i]||0), rt=+(SALES_RET_KG[i]||0);
     factByM[m] = {o1, o2, rt, total: o1+o2+rt};
   });
 
@@ -3808,71 +3808,65 @@ function _fcRender() {
   const lastM  = factMs[factMs.length-1] || 4;
   const lastT  = factByM[lastM]?.total || 47;
 
-  // ── Органічний тренд: лінійна регресія по факту ────────
-  // Рахуємо slope в тоннах/міс по реальним даним
-  const fVals = factMs.map(m => factByM[m].total);
-  let slope = 5; // default ~5т/міс якщо мало даних
-  if (fVals.length >= 2) {
-    const n = fVals.length;
-    let sx=0,sy=0,sxy=0,sx2=0;
-    fVals.forEach((v,i)=>{sx+=i+1;sy+=v;sxy+=(i+1)*v;sx2+=(i+1)*(i+1);});
-    slope = Math.max(0, (n*sxy-sx*sy)/(n*sx2-sx*sx));
-  }
+  // ── Slope: приріст тонн/міс по факту ─────────────────
+  // Рахуємо як різницю між першим і останнім / кількість інтервалів
+  const firstT = factByM[factMs[0]]?.total || 25;
+  const slope  = factMs.length > 1
+    ? Math.max(0, (lastT - firstT) / (factMs.length - 1))
+    : 5; // ~5т/міс якщо 1 місяць
 
-  // ── Органік-прогноз (May-Dec): продовжуємо slope від lastM ──
-  // organic[m] = lastT + slope*(m - lastM)
-  // Розширення акків: додатковий % від органіку кожен місяць
+  // Органічний тренд для місяця m (May+):
+  // trendAt(m) = lastT + slope * (m - lastM)
+  const trendAt = m => Math.max(lastT, lastT + slope * (m - lastM));
+
+  // ── Органічний ріст від розширення акків ─────────────
   const growth = _fcGetGrowth();
 
-  // ── Будуємо 4 серії: факт / органік / розширення / gap ──
-  const dsFactTotal = []; // один стек — загальний факт
-  const dsOrganic   = []; // продовження тренду (May-Dec)
-  const dsExpand    = []; // додатковий ріст від розширення акків
-  const dsGapArea   = []; // gap до 320т (area)
-  const dsTrendLine = []; // неперервна тренд-лінія (Jan-Dec)
+  // ── Масиви Jan–Dec ────────────────────────────────────
+  // Структура стека для прогнозу (May-Dec):
+  //   dsBase    = органічний тренд (база — продовження поточного темпу)
+  //   dsExpand  = додатковий ріст від розширення акків (понад тренд)
+  //   dsGap     = залишок до 320т (понад тренд+розширення)
+  //
+  // Для факту (Jan-Apr): dsFactO1, dsFactO2, dsFactRt
+  // Тренд-лінія: неперервна (Jan=факт, May+=trendAt)
 
-  // По каналах для факту (стек)
   const dsFactO1=[], dsFactO2=[], dsFactRt=[];
+  const dsBase=[], dsExpand=[], dsGap=[];
+  const dsTrendLine=[];
 
-  //累積 expansion
-  let prevOrg = lastT;
-  let prevExp = 0;
+  // Накопичуємо expand місяць за місяцем
+  let prevBase = lastT;
 
   ALL.forEach((m, i) => {
     const isFact = m <= lastM;
 
-    // Trend line (органічна екстраполяція) — неперервна
-    const trendVal = m <= lastM
-      ? (factByM[m]?.total || null)
-      : Math.max(0, lastT + slope * (m - lastM));
-    dsTrendLine.push(trendVal !== null ? +trendVal.toFixed(1) : null);
-
     if (isFact) {
-      const f = factByM[m] || {o1:0,o2:0,rt:0,total:0};
+      const f = factByM[m] || {o1:0, o2:0, rt:0, total:0};
       dsFactO1.push(+f.o1.toFixed(2));
       dsFactO2.push(+f.o2.toFixed(2));
       dsFactRt.push(+f.rt.toFixed(2));
-      dsOrganic.push(null);
-      dsExpand.push(null);
-      dsGapArea.push(null);
+      dsBase.push(null); dsExpand.push(null); dsGap.push(null);
+      dsTrendLine.push(+f.total.toFixed(1));
     } else {
-      // Органічний прогноз (тренд)
-      const orgVal = Math.max(0, lastT + slope * (m - lastM));
+      // База = органічний тренд
+      const baseVal = trendAt(m);
 
-      // Розширення акків (накопично від органіку)
+      // Розширення: % від бази поточного місяця
       const gO1 = growth.opt1[m]||0, gO2 = growth.opt2[m]||0, gRt = growth.ret[m]||0;
       const avgG = (gO1 + gO2 + gRt) / 3;
-      prevOrg = orgVal; // просто тренд
-      const expandVal = Math.max(0, prevOrg * (avgG/100));
-      prevExp += expandVal * 0; // скидаємо — беремо поточний місяць
+      const expandVal = +(baseVal * avgG / 100).toFixed(1);
 
-      const projected = orgVal + expandVal;
-      const gapVal    = Math.max(0, GOAL - projected);
+      const projected = baseVal + expandVal;
+      const gapVal    = +Math.max(0, GOAL - projected).toFixed(1);
 
       dsFactO1.push(null); dsFactO2.push(null); dsFactRt.push(null);
-      dsOrganic.push(+orgVal.toFixed(1));
-      dsExpand.push(+expandVal.toFixed(1));
-      dsGapArea.push(+gapVal.toFixed(1));
+      dsBase.push(+baseVal.toFixed(1));
+      dsExpand.push(expandVal);
+      dsGap.push(gapVal);
+      dsTrendLine.push(+baseVal.toFixed(1));
+
+      prevBase = baseVal;
     }
   });
 
@@ -3888,24 +3882,25 @@ function _fcRender() {
     data: {
       labels,
       datasets: [
-        // === ФАКТ (стек) ===
-        {label:'Факт Опт1',    data:dsFactO1, backgroundColor:'#2563eb',         stack:'fact', borderRadius:3, barPercentage:0.55, order:2},
-        {label:'Факт Опт2',    data:dsFactO2, backgroundColor:'#60a5fa',         stack:'fact', borderRadius:3, barPercentage:0.55, order:2},
-        {label:'Факт Розниця', data:dsFactRt, backgroundColor:'#bfdbfe',         stack:'fact', borderRadius:3, barPercentage:0.55, order:2},
-        // === ПРОГНОЗ (стек) ===
-        {label:'Органічний тренд', data:dsOrganic, backgroundColor:'rgba(99,179,113,0.75)', stack:'proj', borderRadius:3, barPercentage:0.55, order:2},
-        {label:'Розширення акків', data:dsExpand,  backgroundColor:'rgba(22,163,74,0.9)',   stack:'proj', borderRadius:3, barPercentage:0.55, order:2},
-        {label:'Gap до 320 т',     data:dsGapArea, backgroundColor:'rgba(251,191,36,0.35)', stack:'proj', borderRadius:3, barPercentage:0.55, order:2,
-          borderColor:'#f59e0b', borderWidth:1},
-        // === ТРЕНД-ЛІНІЯ ===
+        // ФАКТ (стек 'fact')
+        {label:'Факт Опт1',       data:dsFactO1, backgroundColor:'#2563eb',              stack:'fact', borderRadius:3, barPercentage:0.6, order:2},
+        {label:'Факт Опт2',       data:dsFactO2, backgroundColor:'#60a5fa',              stack:'fact', borderRadius:3, barPercentage:0.6, order:2},
+        {label:'Факт Розниця',    data:dsFactRt, backgroundColor:'#bfdbfe',              stack:'fact', borderRadius:3, barPercentage:0.6, order:2},
+        // ПРОГНОЗ (стек 'proj') — три шари накопично
+        {label:'Органічний тренд',data:dsBase,   backgroundColor:'rgba(99,179,113,0.7)', stack:'proj', borderRadius:3, barPercentage:0.6, order:2},
+        {label:'Розширення акків', data:dsExpand, backgroundColor:'rgba(22,163,74,0.95)',stack:'proj', borderRadius:3, barPercentage:0.6, order:2},
+        {label:'Gap до 320 т',    data:dsGap,    backgroundColor:'rgba(251,191,36,0.3)', stack:'proj', borderRadius:3, barPercentage:0.6, order:2,
+          borderColor:'rgba(245,158,11,0.6)', borderWidth:1},
+        // ТРЕНД-ЛІНІЯ (line, не стек) — зростаюча
         {label:'Тренд (органік)', data:dsTrendLine, type:'line',
-          borderColor:'#f97316', borderWidth:2.5, borderDash:[],
-          pointBackgroundColor:dsTrendLine.map((v,i)=>i<(lastM-1)?'#2563eb':'#f97316'),
-          pointRadius:3, tension:0.3, fill:false, stack:undefined, order:1},
-        // === ЦІЛЬ-ЛІНІЯ ===
+          borderColor:'#f97316', borderWidth:2.5,
+          pointBackgroundColor: ALL.map((_,i)=>i<lastM?'#2563eb':'#f97316'),
+          pointRadius:4, pointHoverRadius:6,
+          tension:0.25, fill:false, stack:undefined, order:0},
+        // ЦІЛЬ (line, не стек)
         {label:'Ціль 320 т', data:ALL.map(()=>GOAL), type:'line',
-          borderColor:'rgba(239,68,68,0.6)', borderWidth:1.5, borderDash:[6,4],
-          pointRadius:0, fill:false, stack:undefined, order:1},
+          borderColor:'rgba(239,68,68,0.5)', borderWidth:1.5, borderDash:[6,4],
+          pointRadius:0, fill:false, stack:undefined, order:0},
       ]
     },
     options: {
@@ -3915,16 +3910,14 @@ function _fcRender() {
         tooltip:{
           mode:'index',
           callbacks:{
-            label: ctx => {
-              if (ctx.dataset.label === 'Ціль 320 т') return null;
-              if (!ctx.raw && ctx.raw !== 0) return null;
-              return ctx.dataset.label + ': ' + (+ctx.raw).toFixed(1) + ' т';
+            label: c => {
+              if (c.dataset.label==='Ціль 320 т') return null;
+              if (!c.raw && c.raw!==0) return null;
+              return c.dataset.label+': '+(+c.raw).toFixed(1)+' т';
             },
             footer: items => {
-              const stackTotal = items
-                .filter(i => i.dataset.stack && i.raw > 0)
-                .reduce((s,i) => s + (+i.raw||0), 0);
-              return stackTotal > 0 ? 'Разом: ' + stackTotal.toFixed(1) + ' т' : '';
+              const t = items.filter(i=>i.dataset.stack&&i.raw>0).reduce((s,i)=>s+(+i.raw||0),0);
+              return t>0?'Разом: '+t.toFixed(1)+' т':'';
             }
           }
         }
@@ -3932,71 +3925,66 @@ function _fcRender() {
       scales:{
         x:{stacked:true, grid:{color:'rgba(128,128,128,0.08)'}, ticks:{color:'#999',font:{size:11}}},
         y:{stacked:true, beginAtZero:true,
-           max: Math.ceil(Math.max(GOAL*1.05, 340)/50)*50,
+           max: Math.ceil(Math.max(GOAL*1.08,350)/50)*50,
            grid:{color:'rgba(128,128,128,0.08)'},
            ticks:{color:'#999', font:{size:11}, callback:v=>v+' т'}}
       }
     },
     plugins:[
-      // Ціль-лінія з підписом
+      // Підпис цілі
       {id:'goalLine', afterDraw(chart){
-        const {ctx:c, chartArea:{left,right,top,bottom}, scales:{y}} = chart;
-        const yPos = y.getPixelForValue(GOAL);
-        if (yPos < top || yPos > bottom) return;
+        const {ctx:c,chartArea:{left,right,top,bottom},scales:{y}}=chart;
+        const yp=y.getPixelForValue(GOAL);
+        if(yp<top||yp>bottom) return;
         c.save();
         c.setLineDash([7,4]); c.strokeStyle='#ef4444'; c.lineWidth=2;
-        c.beginPath(); c.moveTo(left,yPos); c.lineTo(right,yPos); c.stroke();
+        c.beginPath(); c.moveTo(left,yp); c.lineTo(right,yp); c.stroke();
         c.fillStyle='#ef4444'; c.font='bold 11px sans-serif';
-        c.fillText('Ціль 320 т', right-74, yPos-6);
+        c.fillText('Ціль 320 т', right-74, yp-6);
         c.restore();
       }},
-      // Підписи сум зверху стовпців
+      // Підписи сум зверху кожного стека
       {id:'colLabels', afterDatasetsDraw(chart){
-        const {ctx:c, scales:{x,y}, data} = chart;
-        const n = data.labels.length;
-        for (let i=0; i<n; i++) {
-          // Sum per stack
-          const stacks = {};
-          data.datasets.forEach(ds => {
-            if (!ds.stack) return;
-            const v = +(ds.data[i]||0);
-            if (v > 0) stacks[ds.stack] = (stacks[ds.stack]||0) + v;
-          });
-          Object.entries(stacks).forEach(([stack, total]) => {
-            if (total <= 0) return;
-            const xPos = x.getPixelForValue(i);
-            const yPos = y.getPixelForValue(total);
+        const {ctx:c,scales:{x,y},data}=chart;
+        ['fact','proj'].forEach(stackId=>{
+          data.labels.forEach((_,i)=>{
+            let total=0;
+            data.datasets.forEach(ds=>{
+              if(ds.stack!==stackId) return;
+              total+=(+ds.data[i]||0);
+            });
+            if(total<=0) return;
+            const xRaw=x.getPixelForValue(i);
+            const xOff=stackId==='fact'?-10:10;
             c.save();
-            c.fillStyle = total > 200 ? '#fbbf24' : '#e2e8f0';
-            c.font = 'bold 10px sans-serif';
-            c.textAlign = 'center';
-            c.fillText(total.toFixed(0), xPos + (stack==='proj'?8:-8), yPos-5);
+            c.fillStyle=total>200?'#fbbf24':'rgba(200,220,255,0.9)';
+            c.font='bold 10px sans-serif';
+            c.textAlign='center';
+            c.fillText(total.toFixed(0), xRaw+xOff, y.getPixelForValue(total)-5);
             c.restore();
           });
-        }
+        });
       }}
     ]
   });
 
-  // ── KPI ────────────────────────────────────────────
-  const factTotal = factMs.reduce((s,m)=>s+(factByM[m]?.total||0),0);
-  const decIdx    = 11;
-  const decOrg    = dsOrganic[decIdx]||0;
-  const decExp    = dsExpand[decIdx]||0;
-  const decProj   = decOrg + decExp;
-  const decGap    = Math.max(0, GOAL - decProj);
+  // ── KPI ──────────────────────────────────────────────
+  const factTotal=factMs.reduce((s,m)=>s+(factByM[m]?.total||0),0);
+  const dec=11;
+  const decProj=(dsBase[dec]||0)+(dsExpand[dec]||0);
+  const decGap=Math.max(0,GOAL-decProj);
+  const gPct=lastT>0?((decProj-lastT)/lastT*100):0;
 
-  const el = id => document.getElementById(id);
-  if(el('fc-fact-total'))  el('fc-fact-total').textContent  = factTotal.toFixed(1);
-  if(el('fc-dec-proj'))    el('fc-dec-proj').textContent    = decProj.toFixed(1);
+  const el=id=>document.getElementById(id);
+  if(el('fc-fact-total'))  el('fc-fact-total').textContent=factTotal.toFixed(1);
+  if(el('fc-dec-proj'))    el('fc-dec-proj').textContent=decProj.toFixed(1);
   if(el('fc-gap')){
-    el('fc-gap').textContent = decGap.toFixed(1);
-    el('fc-gap').style.color = decGap>150?'#ef4444':decGap>80?'#f59e0b':'#16a34a';
+    el('fc-gap').textContent=decGap.toFixed(1);
+    el('fc-gap').style.color=decGap>150?'#ef4444':decGap>80?'#f59e0b':'#16a34a';
   }
   if(el('fc-growth-pct')){
-    const gPct = lastT>0?((decProj-lastT)/lastT*100):0;
-    el('fc-growth-pct').textContent = (gPct>=0?'+':'')+gPct.toFixed(0)+'%';
-    el('fc-growth-pct').style.color = gPct>=0?'#16a34a':'#ef4444';
+    el('fc-growth-pct').textContent=(gPct>=0?'+':'')+gPct.toFixed(0)+'%';
+    el('fc-growth-pct').style.color=gPct>=0?'#16a34a':'#ef4444';
   }
 }
 
