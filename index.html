@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 16:37 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.05.2026 16:53 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -695,6 +695,203 @@
 <!-- ══════════════ SALES ══════════════ -->
 <div id="tab-sales" class="tab-content">
   <div class="section-title">Аналіз продажів</div>
+
+  <!-- KPI row -->
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+    <div class="kpi-card" style="--accent-bar:var(--accent)">
+      <div class="kpi-label">Загальні продажі · Всього</div>
+      <div class="kpi-value" style="font-size:26px" id="salesTotalVal">56.9</div>
+      <div class="kpi-unit">млн грн (Опт + Роздріб)</div>
+      <div class="kpi-delta delta-up">▲ Вер 2024 — Бер 2026</div>
+    </div>
+    <div class="kpi-card" style="--accent-bar:var(--accent2)">
+      <div class="kpi-label">Оптові продажі</div>
+      <div class="kpi-value" style="font-size:26px" id="salesOptVal">48.3</div>
+      <div class="kpi-unit">млн грн · 84.8%</div>
+      <div class="kpi-delta delta-up">▲ Основний канал</div>
+    </div>
+    <div class="kpi-card" style="--accent-bar:var(--good)">
+      <div class="kpi-label">Роздрібні продажі</div>
+      <div class="kpi-value" style="font-size:26px" id="salesRetVal">8.7</div>
+      <div class="kpi-unit">млн грн · 15.2%</div>
+      <div class="kpi-delta delta-up">▲ Зростаючий канал</div>
+    </div>
+    <div class="kpi-card" style="--accent-bar:var(--warn)">
+      <div class="kpi-label">Найкращий місяць</div>
+      <div class="kpi-value" style="font-size:26px">17.2</div>
+      <div class="kpi-unit">млн грн · Кві 2026</div>
+      <div class="kpi-delta delta-up">▲ Опт 10.6М + Роздр 6.6М</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Monthly sales bar + donut -->
+  <div class="grid-31" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Продажі по місяцях · Опт vs Роздріб</div><div class="card-subtitle">грн · всі доступні місяці</div></div>
+        <div style="display:flex;gap:6px">
+          <span class="badge badge-blue">Опт</span>
+          <span class="badge badge-green">Роздріб</span>
+        </div>
+      </div>
+      <div class="cw-lg"><canvas id="salesMonthChart"></canvas></div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="card-header"><div>
+        <div class="card-title">Частка каналів</div>
+        <div class="card-subtitle">% від загального виторгу</div>
+      </div></div>
+
+      <!-- Перемикач місяців — compact wrap, max-height зі скролом -->
+      <div id="donutMonthBtns" style="
+        display:flex;flex-wrap:wrap;
+        gap:3px;
+        padding:6px 4px 4px;
+        width:100%;box-sizing:border-box;
+        max-height:110px;overflow-y:auto;
+        scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+      "></div>
+
+      <!-- Бублик + підписи -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;flex:1;padding:8px 4px 12px">
+        <!-- Canvas з центральним текстом -->
+        <div style="position:relative;width:140px;height:140px;flex-shrink:0">
+          <canvas id="salesDonutChart"></canvas>
+          <div id="donutCenter" style="
+            position:absolute;inset:0;
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            pointer-events:none;line-height:1.1;
+          ">
+            <span id="donutCenterVal" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text)">—</span>
+            <span style="font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.5px">МЛН ГРН</span>
+          </div>
+        </div>
+
+        <!-- Легенда з % і сумами -->
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:100px">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <div style="width:10px;height:10px;border-radius:2px;background:#2563eb;flex-shrink:0"></div>
+              <span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">Опт</span>
+            </div>
+            <div id="donutOptPct" style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#2563eb;line-height:1">—%</div>
+            <div id="donutOptVal" style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">— млн грн</div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <div style="width:10px;height:10px;border-radius:2px;background:#16a34a;flex-shrink:0"></div>
+              <span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">Роздріб</span>
+            </div>
+            <div id="donutRetPct" style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#16a34a;line-height:1">—%</div>
+            <div id="donutRetVal" style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">— млн грн</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Top products + Avg price per kg -->
+  <div class="grid-2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Топ-10 продуктів · Виторг</div><div class="card-subtitle">загальний виторг за весь період</div></div>
+        <span class="badge badge-yellow">грн</span>
+      </div>
+      <div class="cw-lg"><canvas id="topProductsChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Середня ціна продажу 1 кг</div><div class="card-subtitle">PETG та PLA · грн/кг · пунктир = тренд</div></div>
+        <div style="display:flex;gap:6px"><span class="badge badge-blue">PETG</span><span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span></div>
+      </div>
+      <div class="cw-lg"><canvas id="avgPriceChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ FORECAST ══════════════ -->
+<div id="tab-forecast" class="tab-content">
+  <div style="padding:10px 0 8px;display:flex;align-items:center;gap:12px">
+    <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">📈 Прогноз продажів 2026 · тонни</h2>
+    <span class="badge badge-blue">Ціль грудня: 320 т</span>
+  </div>
+
+  <!-- Графік — повна ширина -->
+  <div class="card" style="padding:12px;margin-bottom:10px">
+    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Продажі в тоннах · факт + прогноз + ціль</div>
+    <div style="position:relative;height:260px"><canvas id="forecastChart"></canvas></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:10px;color:var(--muted)">
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2563eb;margin-right:3px"></span>Опт1(Ст)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#60a5fa;margin-right:3px"></span>Опт2(Из)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#bfdbfe;margin-right:3px"></span>Розниця</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(99,179,113,0.8);margin-right:3px"></span>Тренд</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(22,163,74,0.9);margin-right:3px"></span>Розширення</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(59,130,246,0.65);margin-right:3px"></span>Опт(нові)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(251,191,36,0.4);border:1px solid #f59e0b;margin-right:3px"></span>Gap</span>
+      <span><span style="display:inline-block;width:12px;height:2px;background:#f97316;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Тренд-лінія</span>
+    </div>
+  </div>
+
+  <!-- Таблиця вводу + орієнтири — повна ширина під графіком -->
+  <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;margin-bottom:10px">
+
+    <!-- Таблиця -->
+    <div class="card" style="padding:10px 12px">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚙️ Розширення продажів, тонн/міс (накопично)</div>
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:500px">
+          <thead>
+            <tr style="background:var(--card-border)">
+              <th style="padding:5px 10px;text-align:left;font-size:11px;font-weight:600;white-space:nowrap">Канал</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Тра</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Чер</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Лип</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Сер</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Вер</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Жов</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Лис</th>
+              <th style="padding:5px 4px;text-align:center;font-size:11px;font-weight:600">Гру</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Опт1 (Ст) т</td>
+              <td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Опт2 (Из) т</td>
+              <td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Розниця т</td>
+              <td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="ret" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td>
+            </tr>
+            <tr>
+              <td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Опт (нові) т</td>
+              <td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 4px;text-align:center"><input class="fc-input" data-ch="new" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px;background:var(--bg);color:var(--text);font-size:12px"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:10px;color:var(--muted)">Значення накопичуються помісячно. Зміна оновлює графік автоматично.</div>
+        <button onclick="fcResetInputs()" style="padding:4px 12px;border:1px solid var(--card-border);border-radius:5px;background:var(--bg);color:var(--muted);cursor:pointer;font-size:11px;white-space:nowrap;margin-left:10px">🔄 Обнулити</button>
+      </div>
+    </div>
+
+    <!-- Орієнтири -->
+    <div class="card" style="padding:12px;min-width:140px">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Орієнтири</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+        <div><div style="color:var(--muted);font-size:10px">Зараз</div><div style="font-weight:700;font-size:16px">~47 т/міс</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Ціль грудень</div><div style="font-weight:700;font-size:16px;color:#ef4444">320 т</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div style="font-weight:700;font-size:16px;color:#f97316">~95 т</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Gap грудень</div><div style="font-weight:700;font-size:16px;color:#f59e0b" id="fc-gap-side">— т</div></div>
+      </div>
+    </div>
+
+  </div>
 
   <!-- KPI row -->
   <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
@@ -3856,32 +4053,44 @@ function _fcRender() {
         c.fillStyle='#ef4444';c.font='bold 10px sans-serif';
         c.fillText('320 т',right-36,yp-5);c.restore();
       }},
-      {id:'colLabels',afterDatasetsDraw(chart){
+      {id:'colLabels',afterDraw(chart){
         const {ctx:c,scales:{x,y},data}=chart;
-        const meta0=chart.getDatasetMeta(0);
-        ['fact','proj'].forEach(sid=>{
-          data.labels.forEach((_,i)=>{
-            let tot=0;
-            data.datasets.forEach(ds=>{
-              if(ds.stack===sid&&ds.data[i]!==null&&ds.data[i]!==undefined)
-                tot+=(+ds.data[i]||0);
-            });
-            if(tot<=0)return;
-            const bw=(meta0.data[i]?.width||22);
-            const xp=x.getPixelForValue(i)+(sid==='fact'?-bw/2:bw/2);
-            const yp=y.getPixelForValue(tot)-5;
+        // Для кожного індексу рахуємо суму по кожному стеку окремо
+        data.labels.forEach((_,i)=>{
+          const stacks={};
+          data.datasets.forEach(ds=>{
+            if(!ds.stack) return;
+            const v=ds.data[i];
+            if(v===null||v===undefined||isNaN(+v)) return;
+            stacks[ds.stack]=(stacks[ds.stack]||0)+(+v);
+          });
+          Object.entries(stacks).forEach(([sid,tot])=>{
+            if(tot<=0) return;
+            // Знаходимо перший бар цього стека щоб отримати x-позицію
+            let xPos=null;
+            for(let di=0;di<data.datasets.length;di++){
+              if(data.datasets[di].stack===sid){
+                const meta=chart.getDatasetMeta(di);
+                if(meta.data[i]) { xPos=meta.data[i].x; break; }
+              }
+            }
+            if(xPos===null) return;
+            const yPos=y.getPixelForValue(tot);
             c.save();
             const lbl=tot.toFixed(0)+' т';
-            c.font='bold 9px sans-serif';
+            c.font='bold 10px sans-serif';
             const tw=c.measureText(lbl).width;
-            c.fillStyle=sid==='proj'&&tot>250?'rgba(251,191,36,0.9)':
-                         sid==='proj'?'rgba(22,163,74,0.85)':'rgba(37,99,235,0.8)';
+            const bg=sid==='proj'&&tot>250?'rgba(245,158,11,0.9)':
+                      sid==='proj'?'rgba(22,163,74,0.85)':'rgba(37,99,235,0.85)';
+            c.fillStyle=bg;
             c.beginPath();
-            if(c.roundRect)c.roundRect(xp-tw/2-2,yp-9,tw+4,11,2);
-            else c.rect(xp-tw/2-2,yp-9,tw+4,11);
+            if(c.roundRect) c.roundRect(xPos-tw/2-3,yPos-16,tw+6,14,3);
+            else c.rect(xPos-tw/2-3,yPos-16,tw+6,14);
             c.fill();
-            c.fillStyle='#fff';c.textAlign='center';
-            c.fillText(lbl,xp,yp);
+            c.fillStyle='#ffffff';
+            c.textAlign='center';
+            c.textBaseline='middle';
+            c.fillText(lbl,xPos,yPos-9);
             c.restore();
           });
         });
