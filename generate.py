@@ -716,7 +716,7 @@ def parse_sales(rows):
         except: revenue = 0
         try: kg = float(str(row[4]).replace(',','.').replace(' ','').replace('\xa0','')) if row[4] else 0
         except: kg = 0
-        if revenue <= 0: continue
+        if revenue <= 0 and kg <= 0: continue
         ym = d.strftime('%Y-%m')
         op_type = str(row[6]).strip() if len(row) > 6 else ''
         data_rows.append({'ym':ym, 'channel':channel, 'product':product, 'plastic':plastic, 'revenue':revenue, 'kg':kg, 'op_type':op_type})
