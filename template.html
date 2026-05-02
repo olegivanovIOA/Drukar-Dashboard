@@ -805,138 +805,93 @@
 
 <!-- ══════════════ FORECAST ══════════════ -->
 <div id="tab-forecast" class="tab-content">
-  <div style="padding:16px 0 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <h2 style="margin:0;font-size:18px;font-weight:700;color:var(--text)">📈 Прогноз продажів 2026 · тонни</h2>
+  <div style="padding:10px 0 8px;display:flex;align-items:center;gap:12px">
+    <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">📈 Прогноз продажів 2026 · тонни</h2>
     <span class="badge badge-blue">Ціль грудня: 320 т</span>
   </div>
 
-  <!-- Chart -->
-  <div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-      <div>
-        <div class="card-title">Продажі в тоннах · факт + прогноз + ціль</div>
-        <div class="card-subtitle">Стековий графік: факт / органічний ріст / gap до 320 т</div>
-      </div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px">
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#2563eb;display:inline-block"></span>Факт Опт1</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#60a5fa;display:inline-block"></span>Факт Опт2</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#93c5fd;display:inline-block"></span>Факт Розниця</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#6ee7b7;display:inline-block"></span>Прогноз (тренд)</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#16a34a;display:inline-block"></span>Органічний ріст</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#fbbf24;display:inline-block"></span>Gap до плану</span>
+  <!-- Основний layout: графік зліва, таблиця справа -->
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start">
+
+    <!-- Графік -->
+    <div class="card" style="padding:12px">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Продажі в тоннах · факт + прогноз + ціль</div>
+      <div style="position:relative;height:240px"><canvas id="forecastChart"></canvas></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:10px;color:var(--muted)">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2563eb;margin-right:3px"></span>Опт1(Ст)</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#60a5fa;margin-right:3px"></span>Опт2(Из)</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#bfdbfe;margin-right:3px"></span>Розниця</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(99,179,113,0.8);margin-right:3px"></span>Тренд</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(22,163,74,0.9);margin-right:3px"></span>Розширення</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(59,130,246,0.65);margin-right:3px"></span>Опт(нові)</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(251,191,36,0.4);border:1px solid #f59e0b;margin-right:3px"></span>Gap</span>
+        <span><span style="display:inline-block;width:12px;height:2px;background:#f97316;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Тренд-лінія</span>
       </div>
     </div>
-    <div style="display:flex;gap:16px;align-items:flex-start">
-      <div style="position:relative;height:340px;flex:1;min-width:0"><canvas id="forecastChart"></canvas></div>
-      <!-- Права панель: легенда + цілі -->
-      <div style="width:160px;flex-shrink:0;font-size:11px;display:flex;flex-direction:column;gap:10px;padding-top:8px">
-        <div style="font-weight:700;color:var(--text);font-size:12px;margin-bottom:2px">Легенда</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Факт</div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;flex-shrink:0"></span><span style="color:var(--muted)">Опт1 (Ст)</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#60a5fa;flex-shrink:0"></span><span style="color:var(--muted)">Опт2 (Из)</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#bfdbfe;flex-shrink:0"></span><span style="color:var(--muted)">Розниця</span></div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;margin-bottom:2px">Прогноз</div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(99,179,113,0.75);flex-shrink:0"></span><span style="color:var(--muted)">Органічний тренд</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(22,163,74,0.9);flex-shrink:0"></span><span style="color:var(--muted)">Розширення акків</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(251,191,36,0.35);border:1px solid #f59e0b;flex-shrink:0"></span><span style="color:var(--muted)">Gap до 320 т</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;background:#f97316;flex-shrink:0;border-radius:2px"></span><span style="color:var(--muted)">Тренд-лінія</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:2px;border-top:2px dashed #ef4444;flex-shrink:0"></span><span style="color:var(--muted)">Ціль 320 т</span></div>
-        </div>
-        <div style="border-top:1px solid var(--card-border);padding-top:10px;margin-top:4px">
-          <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px">Орієнтири</div>
-          <div style="color:var(--muted)">Зараз: <span style="color:var(--text);font-weight:600">~47 т/міс</span></div>
-          <div style="color:var(--muted);margin-top:4px">Ціль Гру: <span style="color:#ef4444;font-weight:700">320 т</span></div>
-          <div style="color:var(--muted);margin-top:4px">Треба зрост: <span style="color:#f59e0b;font-weight:600">~6.8x</span></div>
+
+    <!-- Права панель: орієнтири + таблиця вводу -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Орієнтири -->
+      <div class="card" style="padding:10px 12px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Орієнтири</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;align-items:center">
+          <span style="color:var(--muted)">Зараз:</span><span style="font-weight:700">~47 т/міс</span>
+          <span style="color:var(--muted)">Ціль Гру:</span><span style="font-weight:700;color:#ef4444">320 т</span>
+          <span style="color:var(--muted)">Тренд Гру:</span><span style="font-weight:700;color:#f97316">~95 т</span>
+          <span style="color:var(--muted)">Gap Гру:</span><span style="font-weight:700;color:#f59e0b" id="fc-gap-side">— т</span>
         </div>
       </div>
+
+      <!-- Таблиця вводу -->
+      <div class="card" style="padding:10px 12px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚙️ Розширення, т/міс</div>
+        <div style="overflow-x:auto">
+          <table style="border-collapse:collapse;width:100%">
+            <thead>
+              <tr style="background:var(--card-border)">
+                <th style="padding:4px 8px;text-align:left;font-size:10px;font-weight:600;white-space:nowrap">Канал</th>
+<th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Тра</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Чер</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Лип</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Сер</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Вер</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Жов</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Лис</th><th style="padding:5px 2px;text-align:center;font-size:11px;font-weight:600">Гру</th>
+              </tr>
+            </thead>
+            <tbody>
+<tr><td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Опт1(Ст) т</td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt1" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td></tr>
+<tr><td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Опт2(Из) т</td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="opt2" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td></tr>
+<tr><td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Розниця т</td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="ret" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td></tr>
+<tr><td style="padding:5px 10px;font-weight:600;white-space:nowrap;font-size:12px">Опт(нові) т</td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="5" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="6" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="7" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="8" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="9" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="10" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="11" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td><td style="padding:3px 2px;text-align:center"><input class="fc-input" data-ch="new" data-m="12" type="number" min="0" max="99" step="0.5" value="0" style="width:44px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:3px 2px;background:var(--bg);color:var(--text);font-size:12px"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:10px;color:var(--muted)">Накопично по місяцях</div>
+          <button onclick="fcResetInputs()" style="padding:3px 10px;border:1px solid var(--card-border);border-radius:5px;background:var(--bg);color:var(--muted);cursor:pointer;font-size:11px">🔄 Обнулити</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- KPI рядок -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
-    <div class="card" style="text-align:center;padding:14px">
-      <div class="kpi-label">Факт (Jan–квітень)</div>
-      <div class="kpi-value" id="fc-fact-total" style="font-size:28px">—</div>
+  <!-- KPI плашки знизу -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
+    <div class="card" style="text-align:center;padding:12px">
+      <div class="kpi-label">Факт (Jan–Кві)</div>
+      <div class="kpi-value" id="fc-fact-total" style="font-size:26px">148</div>
       <div class="kpi-unit">тонн</div>
     </div>
-    <div class="card" style="text-align:center;padding:14px">
+    <div class="card" style="text-align:center;padding:12px">
       <div class="kpi-label">Прогноз грудень</div>
-      <div class="kpi-value" id="fc-dec-proj" style="font-size:28px">—</div>
+      <div class="kpi-value" id="fc-dec-proj" style="font-size:26px">—</div>
       <div class="kpi-unit">тонн (тренд + ріст)</div>
     </div>
-    <div class="card" style="text-align:center;padding:14px">
+    <div class="card" style="text-align:center;padding:12px">
       <div class="kpi-label">Gap до 320 т</div>
-      <div class="kpi-value" id="fc-gap" style="font-size:28px;color:#f59e0b">—</div>
+      <div class="kpi-value" id="fc-gap" style="font-size:26px;color:#f59e0b">—</div>
       <div class="kpi-unit">тонн треба залучити</div>
     </div>
-    <div class="card" style="text-align:center;padding:14px">
+    <div class="card" style="text-align:center;padding:12px">
       <div class="kpi-label">Зростання до грудня</div>
-      <div class="kpi-value" id="fc-growth-pct" style="font-size:28px">—</div>
-      <div class="kpi-unit">% vs останній факт</div>
-    </div>
-  </div>
-
-  <!-- Ручний ввід органічного росту -->
-  <div class="card">
-    <div class="card-title" style="margin-bottom:4px">⚙️ Органічний ріст — ручний ввід % по місяцях</div>
-    <div class="card-subtitle" style="margin-bottom:14px">Введіть очікуваний % приросту відносно попереднього місяця для кожного каналу (травень–грудень 2026)</div>
-
-    <div style="overflow-x:auto">
-      <table style="border-collapse:collapse;width:100%;font-size:12px">
-        <thead>
-          <tr style="background:var(--card-border)">
-            <th style="padding:8px 12px;text-align:left;font-weight:600">Канал</th>
-            <th style="padding:8px 6px;text-align:center">Тра</th>
-            <th style="padding:8px 6px;text-align:center">Чер</th>
-            <th style="padding:8px 6px;text-align:center">Лип</th>
-            <th style="padding:8px 6px;text-align:center">Сер</th>
-            <th style="padding:8px 6px;text-align:center">Вер</th>
-            <th style="padding:8px 6px;text-align:center">Жов</th>
-            <th style="padding:8px 6px;text-align:center">Лис</th>
-            <th style="padding:8px 6px;text-align:center">Гру</th>
-          </tr>
-        </thead>
-        <tbody id="fc-growth-table">
-          <tr data-channel="opt1">
-            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Опт1 (Ст) т</td>
-            <td style="padding:4px 2px" id="fc-td-opt1-5"><input class="fc-input" data-ch="opt1" data-m="5" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="6" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="7" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="8" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="9" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="10" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="11" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt1" data-m="12" type="number" min="0" max="50" step="0.5" value="3" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-          </tr>
-          <tr data-channel="opt2">
-            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Опт2 (Из) %</td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="5" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="6" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="7" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="8" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="9" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="10" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="11" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="opt2" data-m="12" type="number" min="0" max="50" step="0.5" value="2" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-          </tr>
-          <tr data-channel="ret">
-            <td style="padding:6px 12px;font-weight:600;white-space:nowrap">Розниця т</td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="5" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="6" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="7" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="8" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="9" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="10" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="11" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-            <td style="padding:4px 2px"><input class="fc-input" data-ch="ret" data-m="12" type="number" min="0" max="50" step="0.5" value="1" style="width:52px;text-align:center;border:1px solid var(--card-border);border-radius:4px;padding:4px;background:var(--bg);color:var(--text)"></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="font-size:11px;color:var(--muted)">💡 Введіть додаткові тонни понад органічний тренд (накопично). Зміна оновлює графік автоматично.</div>
-      <button onclick="fcResetInputs()" style="padding:5px 14px;border:1px solid var(--card-border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer;font-size:12px;white-space:nowrap">🔄 Обнулити</button>
+      <div class="kpi-value" id="fc-growth-pct" style="font-size:26px">—</div>
+      <div class="kpi-unit">% vs квітень</div>
     </div>
   </div>
 </div>
@@ -3784,11 +3739,11 @@ function initForecast() {
 }
 
 function _fcGetGrowth() {
-  // Returns {opt1:{5:5, 6:5,...}, opt2:{...}, ret:{...}}
-  const g = {opt1:{}, opt2:{}, ret:{}};
+  const g = {opt1:{}, opt2:{}, ret:{}, new:{}};
   document.querySelectorAll('.fc-input').forEach(el => {
     const ch = el.dataset.ch;
     const m  = parseInt(el.dataset.m);
+    if (!g[ch]) g[ch] = {};
     g[ch][m] = parseFloat(el.value) || 0;
   });
   return g;
@@ -3799,74 +3754,70 @@ function _fcRender() {
               7:'Лип',8:'Сер',9:'Вер',10:'Жов',11:'Лис',12:'Гру'};
   const GOAL = 320;
   const ALL  = [1,2,3,4,5,6,7,8,9,10,11,12];
-
-  // ── Факт Jan–Apr (тонни) ─────────────────────────────
   const FACT = {1:25, 2:31, 3:45, 4:47};
   const LAST_FACT_M = 4;
 
-  // ── Лінійна регресія по факту ─────────────────────────
-  const xs = [1,2,3,4], ys = [25,31,45,47], n = 4;
+  // Лінійна регресія
+  const xs=[1,2,3,4], ys=[25,31,45,47], n=4;
   let sx=0,sy=0,sxy=0,sx2=0;
   xs.forEach((x,i)=>{sx+=x;sy+=ys[i];sxy+=x*ys[i];sx2+=x*x;});
-  const slope     = (n*sxy-sx*sy)/(n*sx2-sx*sx);
-  const intercept = (sy-slope*sx)/n;
-  const trendAt   = m => Math.max(0, slope*m+intercept);
+  const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx);
+  const intercept=(sy-slope*sx)/n;
+  const trendAt=m=>Math.max(0,slope*m+intercept);
 
-  // ── Введені тонни розширення (накопично) ──────────────
-  // growth.opt1[m], growth.opt2[m], growth.ret[m] = тонни на місяць
-  // Накопичуємо: expand[m] = sum(opt1[5..m] + opt2[5..m] + ret[5..m])
+  // Ввід: розширення існуючих + нові акаунти (накопично)
   const g = _fcGetGrowth();
-  const expandByM = {}; // {month: накоп. тонн понад тренд}
-  let cumExpand = 0;
-  for (let m = LAST_FACT_M+1; m <= 12; m++) {
-    cumExpand += (g.opt1[m]||0) + (g.opt2[m]||0) + (g.ret[m]||0);
+  const expandByM={}, newByM={};
+  let cumExpand=0, cumNew=0;
+  for(let m=LAST_FACT_M+1; m<=12; m++){
+    cumExpand += (g.opt1[m]||0)+(g.opt2[m]||0)+(g.ret[m]||0);
+    cumNew    += (g.new[m]||0);
     expandByM[m] = +cumExpand.toFixed(1);
+    newByM[m]    = +cumNew.toFixed(1);
   }
 
-  // ── Масиви ────────────────────────────────────────────
-  const dsFactO1=[], dsFactO2=[], dsFactRt=[];
-  const dsBase=[], dsExpand=[], dsGap=[];
+  // Масиви
+  const dsFactO1=[],dsFactO2=[],dsFactRt=[];
+  const dsBase=[],dsExpand=[],dsNew=[],dsGap=[];
   const dsTrend=[];
 
-  ALL.forEach(m => {
+  ALL.forEach(m=>{
     dsTrend.push(+trendAt(m).toFixed(1));
-
-    if (m <= LAST_FACT_M) {
-      const t = FACT[m]||0;
+    if(m<=LAST_FACT_M){
+      const t=FACT[m]||0;
       dsFactO1.push(+(t*0.70).toFixed(1));
       dsFactO2.push(+(t*0.20).toFixed(1));
       dsFactRt.push(+(t*0.10).toFixed(1));
-      dsBase.push(null); dsExpand.push(null); dsGap.push(null);
+      dsBase.push(null);dsExpand.push(null);dsNew.push(null);dsGap.push(null);
     } else {
       const base   = +trendAt(m).toFixed(1);
-      const expand = expandByM[m] || 0;
-      const gap    = +Math.max(0, GOAL - base - expand).toFixed(1);
-      dsFactO1.push(null); dsFactO2.push(null); dsFactRt.push(null);
-      dsBase.push(base);
-      dsExpand.push(expand);
-      dsGap.push(gap);
+      const expand = expandByM[m]||0;
+      const newAcc = newByM[m]||0;
+      const gap    = +Math.max(0, GOAL-base-expand-newAcc).toFixed(1);
+      dsFactO1.push(null);dsFactO2.push(null);dsFactRt.push(null);
+      dsBase.push(base);dsExpand.push(expand);dsNew.push(newAcc);dsGap.push(gap);
     }
   });
 
-  const labels = ALL.map(m => UA[m]);
-  const ctx = document.getElementById('forecastChart');
-  if (!ctx) return;
-  if (_fcChart) { _fcChart.destroy(); _fcChart = null; }
+  const labels=ALL.map(m=>UA[m]);
+  const ctx=document.getElementById('forecastChart');
+  if(!ctx) return;
+  if(_fcChart){_fcChart.destroy();_fcChart=null;}
 
-  _fcChart = new Chart(ctx, {
+  _fcChart=new Chart(ctx,{
     type:'bar',
-    data:{labels, datasets:[
-      {label:'Факт Опт1 (Ст)', data:dsFactO1, backgroundColor:'#2563eb',               stack:'fact', borderRadius:3, barPercentage:0.6, order:2},
-      {label:'Факт Опт2 (Из)', data:dsFactO2, backgroundColor:'#60a5fa',               stack:'fact', borderRadius:3, barPercentage:0.6, order:2},
-      {label:'Факт Розниця',   data:dsFactRt, backgroundColor:'#bfdbfe',               stack:'fact', borderRadius:3, barPercentage:0.6, order:2},
-      {label:'Органічний тренд', data:dsBase, backgroundColor:'rgba(99,179,113,0.75)', stack:'proj', borderRadius:3, barPercentage:0.6, order:2},
-      {label:'Розширення (накоп.)', data:dsExpand, backgroundColor:'rgba(22,163,74,0.95)', stack:'proj', borderRadius:3, barPercentage:0.6, order:2},
-      {label:'Gap до 320 т',   data:dsGap,  backgroundColor:'rgba(251,191,36,0.28)',   stack:'proj', borderRadius:3, barPercentage:0.6, order:2, borderColor:'rgba(245,158,11,0.5)', borderWidth:1},
+    data:{labels,datasets:[
+      {label:'Факт Опт1(Ст)', data:dsFactO1, backgroundColor:'#2563eb',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Факт Опт2(Из)', data:dsFactO2, backgroundColor:'#60a5fa',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Факт Розниця',  data:dsFactRt, backgroundColor:'#bfdbfe',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Органічний тренд', data:dsBase, backgroundColor:'rgba(99,179,113,0.75)', stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Розширення акків', data:dsExpand,backgroundColor:'rgba(22,163,74,0.95)', stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Опт (нові)',    data:dsNew,    backgroundColor:'rgba(59,130,246,0.65)',   stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Gap до 320 т', data:dsGap,    backgroundColor:'rgba(251,191,36,0.28)',   stack:'proj', borderRadius:3, barPercentage:0.65, order:2, borderColor:'rgba(245,158,11,0.5)', borderWidth:1},
       {label:'Тренд (органік)', data:dsTrend, type:'line',
         borderColor:'#f97316', borderWidth:2.5,
         pointBackgroundColor:ALL.map((_,i)=>i<LAST_FACT_M?'#1d4ed8':'#f97316'),
-        pointRadius:4, pointHoverRadius:6,
-        tension:0.15, fill:false, stack:undefined, order:0},
+        pointRadius:3, tension:0.15, fill:false, stack:undefined, order:0},
       {label:'Ціль 320 т', data:ALL.map(()=>GOAL), type:'line',
         borderColor:'rgba(239,68,68,0.5)', borderWidth:1.5, borderDash:[6,4],
         pointRadius:0, fill:false, stack:undefined, order:0},
@@ -3874,23 +3825,18 @@ function _fcRender() {
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false},
-        tooltip:{mode:'index', callbacks:{
-          label:c=>{
-            if(c.dataset.label==='Ціль 320 т'||c.raw===null||c.raw===undefined) return null;
-            return c.dataset.label+': '+(+c.raw).toFixed(1)+' т';
-          },
-          footer:items=>{
-            const t=items.filter(i=>i.dataset.stack&&i.raw>0).reduce((s,i)=>s+(+i.raw||0),0);
-            return t>0?'Разом: '+t.toFixed(1)+' т':'';
-          }
-        }}
-      },
+        tooltip:{mode:'index',callbacks:{
+          label:c=>{if(c.dataset.label==='Ціль 320 т'||c.raw===null)return null;
+                    return c.dataset.label+': '+(+c.raw).toFixed(1)+' т';},
+          footer:items=>{const t=items.filter(i=>i.dataset.stack&&i.raw>0).reduce((s,i)=>s+(+i.raw||0),0);
+                         return t>0?'Разом: '+t.toFixed(1)+' т':'';}
+        }}},
       scales:{
-        x:{stacked:true, grid:{color:'rgba(128,128,128,0.08)'}, ticks:{color:'#999',font:{size:11}}},
-        y:{stacked:true, beginAtZero:true,
+        x:{stacked:true,grid:{color:'rgba(128,128,128,0.08)'},ticks:{color:'#999',font:{size:10}}},
+        y:{stacked:true,beginAtZero:true,
            max:Math.ceil(Math.max(GOAL*1.08,350)/50)*50,
            grid:{color:'rgba(128,128,128,0.08)'},
-           ticks:{color:'#999',font:{size:11},callback:v=>v+' т'}}
+           ticks:{color:'#999',font:{size:10},callback:v=>v+' т'}}
       }
     },
     plugins:[
@@ -3900,40 +3846,35 @@ function _fcRender() {
         if(yp<top||yp>bottom)return;
         c.save();c.setLineDash([7,4]);c.strokeStyle='#ef4444';c.lineWidth=2;
         c.beginPath();c.moveTo(left,yp);c.lineTo(right,yp);c.stroke();
-        c.fillStyle='#ef4444';c.font='bold 11px sans-serif';
-        c.fillText('Ціль 320 т',right-74,yp-6);c.restore();
+        c.fillStyle='#ef4444';c.font='bold 10px sans-serif';
+        c.fillText('320 т',right-36,yp-5);c.restore();
       }},
       {id:'colLabels',afterDatasetsDraw(chart){
         const {ctx:c,scales:{x,y},data}=chart;
+        const meta0=chart.getDatasetMeta(0);
         ['fact','proj'].forEach(sid=>{
           data.labels.forEach((_,i)=>{
             let tot=0;
             data.datasets.forEach(ds=>{
-              if(ds.stack===sid && ds.data[i]!==null && ds.data[i]!==undefined)
+              if(ds.stack===sid&&ds.data[i]!==null&&ds.data[i]!==undefined)
                 tot+=(+ds.data[i]||0);
             });
-            if(tot<=0) return;
-            // Для proj — центр бару, без зміщення (два стеки стоять поруч)
-            const barW = chart.getDatasetMeta(0).data[i]?.width || 30;
-            const xp = x.getPixelForValue(i) + (sid==='fact' ? -barW/2 : barW/2);
-            const yp = y.getPixelForValue(tot) - 6;
+            if(tot<=0)return;
+            const bw=(meta0.data[i]?.width||22);
+            const xp=x.getPixelForValue(i)+(sid==='fact'?-bw/2:bw/2);
+            const yp=y.getPixelForValue(tot)-5;
             c.save();
-            const lbl = tot.toFixed(0)+' т';
-            c.font = 'bold 10px sans-serif';
-            const tw = c.measureText(lbl).width;
-            const bgCol = sid==='proj' && tot>250
-              ? 'rgba(251,191,36,0.9)'
-              : sid==='proj'
-                ? 'rgba(22,163,74,0.85)'
-                : 'rgba(37,99,235,0.8)';
-            c.fillStyle = bgCol;
+            const lbl=tot.toFixed(0)+' т';
+            c.font='bold 9px sans-serif';
+            const tw=c.measureText(lbl).width;
+            c.fillStyle=sid==='proj'&&tot>250?'rgba(251,191,36,0.9)':
+                         sid==='proj'?'rgba(22,163,74,0.85)':'rgba(37,99,235,0.8)';
             c.beginPath();
-            if(c.roundRect) c.roundRect(xp-tw/2-3, yp-10, tw+6, 13, 3);
-            else c.rect(xp-tw/2-3, yp-10, tw+6, 13);
+            if(c.roundRect)c.roundRect(xp-tw/2-2,yp-9,tw+4,11,2);
+            else c.rect(xp-tw/2-2,yp-9,tw+4,11);
             c.fill();
-            c.fillStyle = '#ffffff';
-            c.textAlign = 'center';
-            c.fillText(lbl, xp, yp);
+            c.fillStyle='#fff';c.textAlign='center';
+            c.fillText(lbl,xp,yp);
             c.restore();
           });
         });
@@ -3942,18 +3883,19 @@ function _fcRender() {
   });
 
   // KPI
-  const factTotal = Object.values(FACT).reduce((s,v)=>s+v,0);
-  const lastFact  = FACT[LAST_FACT_M];
-  const decBase   = dsBase[11]||0, decExp = dsExpand[11]||0;
-  const decProj   = decBase + decExp;
-  const decGap    = Math.max(0, GOAL-decProj);
-  const gPct      = lastFact>0?((decProj-lastFact)/lastFact*100):0;
+  const factTotal=Object.values(FACT).reduce((s,v)=>s+v,0);
+  const lastFact=FACT[LAST_FACT_M];
+  const decBase=dsBase[11]||0, decExp=dsExpand[11]||0, decNew=dsNew[11]||0;
+  const decProj=decBase+decExp+decNew;
+  const decGap=Math.max(0,GOAL-decProj);
+  const gPct=lastFact>0?((decProj-lastFact)/lastFact*100):0;
 
   const el=id=>document.getElementById(id);
   if(el('fc-fact-total'))  el('fc-fact-total').textContent=factTotal.toFixed(0);
   if(el('fc-dec-proj'))    el('fc-dec-proj').textContent=decProj.toFixed(0);
   if(el('fc-gap')){el('fc-gap').textContent=decGap.toFixed(0);
     el('fc-gap').style.color=decGap>150?'#ef4444':decGap>80?'#f59e0b':'#16a34a';}
+  if(el('fc-gap-side'))    el('fc-gap-side').textContent=decGap.toFixed(0)+' т';
   if(el('fc-growth-pct')){
     el('fc-growth-pct').textContent=(gPct>=0?'+':'')+gPct.toFixed(0)+'%';
     el('fc-growth-pct').style.color=gPct>=0?'#16a34a':'#ef4444';
