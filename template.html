@@ -831,17 +831,17 @@
       <!-- Права панель: легенда + цілі -->
       <div style="width:160px;flex-shrink:0;font-size:11px;display:flex;flex-direction:column;gap:10px;padding-top:8px">
         <div style="font-weight:700;color:var(--text);font-size:12px;margin-bottom:2px">Легенда</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;flex-shrink:0"></span><span style="color:var(--muted)">Факт Опт1</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#60a5fa;flex-shrink:0"></span><span style="color:var(--muted)">Факт Опт2</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#bfdbfe;flex-shrink:0"></span><span style="color:var(--muted)">Факт Розниця</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(37,99,235,0.45);flex-shrink:0"></span><span style="color:var(--muted)">Тренд Опт1</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(96,165,250,0.45);flex-shrink:0"></span><span style="color:var(--muted)">Тренд Опт2</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(191,219,254,0.55);flex-shrink:0"></span><span style="color:var(--muted)">Тренд Розниця</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#16a34a;flex-shrink:0"></span><span style="color:var(--muted)">Органічний ріст</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#fbbf24;flex-shrink:0"></span><span style="color:var(--muted)">Gap до 320 т</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:3px;background:#f97316;flex-shrink:0;border-radius:2px"></span><span style="color:var(--muted)">Тренд-лінія</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:2px;background:#ef4444;flex-shrink:0;border-style:dashed;border-top:2px dashed #ef4444"></span><span style="color:var(--muted)">Ціль 320 т</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Факт</div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;flex-shrink:0"></span><span style="color:var(--muted)">Опт1 (Стрімтехно)</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#60a5fa;flex-shrink:0"></span><span style="color:var(--muted)">Опт2 (EASY)</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#bfdbfe;flex-shrink:0"></span><span style="color:var(--muted)">Розниця</span></div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;margin-bottom:2px">Прогноз</div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(99,179,113,0.75);flex-shrink:0"></span><span style="color:var(--muted)">Органічний тренд</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(22,163,74,0.9);flex-shrink:0"></span><span style="color:var(--muted)">Розширення акків</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(251,191,36,0.35);border:1px solid #f59e0b;flex-shrink:0"></span><span style="color:var(--muted)">Gap до 320 т</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;background:#f97316;flex-shrink:0;border-radius:2px"></span><span style="color:var(--muted)">Тренд-лінія</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:2px;border-top:2px dashed #ef4444;flex-shrink:0"></span><span style="color:var(--muted)">Ціль 320 т</span></div>
         </div>
         <div style="border-top:1px solid var(--card-border);padding-top:10px;margin-top:4px">
           <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px">Орієнтири</div>
@@ -3784,217 +3784,212 @@ function _fcGetGrowth() {
 }
 
 function _fcRender() {
-  const UA_SHORT = {1:'Січ',2:'Лют',3:'Бер',4:'Кві',5:'Тра',6:'Чер',
-                    7:'Лип',8:'Сер',9:'Вер',10:'Жов',11:'Лис',12:'Гру'};
+  const UA = {1:'Січ',2:'Лют',3:'Бер',4:'Кві',5:'Тра',6:'Чер',
+              7:'Лип',8:'Сер',9:'Вер',10:'Жов',11:'Лис',12:'Гру'};
+  const GOAL = 320, ALL = [1,2,3,4,5,6,7,8,9,10,11,12];
 
-  // ── 1. Факт з даних ──────────────────────────────────
-  const factByMonth = {};
+  // ── Факт 2026 ──────────────────────────────────────────
+  const factByM = {};
   (SALES_MONTHS||[]).forEach((ym,i) => {
     if (!ym.startsWith('2026')) return;
     const m = parseInt(ym.split('-')[1]);
-    factByMonth[m] = {
-      opt1: +(SALES_OPT1_KG[i]||0),
-      opt2: +(SALES_OPT2_KG[i]||0),
-      ret:  +(SALES_RET_KG[i]||0),
-    };
-    factByMonth[m].total = factByMonth[m].opt1+factByMonth[m].opt2+factByMonth[m].ret;
+    const o1 = +(SALES_OPT1_KG[i]||0), o2 = +(SALES_OPT2_KG[i]||0), rt = +(SALES_RET_KG[i]||0);
+    factByM[m] = {o1, o2, rt, total: o1+o2+rt};
   });
 
-  const factMonths = Object.keys(factByMonth).map(Number).sort((a,b)=>a-b);
-  const lastFactM  = factMonths[factMonths.length-1]||4;
-  const lastFact   = factByMonth[lastFactM]||{opt1:0,opt2:0,ret:0,total:0};
+  const factMs = Object.keys(factByM).map(Number).sort((a,b)=>a-b);
+  const lastM  = factMs[factMs.length-1] || 4;
+  const lastT  = factByM[lastM]?.total || 47;
 
-  // ── 2. Лінійний тренд (Jan–lastFactM) ────────────────
-  function linTrend(vals) {
-    const n=vals.length; if(n<2) return {slope:0,intercept:vals[0]||0};
+  // ── Органічний тренд: лінійна регресія по факту ────────
+  // Рахуємо slope в тоннах/міс по реальним даним
+  const fVals = factMs.map(m => factByM[m].total);
+  let slope = 5; // default ~5т/міс якщо мало даних
+  if (fVals.length >= 2) {
+    const n = fVals.length;
     let sx=0,sy=0,sxy=0,sx2=0;
-    vals.forEach((v,i)=>{sx+=i+1;sy+=v;sxy+=(i+1)*v;sx2+=(i+1)*(i+1);});
-    const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx);
-    return {slope, intercept:(sy-slope*sx)/n};
+    fVals.forEach((v,i)=>{sx+=i+1;sy+=v;sxy+=(i+1)*v;sx2+=(i+1)*(i+1);});
+    slope = Math.max(0, (n*sxy-sx*sy)/(n*sx2-sx*sx));
   }
-  function tv(t,x){return Math.max(0,t.slope*x+t.intercept);}
 
-  const opt1Fact=factMonths.map(m=>factByMonth[m].opt1);
-  const opt2Fact=factMonths.map(m=>factByMonth[m].opt2);
-  const retFact =factMonths.map(m=>factByMonth[m].ret);
-  const totFact =factMonths.map(m=>factByMonth[m].total);
-  const tO1=linTrend(opt1Fact), tO2=linTrend(opt2Fact), tRt=linTrend(retFact), tTot=linTrend(totFact);
+  // ── Органік-прогноз (May-Dec): продовжуємо slope від lastM ──
+  // organic[m] = lastT + slope*(m - lastM)
+  // Розширення акків: додатковий % від органіку кожен місяць
+  const growth = _fcGetGrowth();
 
-  // ── 3. Органічний ріст ───────────────────────────────
-  const growth=_fcGetGrowth();
+  // ── Будуємо 4 серії: факт / органік / розширення / gap ──
+  const dsFactTotal = []; // один стек — загальний факт
+  const dsOrganic   = []; // продовження тренду (May-Dec)
+  const dsExpand    = []; // додатковий ріст від розширення акків
+  const dsGapArea   = []; // gap до 320т (area)
+  const dsTrendLine = []; // неперервна тренд-лінія (Jan-Dec)
 
-  // ── 4. Масиви Jan–Dec ────────────────────────────────
-  const ALL=[1,2,3,4,5,6,7,8,9,10,11,12];
-  const GOAL=320;
+  // По каналах для факту (стек)
+  const dsFactO1=[], dsFactO2=[], dsFactRt=[];
 
-  const dsFactOpt1=[],dsFactOpt2=[],dsFactRet=[];
-  const dsTrOpt1=[],dsTrOpt2=[],dsTrRet=[];
-  const dsOrganic=[];
-  const dsGap=[];
-  // Trendlines across all months (scatter-like line)
-  const dsTotTrend=[];
+  //累積 expansion
+  let prevOrg = lastT;
+  let prevExp = 0;
 
-  let prevO1=lastFact.opt1, prevO2=lastFact.opt2, prevRt=lastFact.ret;
+  ALL.forEach((m, i) => {
+    const isFact = m <= lastM;
 
-  ALL.forEach((m,i)=>{
-    const x=i+1;
-    // Total trend line extends full year
-    dsTotTrend.push(+(tv(tTot,x).toFixed(2)));
+    // Trend line (органічна екстраполяція) — неперервна
+    const trendVal = m <= lastM
+      ? (factByM[m]?.total || null)
+      : Math.max(0, lastT + slope * (m - lastM));
+    dsTrendLine.push(trendVal !== null ? +trendVal.toFixed(1) : null);
 
-    if(m<=lastFactM){
-      const f=factByMonth[m]||{opt1:0,opt2:0,ret:0};
-      dsFactOpt1.push(+(f.opt1.toFixed(2)));
-      dsFactOpt2.push(+(f.opt2.toFixed(2)));
-      dsFactRet.push(+(f.ret.toFixed(2)));
-      dsTrOpt1.push(null); dsTrOpt2.push(null); dsTrRet.push(null);
-      dsOrganic.push(null); dsGap.push(null);
+    if (isFact) {
+      const f = factByM[m] || {o1:0,o2:0,rt:0,total:0};
+      dsFactO1.push(+f.o1.toFixed(2));
+      dsFactO2.push(+f.o2.toFixed(2));
+      dsFactRt.push(+f.rt.toFixed(2));
+      dsOrganic.push(null);
+      dsExpand.push(null);
+      dsGapArea.push(null);
     } else {
-      const trO1=tv(tO1,x), trO2=tv(tO2,x), trRt=tv(tRt,x);
-      const trTotal=trO1+trO2+trRt;
-      // Organic growth накопично
-      const gO1=growth.opt1[m]||0, gO2=growth.opt2[m]||0, gRt=growth.ret[m]||0;
-      const nO1=prevO1*(1+gO1/100), nO2=prevO2*(1+gO2/100), nRt=prevRt*(1+gRt/100);
-      const orgDelta=Math.max(0,(nO1+nO2+nRt)-trTotal);
-      const projected=trTotal+orgDelta;
-      const gap=Math.max(0,GOAL-projected);
+      // Органічний прогноз (тренд)
+      const orgVal = Math.max(0, lastT + slope * (m - lastM));
 
-      dsFactOpt1.push(null); dsFactOpt2.push(null); dsFactRet.push(null);
-      dsTrOpt1.push(+(trO1.toFixed(2)));
-      dsTrOpt2.push(+(trO2.toFixed(2)));
-      dsTrRet.push(+(trRt.toFixed(2)));
-      dsOrganic.push(+(orgDelta.toFixed(2)));
-      dsGap.push(+(gap.toFixed(2)));
-      prevO1=nO1; prevO2=nO2; prevRt=nRt;
+      // Розширення акків (накопично від органіку)
+      const gO1 = growth.opt1[m]||0, gO2 = growth.opt2[m]||0, gRt = growth.ret[m]||0;
+      const avgG = (gO1 + gO2 + gRt) / 3;
+      prevOrg = orgVal; // просто тренд
+      const expandVal = Math.max(0, prevOrg * (avgG/100));
+      prevExp += expandVal * 0; // скидаємо — беремо поточний місяць
+
+      const projected = orgVal + expandVal;
+      const gapVal    = Math.max(0, GOAL - projected);
+
+      dsFactO1.push(null); dsFactO2.push(null); dsFactRt.push(null);
+      dsOrganic.push(+orgVal.toFixed(1));
+      dsExpand.push(+expandVal.toFixed(1));
+      dsGapArea.push(+gapVal.toFixed(1));
     }
   });
 
-  const labels=ALL.map(m=>UA_SHORT[m]);
+  const labels = ALL.map(m => UA[m]);
 
-  // ── 5. Chart ─────────────────────────────────────────
-  const ctx=document.getElementById('forecastChart');
-  if(!ctx) return;
-  if(_fcChart){_fcChart.destroy();_fcChart=null;}
+  // ── Chart ────────────────────────────────────────────
+  const ctx = document.getElementById('forecastChart');
+  if (!ctx) return;
+  if (_fcChart) { _fcChart.destroy(); _fcChart = null; }
 
-  const C={
-    factO1:'#2563eb', factO2:'#60a5fa', factRet:'#bfdbfe',
-    trO1:'rgba(37,99,235,0.45)', trO2:'rgba(96,165,250,0.45)', trRet:'rgba(191,219,254,0.55)',
-    organic:'#16a34a', gap:'#fbbf24',
-    trendLine:'#f97316',
-  };
-
-  _fcChart=new Chart(ctx,{
-    type:'bar',
-    data:{
+  _fcChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
       labels,
-      datasets:[
-        // Stacked bars
-        {label:'Факт Опт1',      data:dsFactOpt1, backgroundColor:C.factO1, stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Факт Опт2',      data:dsFactOpt2, backgroundColor:C.factO2, stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Факт Розниця',   data:dsFactRet,  backgroundColor:C.factRet,stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Тренд Опт1',     data:dsTrOpt1,   backgroundColor:C.trO1,   stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Тренд Опт2',     data:dsTrOpt2,   backgroundColor:C.trO2,   stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Тренд Розниця',  data:dsTrRet,    backgroundColor:C.trRet,  stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Органічний ріст',data:dsOrganic,  backgroundColor:C.organic,stack:'s', borderRadius:3, barPercentage:0.6},
-        {label:'Gap до 320 т',   data:dsGap,      backgroundColor:C.gap,    stack:'s', borderRadius:3, barPercentage:0.6},
-        // Trend line (line dataset, not stacked)
-        {label:'Тренд-лінія',data:dsTotTrend,type:'line',
-          borderColor:C.trendLine,borderWidth:2.5,pointRadius:3,pointBackgroundColor:C.trendLine,
-          tension:0.3,fill:false,stack:undefined,order:-1,
-          datalabels:{display:false}},
+      datasets: [
+        // === ФАКТ (стек) ===
+        {label:'Факт Опт1',    data:dsFactO1, backgroundColor:'#2563eb',         stack:'fact', borderRadius:3, barPercentage:0.55, order:2},
+        {label:'Факт Опт2',    data:dsFactO2, backgroundColor:'#60a5fa',         stack:'fact', borderRadius:3, barPercentage:0.55, order:2},
+        {label:'Факт Розниця', data:dsFactRt, backgroundColor:'#bfdbfe',         stack:'fact', borderRadius:3, barPercentage:0.55, order:2},
+        // === ПРОГНОЗ (стек) ===
+        {label:'Органічний тренд', data:dsOrganic, backgroundColor:'rgba(99,179,113,0.75)', stack:'proj', borderRadius:3, barPercentage:0.55, order:2},
+        {label:'Розширення акків', data:dsExpand,  backgroundColor:'rgba(22,163,74,0.9)',   stack:'proj', borderRadius:3, barPercentage:0.55, order:2},
+        {label:'Gap до 320 т',     data:dsGapArea, backgroundColor:'rgba(251,191,36,0.35)', stack:'proj', borderRadius:3, barPercentage:0.55, order:2,
+          borderColor:'#f59e0b', borderWidth:1},
+        // === ТРЕНД-ЛІНІЯ ===
+        {label:'Тренд (органік)', data:dsTrendLine, type:'line',
+          borderColor:'#f97316', borderWidth:2.5, borderDash:[],
+          pointBackgroundColor:dsTrendLine.map((v,i)=>i<(lastM-1)?'#2563eb':'#f97316'),
+          pointRadius:3, tension:0.3, fill:false, stack:undefined, order:1},
+        // === ЦІЛЬ-ЛІНІЯ ===
+        {label:'Ціль 320 т', data:ALL.map(()=>GOAL), type:'line',
+          borderColor:'rgba(239,68,68,0.6)', borderWidth:1.5, borderDash:[6,4],
+          pointRadius:0, fill:false, stack:undefined, order:1},
       ]
     },
-    options:{
+    options: {
       responsive:true, maintainAspectRatio:false,
-      layout:{padding:{right:10}},
       plugins:{
         legend:{display:false},
         tooltip:{
           mode:'index',
           callbacks:{
-            label:ctx=>{
-              if(!ctx.raw&&ctx.raw!==0)return null;
-              return ctx.dataset.label+': '+ctx.raw.toFixed(1)+' т';
+            label: ctx => {
+              if (ctx.dataset.label === 'Ціль 320 т') return null;
+              if (!ctx.raw && ctx.raw !== 0) return null;
+              return ctx.dataset.label + ': ' + (+ctx.raw).toFixed(1) + ' т';
             },
-            footer:items=>{
-              const total=items.reduce((s,i)=>s+(parseFloat(i.raw)||0),0);
-              return 'РАЗОМ: '+total.toFixed(1)+' т';
+            footer: items => {
+              const stackTotal = items
+                .filter(i => i.dataset.stack && i.raw > 0)
+                .reduce((s,i) => s + (+i.raw||0), 0);
+              return stackTotal > 0 ? 'Разом: ' + stackTotal.toFixed(1) + ' т' : '';
             }
-          }
-        },
-        // Підписи на стовпцях — сума зверху
-        datalabels:{
-          display: ctx => {
-            // Show only on top bar of each stack (Gap or Organic or last trend bar)
-            const di=ctx.datasetIndex;
-            // Show total above each column
-            return false; // handled by custom plugin below
           }
         }
       },
       scales:{
-        x:{stacked:true, grid:{color:'rgba(128,128,128,0.1)'},
-           ticks:{color:'#999',font:{size:11}}},
+        x:{stacked:true, grid:{color:'rgba(128,128,128,0.08)'}, ticks:{color:'#999',font:{size:11}}},
         y:{stacked:true, beginAtZero:true,
-           grid:{color:'rgba(128,128,128,0.1)'},
-           ticks:{color:'#999',font:{size:11},callback:v=>v+' т'}}
+           max: Math.ceil(Math.max(GOAL*1.05, 340)/50)*50,
+           grid:{color:'rgba(128,128,128,0.08)'},
+           ticks:{color:'#999', font:{size:11}, callback:v=>v+' т'}}
       }
     },
     plugins:[
-      // Горизонтальна лінія цілі 320т
-      {id:'goalLine',afterDraw(chart){
-        const {ctx:c,chartArea:{left,right,top,bottom},scales:{y}}=chart;
-        const yPos=y.getPixelForValue(320);
-        if(yPos<top||yPos>bottom)return;
+      // Ціль-лінія з підписом
+      {id:'goalLine', afterDraw(chart){
+        const {ctx:c, chartArea:{left,right,top,bottom}, scales:{y}} = chart;
+        const yPos = y.getPixelForValue(GOAL);
+        if (yPos < top || yPos > bottom) return;
         c.save();
-        c.setLineDash([7,4]);c.strokeStyle='#ef4444';c.lineWidth=2.5;
-        c.beginPath();c.moveTo(left,yPos);c.lineTo(right,yPos);c.stroke();
-        c.fillStyle='#ef4444';c.font='bold 11px sans-serif';
-        c.fillText('Ціль 320 т',right-72,yPos-6);
+        c.setLineDash([7,4]); c.strokeStyle='#ef4444'; c.lineWidth=2;
+        c.beginPath(); c.moveTo(left,yPos); c.lineTo(right,yPos); c.stroke();
+        c.fillStyle='#ef4444'; c.font='bold 11px sans-serif';
+        c.fillText('Ціль 320 т', right-74, yPos-6);
         c.restore();
       }},
-      // Підписи суми зверху кожного стовпця
-      {id:'columnTotals',afterDatasetsDraw(chart){
-        const {ctx:c,data,scales:{x,y}}=chart;
-        const n=data.labels.length;
-        for(let i=0;i<n;i++){
-          // Sum all visible stacked datasets for this column index
-          let total=0;
-          data.datasets.forEach((ds,di)=>{
-            if(ds.type==='line'||ds.stack===undefined)return;
-            const v=ds.data[i];
-            if(v&&v>0)total+=v;
+      // Підписи сум зверху стовпців
+      {id:'colLabels', afterDatasetsDraw(chart){
+        const {ctx:c, scales:{x,y}, data} = chart;
+        const n = data.labels.length;
+        for (let i=0; i<n; i++) {
+          // Sum per stack
+          const stacks = {};
+          data.datasets.forEach(ds => {
+            if (!ds.stack) return;
+            const v = +(ds.data[i]||0);
+            if (v > 0) stacks[ds.stack] = (stacks[ds.stack]||0) + v;
           });
-          if(total<=0)continue;
-          const xPos=x.getPixelForValue(i);
-          const yPos=y.getPixelForValue(total);
-          c.save();
-          c.fillStyle='#e2e8f0';
-          c.font='bold 10px sans-serif';
-          c.textAlign='center';
-          c.fillText(total.toFixed(1),xPos,yPos-5);
-          c.restore();
+          Object.entries(stacks).forEach(([stack, total]) => {
+            if (total <= 0) return;
+            const xPos = x.getPixelForValue(i);
+            const yPos = y.getPixelForValue(total);
+            c.save();
+            c.fillStyle = total > 200 ? '#fbbf24' : '#e2e8f0';
+            c.font = 'bold 10px sans-serif';
+            c.textAlign = 'center';
+            c.fillText(total.toFixed(0), xPos + (stack==='proj'?8:-8), yPos-5);
+            c.restore();
+          });
         }
       }}
     ]
   });
 
-  // ── 6. KPI ──────────────────────────────────────────
-  const factTotal=factMonths.reduce((s,m)=>s+(factByMonth[m]?.total||0),0);
-  const lastForecastIdx=11;
-  const decOrganic=dsOrganic[lastForecastIdx]||0;
-  const decTrend=(dsTrOpt1[lastForecastIdx]||0)+(dsTrOpt2[lastForecastIdx]||0)+(dsTrRet[lastForecastIdx]||0);
-  const decProj=decTrend+decOrganic;
-  const decGap=Math.max(0,GOAL-decProj);
-  const growthPct=lastFact.total>0?((decProj-lastFact.total)/lastFact.total*100):0;
+  // ── KPI ────────────────────────────────────────────
+  const factTotal = factMs.reduce((s,m)=>s+(factByM[m]?.total||0),0);
+  const decIdx    = 11;
+  const decOrg    = dsOrganic[decIdx]||0;
+  const decExp    = dsExpand[decIdx]||0;
+  const decProj   = decOrg + decExp;
+  const decGap    = Math.max(0, GOAL - decProj);
 
-  const el=id=>document.getElementById(id);
-  if(el('fc-fact-total'))  el('fc-fact-total').textContent=factTotal.toFixed(1);
-  if(el('fc-dec-proj'))    el('fc-dec-proj').textContent=decProj.toFixed(1);
-  if(el('fc-gap')){        el('fc-gap').textContent=decGap.toFixed(1);
-    el('fc-gap').style.color=decGap>100?'#ef4444':decGap>50?'#f59e0b':'#16a34a';}
+  const el = id => document.getElementById(id);
+  if(el('fc-fact-total'))  el('fc-fact-total').textContent  = factTotal.toFixed(1);
+  if(el('fc-dec-proj'))    el('fc-dec-proj').textContent    = decProj.toFixed(1);
+  if(el('fc-gap')){
+    el('fc-gap').textContent = decGap.toFixed(1);
+    el('fc-gap').style.color = decGap>150?'#ef4444':decGap>80?'#f59e0b':'#16a34a';
+  }
   if(el('fc-growth-pct')){
-    el('fc-growth-pct').textContent=(growthPct>=0?'+':'')+growthPct.toFixed(0)+'%';
-    el('fc-growth-pct').style.color=growthPct>=0?'#16a34a':'#ef4444';
+    const gPct = lastT>0?((decProj-lastT)/lastT*100):0;
+    el('fc-growth-pct').textContent = (gPct>=0?'+':'')+gPct.toFixed(0)+'%';
+    el('fc-growth-pct').style.color = gPct>=0?'#16a34a':'#ef4444';
   }
 }
 
