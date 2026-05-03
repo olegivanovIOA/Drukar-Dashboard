@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 03.05.2026 05:33 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 03.05.2026 05:38 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -1053,8 +1053,8 @@ const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,null,null,null,null,null,null,null,nu
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
-const FIN_INCOME=[5489189,null,7849699,10243355,15823153,null,null,null,null,null,null,null,null,null];
-const FIN_EXPENSES=[6192978,null,9401988,10528739,15627010,null,null,null,null,null,null,null,null,null];
+const FIN_INCOME=[2816882,5489189,7849699,10243355,15823153,17214650,555911,null,null,null,null,null,null,null];
+const FIN_EXPENSES=[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT=39.1;
