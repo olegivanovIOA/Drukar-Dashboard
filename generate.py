@@ -1061,51 +1061,49 @@ if __name__ == '__main__':
             fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
             print(f"  _AllData_Sebest: {len(fin_rows)} rows")
 
-            # Визначаємо маппінг місяць → колонка через detect_month_columns
-            col_map, _ = detect_month_columns(fin_rows)
-
-            # col_map_grn: month_key → колонка "Грн, без ПДВ" (col місяця + 1)
-            col_map_grn = {mk: ci + 1 for mk, ci in col_map.items()}
-            print(f"  col_map:     {col_map}")
+            # detect_month_columns знаходить колонку "кг" (напр. B=col1)
+            # Нам потрібна "Грн, без ПДВ" = col_кг + 1
+            col_map_kg, _ = detect_month_columns(fin_rows)
+            col_map_grn = {mk: ci + 1 for mk, ci in col_map_kg.items()}
+            print(f"  col_map_kg:  {col_map_kg}")
             print(f"  col_map_grn: {col_map_grn}")
 
-            # ── Income / Expenses / Profit ──
-            # Шукаємо рядки з ключовими словами (як у parse_production)
-            # Діагностика: виводимо всі значення першої колонки щоб побачити точні назви рядків
-            print("  _AllData_Sebest row labels:")
-            for i, row in enumerate(fin_rows[:40]):
-                if row and str(row[0]).strip():
-                    print(f"    [{i}] '{row[0]}'")
+            # Діагностика назв рядків
+            print("  _AllData_Sebest row labels (col A):")
+            for i, row in enumerate(fin_rows):
+                v = str(row[0]).strip() if row else ''
+                if v: print(f"    [{i}] '{v}'")
 
-            def fin_vals(keywords, cmap=col_map):
-                """Шукає перший рядок що містить будь-яке з keywords (регістр ігнорується)"""
+            def sebest_vals(keywords, cmap=col_map_grn):
+                """Шукає рядок за keywords, читає з колонок грн"""
                 for kw in keywords:
                     row = get_row(fin_rows, kw)
                     if row is not None:
-                        print(f"  fin_vals matched '{kw}'")
+                        print(f"  sebest_vals matched '{kw}': {[row[cmap[mk]] if cmap.get(mk) and cmap[mk]<len(row) else None for mk in MONTH_ORDER]}")
                         return extract_row_by_month(row, cmap)
-                print(f"  WARNING: none of {keywords} found in _AllData_Sebest")
+                print(f"  WARNING: none of {keywords} found")
                 return [None] * MONTH_COUNT
 
-            income   = fin_vals(['ДОХОД, грн', 'ДОХОД,грн', 'ДОХОД грн', 'ДОХОД'])
-            expenses = fin_vals(['Разом (всі витрати)', 'Разом (всі', 'Разом витрати', 'Разом'])
-            profit   = fin_vals(['Операційний прибуток', 'Операційний'])
-
-            print(f"  Income:   {income}")
-            print(f"  Expenses: {expenses}")
-            print(f"  Profit:   {profit}")
+            # Рядок 29 (0-indexed=28): ДОХОД
+            # Рядок 23 (0-indexed=22): Разом (всі витрати)
+            income   = sebest_vals(['ДОХОД'])
+            expenses = sebest_vals(['Разом (всі витрати)', 'Разом (всі', 'Разом'])
+            profit   = sebest_vals(['Операційний прибуток', 'Операційний'])
 
             data["income"]   = [round(v) if v else None for v in income]
             data["expenses"] = [round(v) if v else None for v in expenses]
             data["profit"]   = [round(v) if v else None for v in profit]
+            print(f"  Income:   {data['income']}")
+            print(f"  Expenses: {data['expenses']}")
 
             # ── Собівартість 1 кг (PETG і PLA) ──
+            # Рядок 24 "Себестоимость 1 кг, без НДС", рядки 25=PETG, 26=PLA
             cpkg_petg = [None] * MONTH_COUNT
             cpkg_pla  = [None] * MONTH_COUNT
             for i, row in enumerate(fin_rows):
                 joined = ' '.join(str(c) for c in row).lower()
                 if 'себест' in joined and '1 кг' in joined:
-                    print(f"  Sebest header at row {i}")
+                    print(f"  Sebest 1кг header at row {i}")
                     if i + 1 < len(fin_rows):
                         r = fin_rows[i + 1]
                         for j, mk in enumerate(MONTH_ORDER):
