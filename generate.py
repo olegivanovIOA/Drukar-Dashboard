@@ -1061,56 +1061,50 @@ if __name__ == '__main__':
             fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
             print(f"  _AllData_Sebest: {len(fin_rows)} rows")
 
-            # Знаходимо рядок з місяцями (рядок 0 або 1)
-            month_keywords = [
-                ('ноябрь 2026','2026-11'),('листопад 2026','2026-11'),
-                ('декабрь 2026','2026-12'),('грудень 2026','2026-12'),
-                ('ноябрь','2025-11'),('листопад','2025-11'),
-                ('декабрь','2025-12'),('грудень','2025-12'),
-                ('январь','2026-01'),('січень','2026-01'),
-                ('февраль','2026-02'),('лютий','2026-02'),
-                ('март','2026-03'),('березень','2026-03'),
-                ('апрель','2026-04'),('квітень','2026-04'),
-                ('май','2026-05'),('травень','2026-05'),
-                ('июнь','2026-06'),('червень','2026-06'),
-                ('июль','2026-07'),('липень','2026-07'),
-                ('август','2026-08'),('серпень','2026-08'),
-                ('сентябрь','2026-09'),('вересень','2026-09'),
-                ('октябрь','2026-10'),('жовтень','2026-10'),
-            ]
+            # Визначаємо маппінг місяць → колонка через detect_month_columns
+            col_map, _ = detect_month_columns(fin_rows)
+
             # col_map_grn: month_key → колонка "Грн, без ПДВ" (col місяця + 1)
-            col_map_grn = {}
-            col_map_kg  = {}
-            for row in fin_rows[:5]:
-                for ci, cell in enumerate(row):
-                    cell_l = str(cell).lower().strip()
-                    for kw, mk in month_keywords:
-                        if kw in cell_l and mk not in col_map_kg:
-                            col_map_kg[mk]  = ci        # перша колонка = кг
-                            col_map_grn[mk] = ci + 1    # друга = грн
-                            break
-            print(f"  col_map_kg:  {col_map_kg}")
+            col_map_grn = {mk: ci + 1 for mk, ci in col_map.items()}
+            print(f"  col_map:     {col_map}")
             print(f"  col_map_grn: {col_map_grn}")
 
+            # ── Income / Expenses / Profit ──
+            # Шукаємо рядки з ключовими словами (як у parse_production)
+            def fin_vals(keyword, cmap=col_map):
+                row = get_row(fin_rows, keyword)
+                if row is None:
+                    print(f"  WARNING: row '{keyword}' not found in _AllData_Sebest")
+                    return [None] * MONTH_COUNT
+                return extract_row_by_month(row, cmap)
 
-            data["cost_petg_kg"] = [round(v,2) if v else None for v in cpkg_petg]
-            data["cost_pla_kg"]  = [round(v,2) if v else None for v in cpkg_pla]
-            # income/expenses/profit вже прочитані в parse_production з _AllData_Sebest
-            cpkg_petg = [None]*MONTH_COUNT
-            cpkg_pla  = [None]*MONTH_COUNT
+            income   = fin_vals('ДОХОД')
+            expenses = fin_vals('Разом')   # 'Разом (всі витрати)' або подібне
+            profit   = fin_vals('Операційний')
+
+            print(f"  Income:   {income}")
+            print(f"  Expenses: {expenses}")
+            print(f"  Profit:   {profit}")
+
+            data["income"]   = [round(v) if v else None for v in income]
+            data["expenses"] = [round(v) if v else None for v in expenses]
+            data["profit"]   = [round(v) if v else None for v in profit]
+
+            # ── Собівартість 1 кг (PETG і PLA) ──
+            cpkg_petg = [None] * MONTH_COUNT
+            cpkg_pla  = [None] * MONTH_COUNT
             for i, row in enumerate(fin_rows):
                 joined = ' '.join(str(c) for c in row).lower()
                 if 'себест' in joined and '1 кг' in joined:
                     print(f"  Sebest header at row {i}")
-                    if i+1 < len(fin_rows):
-                        # собівартість в грн/кг — колонка "Грн, без ПДВ"
-                        r = fin_rows[i+1]
+                    if i + 1 < len(fin_rows):
+                        r = fin_rows[i + 1]
                         for j, mk in enumerate(MONTH_ORDER):
                             ci = col_map_grn.get(mk)
                             if ci is not None and ci < len(r):
                                 cpkg_petg[j] = f(r[ci])
-                    if i+2 < len(fin_rows):
-                        r = fin_rows[i+2]
+                    if i + 2 < len(fin_rows):
+                        r = fin_rows[i + 2]
                         for j, mk in enumerate(MONTH_ORDER):
                             ci = col_map_grn.get(mk)
                             if ci is not None and ci < len(r):
@@ -1119,8 +1113,8 @@ if __name__ == '__main__':
 
             print(f"  Cost PETG: {cpkg_petg}")
             print(f"  Cost PLA:  {cpkg_pla}")
-            data["cost_petg_kg"] = [round(v,2) if v else None for v in cpkg_petg]
-            data["cost_pla_kg"]  = [round(v,2) if v else None for v in cpkg_pla]
+            data["cost_petg_kg"] = [round(v, 2) if v else None for v in cpkg_petg]
+            data["cost_pla_kg"]  = [round(v, 2) if v else None for v in cpkg_pla]
         except Exception as e:
             print(f"  WARNING fin data: {e}")
             import traceback; traceback.print_exc()
@@ -1143,6 +1137,14 @@ if __name__ == '__main__':
         print(f"WARNING calc ext: {e}")
     try:
         sales = parse_sales(fetch_csv(SHEET_ID, "_AllData_$"))
+        # ── Заповнюємо income з _AllData_$ якщо _AllData_Sebest не дав даних ──
+        # sales['donut_by_month'] = {ym: [opt_грн, ret_грн]}
+        if sales and 'donut_by_month' in sales:
+            for i, ym in enumerate(MONTH_ORDER):
+                if data['income'][i] is None and ym in sales['donut_by_month']:
+                    opt, ret = sales['donut_by_month'][ym]
+                    data['income'][i] = round(opt + ret)
+            print(f"  Income after sales backfill: {data['income']}")
     except Exception as e:
         print(f"WARNING sales: {e}")
     try:
