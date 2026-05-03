@@ -1071,16 +1071,25 @@ if __name__ == '__main__':
 
             # ── Income / Expenses / Profit ──
             # Шукаємо рядки з ключовими словами (як у parse_production)
-            def fin_vals(keyword, cmap=col_map):
-                row = get_row(fin_rows, keyword)
-                if row is None:
-                    print(f"  WARNING: row '{keyword}' not found in _AllData_Sebest")
-                    return [None] * MONTH_COUNT
-                return extract_row_by_month(row, cmap)
+            # Діагностика: виводимо всі значення першої колонки щоб побачити точні назви рядків
+            print("  _AllData_Sebest row labels:")
+            for i, row in enumerate(fin_rows[:40]):
+                if row and str(row[0]).strip():
+                    print(f"    [{i}] '{row[0]}'")
 
-            income   = fin_vals('ДОХОД')
-            expenses = fin_vals('Разом')   # 'Разом (всі витрати)' або подібне
-            profit   = fin_vals('Операційний')
+            def fin_vals(keywords, cmap=col_map):
+                """Шукає перший рядок що містить будь-яке з keywords (регістр ігнорується)"""
+                for kw in keywords:
+                    row = get_row(fin_rows, kw)
+                    if row is not None:
+                        print(f"  fin_vals matched '{kw}'")
+                        return extract_row_by_month(row, cmap)
+                print(f"  WARNING: none of {keywords} found in _AllData_Sebest")
+                return [None] * MONTH_COUNT
+
+            income   = fin_vals(['ДОХОД, грн', 'ДОХОД,грн', 'ДОХОД грн', 'ДОХОД'])
+            expenses = fin_vals(['Разом (всі витрати)', 'Разом (всі', 'Разом витрати', 'Разом'])
+            profit   = fin_vals(['Операційний прибуток', 'Операційний'])
 
             print(f"  Income:   {income}")
             print(f"  Expenses: {expenses}")
