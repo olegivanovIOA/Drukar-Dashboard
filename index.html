@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 03.05.2026 18:47 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 03.05.2026 18:53 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -1103,35 +1103,28 @@ function trendline(data){
 }
 // Поліноміальний тренд ступінь 2 (МНК)
 function polyTrend(data, deg=2){
-  const pts=data.map((v,i)=>({x:i,y:v})).filter(p=>p.y!==null&&!isNaN(p.y));
-  if(pts.length<deg+1) return trendline(data); // fallback до лінійного
-  const n=pts.length;
-  // Будуємо матрицю A (n × deg+1) і вектор b
-  const A=pts.map(p=>Array.from({length:deg+1},(_,k)=>Math.pow(p.x,k)));
-  const b=pts.map(p=>p.y);
-  // Нормальні рівняння: (A^T A) c = A^T b
-  const AT=A[0].map((_,col)=>A.map(row=>row[col]));
-  const ATA=AT.map(r1=>AT.map(r2=>r1.reduce((s,_,k)=>s+_*r2[k],0)));
-  // Насправді: ATA[i][j] = sum_k A[k][i]*A[k][j]
-  const ATA2=Array.from({length:deg+1},(_,i)=>Array.from({length:deg+1},(_,j)=>pts.reduce((s,p)=>s+Math.pow(p.x,i)*Math.pow(p.x,j),0)));
-  const ATb=Array.from({length:deg+1},(_,i)=>pts.reduce((s,p)=>s+Math.pow(p.x,i)*p.y,0));
-  // Gauss elimination
-  const M=ATA2.map((row,i)=>[...row,ATb[i]]);
-  for(let col=0;col<=deg;col++){
-    let maxR=col;
-    for(let r=col+1;r<=deg;r++) if(Math.abs(M[r][col])>Math.abs(M[maxR][col])) maxR=r;
-    [M[col],M[maxR]]=[M[maxR],M[col]];
-    if(Math.abs(M[col][col])<1e-10) continue;
-    for(let r=0;r<=deg;r++){
-      if(r===col) continue;
-      const f=M[r][col]/M[col][col];
-      for(let c=col;c<=deg+1;c++) M[r][c]-=f*M[col][c];
+  try {
+    const pts=data.map((v,i)=>({x:i,y:v})).filter(p=>p.y!==null&&p.y!==undefined&&!isNaN(+p.y)&&+p.y>0);
+    if(pts.length<deg+2) return trendline(data); // замало точок — лінійний
+    const ATA=Array.from({length:deg+1},(_,i)=>Array.from({length:deg+1},(_,j)=>pts.reduce((s,p)=>s+Math.pow(p.x,i+j),0)));
+    const ATb=Array.from({length:deg+1},(_,i)=>pts.reduce((s,p)=>s+Math.pow(p.x,i)*p.y,0));
+    const M=ATA.map((row,i)=>[...row,ATb[i]]);
+    for(let col=0;col<=deg;col++){
+      let maxR=col;
+      for(let r=col+1;r<=deg;r++) if(Math.abs(M[r][col])>Math.abs(M[maxR][col])) maxR=r;
+      [M[col],M[maxR]]=[M[maxR],M[col]];
+      if(Math.abs(M[col][col])<1e-10) return trendline(data); // сингулярна — fallback
+      for(let r=0;r<=deg;r++){
+        if(r===col) continue;
+        const fac=M[r][col]/M[col][col];
+        for(let c=col;c<=deg+1;c++) M[r][c]-=fac*M[col][c];
+      }
     }
-  }
-  const coef=M.map((row,i)=>row[deg+1]/row[i]);
-  const poly=x=>coef.reduce((s,c,k)=>s+c*Math.pow(x,k),0);
-  const xMin=pts[0].x, xMax=pts[pts.length-1].x;
-  return data.map((_,i)=>i<xMin||i>xMax?null:+Math.max(0,poly(i)).toFixed(1));
+    const coef=M.map((row,i)=>row[deg+1]/row[i]);
+    const poly=x=>coef.reduce((s,c,k)=>s+c*Math.pow(x,k),0);
+    const xMin=pts[0].x, xMax=pts[pts.length-1].x;
+    return data.map((_,i)=>i<xMin||i>xMax?null:+Math.max(0,poly(i)).toFixed(1));
+  } catch(e){ console.warn('polyTrend error:',e); return trendline(data); }
 }
 let opCI=null,costCI=null;
 const rendered={};
