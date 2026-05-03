@@ -1180,13 +1180,15 @@ window.addEventListener('DOMContentLoaded',()=>{
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' т':v+' кг'},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;if(!v&&v!==0)return null;const t=(v/1000).toFixed(1);const k=v.toLocaleString('uk');return (ctx.dataset.label||'')+': '+t+' т / '+k+' кг';}}}}}}});
   } catch(e){ console.warn('[chart:prodMonthChart]', e); }
   try { (function(){
-    const finLabels=MS.filter((_,i)=>FIN_INCOME[i]!==null);
-    const finInc=FIN_INCOME.filter(v=>v!==null);
-    const finExp=FIN_EXPENSES.filter(v=>v!==null);
+    // Показуємо всі місяці де є доход; витрати — null якщо відсутні (Chart.js пропустить стовпець)
+    const finIdx=FIN_INCOME.map((v,i)=>i).filter(i=>FIN_INCOME[i]!==null);
+    const finLabels=finIdx.map(i=>MS[i]);
+    const finInc=finIdx.map(i=>FIN_INCOME[i]);
+    const finExp=finIdx.map(i=>FIN_EXPENSES[i]); // може бути null для деяких місяців
     new Chart(document.getElementById('finOverviewChart'),{type:'bar',data:{labels:finLabels,datasets:[
       {label:'Доход',data:finInc,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
-      {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
+      {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3,skipNull:true}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}},tooltip:{callbacks:{label:ctx=>{if(ctx.raw===null)return null;return ctx.dataset.label+': '+(ctx.raw/1e6).toFixed(2)+'M грн';}}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
   })(); } catch(e){ console.warn('[chart:finOverviewChart]', e); }
   try { new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:_MS,datasets:[{label:'НФ %',data:_NF,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:_NF.map(v=>v&&v>10?'#ff5555':'#ff6b47'),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=_NF.filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   } catch(e){ console.warn('[chart:nfOvChart]', e); }
