@@ -815,14 +815,14 @@
     <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Продажі в тоннах · факт + прогноз + ціль</div>
     <div style="position:relative;height:260px"><canvas id="forecastChart"></canvas></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:10px;color:var(--muted)">
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2563eb;margin-right:3px"></span>Опт1(Ст)</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#60a5fa;margin-right:3px"></span>Опт2(Из)</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#bfdbfe;margin-right:3px"></span>Розниця</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(99,179,113,0.8);margin-right:3px"></span>Тренд</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(22,163,74,0.9);margin-right:3px"></span>Розширення</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(59,130,246,0.65);margin-right:3px"></span>Опт(нові)</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(251,191,36,0.4);border:1px solid #f59e0b;margin-right:3px"></span>Gap</span>
-      <span><span style="display:inline-block;width:12px;height:2px;background:#f97316;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Тренд-лінія</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1A56A0;margin-right:3px"></span>Опт1(Ст)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#4A90D9;margin-right:3px"></span>Опт2(Из)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#A8C8EE;margin-right:3px"></span>Розниця</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(218,165,32,0.65);margin-right:3px"></span>Тренд</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(184,134,11,0.9);margin-right:3px"></span>Розширення</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(101,163,220,0.75);margin-right:3px"></span>Опт(нові)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(218,165,32,0.18);border:1px solid rgba(218,165,32,0.45);margin-right:3px"></span>Gap</span>
+      <span><span style="display:inline-block;width:12px;height:2px;background:#1A56A0;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Тренд-лінія</span>
     </div>
   </div>
 
@@ -899,7 +899,7 @@
       <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
         <div><div style="color:var(--muted);font-size:10px">Зараз</div><div id="fc-now-d" style="font-weight:700;font-size:16px">~47 т/міс</div></div>
         <div><div style="color:var(--muted);font-size:10px">Ціль грудень</div><div style="font-weight:700;font-size:16px;color:#ef4444">320 т</div></div>
-        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div id="fc-trend-d" style="font-weight:700;font-size:16px;color:#f97316">~95 т</div></div>
+        <div><div style="color:var(--muted);font-size:10px">Тренд грудень</div><div id="fc-trend-d" style="font-weight:700;font-size:16px;color:#B8860B">~95 т</div></div>
         <div><div style="color:var(--muted);font-size:10px">Gap грудень</div><div id="fc-gap-d" style="font-weight:700;font-size:16px;color:#f59e0b">— т</div></div>
       </div>
     </div>
@@ -3860,26 +3860,30 @@ function _fcRender() {
 
   // Функція побудови конфігу графіка (спільна для обох canvas)
   function buildChartConfig(){
+    // Українська палітра: синьо-жовті тони, м'які щоб поєднувались з дашбордом
+    // Факт: відтінки синього (прапор)
+    // Прогноз: відтінки жовто-золотого → пшениця (прапор)
+    // Gap: дуже м'який, майже прозорий
     return {
     type:'bar',
     data:{labels,datasets:[
-      {label:'Факт Опт1(Ст)', data:dsFactO1, backgroundColor:'#2563eb',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
-      {label:'Факт Опт2(Из)', data:dsFactO2, backgroundColor:'#60a5fa',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
-      {label:'Факт Розниця',  data:dsFactRt, backgroundColor:'#bfdbfe',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
-      {label:'Органічний тренд', data:dsBase, backgroundColor:'rgba(99,179,113,0.75)', stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
-      {label:'Розширення акків', data:dsExpand,backgroundColor:'rgba(22,163,74,0.95)', stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
-      {label:'Опт (нові)',    data:dsNew,    backgroundColor:'rgba(59,130,246,0.65)',   stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
-      {label:'Gap до 320 т', data:dsGap,    backgroundColor:'rgba(251,191,36,0.28)',   stack:'proj', borderRadius:3, barPercentage:0.65, order:2, borderColor:'rgba(245,158,11,0.5)', borderWidth:1},
+      {label:'Факт Опт1(Ст)', data:dsFactO1, backgroundColor:'#1A56A0',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Факт Опт2(Из)', data:dsFactO2, backgroundColor:'#4A90D9',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Факт Розниця',  data:dsFactRt, backgroundColor:'#A8C8EE',                stack:'fact', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Органічний тренд', data:dsBase, backgroundColor:'rgba(218,165,32,0.60)', stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Розширення акків', data:dsExpand,backgroundColor:'rgba(184,134,11,0.85)',stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Опт (нові)',    data:dsNew,    backgroundColor:'rgba(101,163,220,0.70)',  stack:'proj', borderRadius:3, barPercentage:0.65, order:2},
+      {label:'Gap до 320 т', data:dsGap,    backgroundColor:'rgba(218,165,32,0.12)',   stack:'proj', borderRadius:3, barPercentage:0.65, order:2, borderColor:'rgba(218,165,32,0.35)', borderWidth:1},
       {label:'Тренд (факт)', data:dsTrend, type:'line',
-        borderColor:'#f97316', borderWidth:2.5,
-        pointBackgroundColor:'#1d4ed8',
+        borderColor:'#1A56A0', borderWidth:2.5,
+        pointBackgroundColor:'#1A56A0',
         pointRadius:4, tension:0.15, fill:false, stack:undefined, order:0},
       {label:'Прогноз (з розширенням)', data:dsProjLine, type:'line',
-        borderColor:'#f97316', borderWidth:2, borderDash:[5,3],
-        pointBackgroundColor:'#f97316',
+        borderColor:'#B8860B', borderWidth:2, borderDash:[5,3],
+        pointBackgroundColor:'#DAA520',
         pointRadius:3, tension:0.15, fill:false, stack:undefined, order:0},
       {label:'Ціль 320 т', data:ALL.map(()=>GOAL), type:'line',
-        borderColor:'rgba(239,68,68,0.5)', borderWidth:1.5, borderDash:[6,4],
+        borderColor:'rgba(220,38,38,0.45)', borderWidth:1.5, borderDash:[6,4],
         pointRadius:0, fill:false, stack:undefined, order:0},
     ]},
     options:{
@@ -3936,8 +3940,8 @@ function _fcRender() {
             const lbl=tot.toFixed(0)+' т';
             c.font='bold 10px sans-serif';
             const tw=c.measureText(lbl).width;
-            const bg=sid==='proj'&&tot>250?'rgba(245,158,11,0.9)':
-                      sid==='proj'?'rgba(22,163,74,0.85)':'rgba(37,99,235,0.85)';
+            const bg=sid==='proj'&&tot>250?'rgba(184,134,11,0.92)':
+                      sid==='proj'?'rgba(184,134,11,0.80)':'rgba(26,86,160,0.85)';
             c.fillStyle=bg;
             c.beginPath();
             if(c.roundRect) c.roundRect(xPos-tw/2-3,yPos-16,tw+6,14,3);
