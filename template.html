@@ -1202,7 +1202,25 @@ window.addEventListener('DOMContentLoaded',()=>{
     {type:'bar',label:'PLA',data:_PLA,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
     {type:'line',label:'Тренд PETG',data:polyTrend(_PETG,2),borderColor:'rgba(37,99,235,.75)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]},
     {type:'line',label:'Тренд PLA', data:polyTrend(_PLA,2), borderColor:'rgba(180,148,0,.75)', borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,filter:i=>i.label!=='Тренд PETG'&&i.label!=='Тренд PLA'}},tooltip:{callbacks:{label:ctx=>{if(ctx.dataset.label.startsWith('Тренд'))return null;const v=ctx.raw;if(!v&&v!==0)return null;const t=(v/1000).toFixed(1);const k=v.toLocaleString('uk');return (ctx.dataset.label||'')+': '+t+' т / '+k+' кг';}}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' т':v+' кг'}}}}}});
+  ]},options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{boxWidth:12,padding:12,
+          filter:i=>i.label!=='Тренд PETG'&&i.label!=='Тренд PLA'}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.dataset.label.startsWith('Тренд'))return null;
+          const v=ctx.raw;if(!v&&v!==0)return null;
+          const t=(v/1000).toFixed(1);
+          const k=v.toLocaleString('uk');
+          return (ctx.dataset.label||'')+': '+t+' \u0442 / '+k+' \u043a\u0433';
+        }}}
+      },
+      scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,
+        max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);
+          return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),
+        ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' \u0442':v+' \u043a\u0433'}
+      }}
+    }});
   } catch(e){ console.warn('[chart:prodMonthChart]', e); }
   try { (function(){
     // Показуємо всі місяці де є доход; витрати — null якщо відсутні (Chart.js пропустить стовпець)
