@@ -3852,8 +3852,8 @@ function _fcRender() {
               7:'Лип',8:'Сер',9:'Вер',10:'Жов',11:'Лис',12:'Гру'};
   const GOAL = 320;
   const ALL  = [1,2,3,4,5,6,7,8,9,10,11,12];
-  const FACT = {1:25, 2:31, 3:45, 4:47};
-  const LAST_FACT_M = 4;
+  const FACT = {{FC_FACT}}; // {month_num: tonnes} — факт продажів по місяцях
+  const LAST_FACT_M = {{FC_LAST_M}}; // останній місяць з фактом
 
   // Лінійна регресія
   const xs=[1,2,3,4], ys=[25,31,45,47], n=4;

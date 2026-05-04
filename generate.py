@@ -993,6 +993,30 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{HM_DATA}}':         jv(hm_data or {}),
     }
     if sales:
+        # FC_FACT: {місяць_номер: тонни} для прогнозу — з реальних продажів
+        # MONTH_ORDER = ['2025-11','2025-12','2026-01',...] → місяць 1=Лис25, 2=Гру25...
+        # Для прогнозу потрібні місяці 2026 року: Січ=1, Лют=2, ..., Гру=12
+        fc_fact = {}
+        fc_last_m = 0
+        opt1 = sales.get('sales_opt1_kg', [])
+        opt2 = sales.get('sales_opt2_kg', [])
+        ret  = sales.get('sales_ret_kg',  [])
+        for i, ym in enumerate(MONTH_ORDER):
+            if not ym.startswith('2026'): continue
+            month_num = int(ym.split('-')[1])  # 01→1, 04→4
+            total_kg = 0
+            if i < len(opt1) and opt1[i]: total_kg += opt1[i]
+            if i < len(opt2) and opt2[i]: total_kg += opt2[i]
+            if i < len(ret)  and ret[i]:  total_kg += ret[i]
+            total_t = round(total_kg / 1000, 1)
+            if total_t > 0:
+                fc_fact[month_num] = total_t
+                fc_last_m = month_num
+        print(f"  FC_FACT: {fc_fact}, LAST_M: {fc_last_m}")
+        subs.update({
+            '{{FC_FACT}}':  jv(fc_fact) if fc_fact else '{1:25,2:31,3:45,4:50}',
+            '{{FC_LAST_M}}': str(fc_last_m) if fc_last_m else '4',
+        })
         subs.update({
             '{{SALES_LABELS}}':       jv(sales['sales_labels']),
             '{{SALES_OPT}}':          jv(sales['sales_opt']),
