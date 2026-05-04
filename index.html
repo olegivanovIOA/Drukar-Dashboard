@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 04.05.2026 09:46 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 04.05.2026 09:53 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -1039,9 +1039,10 @@
 </div>
 <!-- ══════════════ /INVENTORY ══════════════ -->
 </div><!-- /main -->
+<script type="application/json" id="_d_income">[5489189,5489189,7849699,10243355,15823153,17214650,1485118,null,null,null,null,null,null,null]</script>
+<script type="application/json" id="_d_expenses">[5504774,null,8713784,10215885,15695358,null,null,null,null,null,null,null,null,null]</script>
 <script>
-const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];
-const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
+const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
 const PETG_ALL=[21127.6,22878.6,18742.8,25556.2,36682.7,45102.3,6731.4,null,null,null,null,null,null,null];
 const PLA_ALL=[667.0,3483.5,5319.7,6678.7,9193.1,5698.6,0.0,null,null,null,null,null,null,null];
 const TOTAL_ALL=[21794.6,26362.1,24062.5,32234.9,45875.8,50800.9,6731.4,null,null,null,null,null,null,null];
@@ -1053,8 +1054,8 @@ const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,null,null,null,null,null,null,null,nu
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
-const FIN_INCOME=[5489189,5489189,7849699,10243355,15823153,17214650,1485118,null,null,null,null,null,null,null];
-const FIN_EXPENSES=[5504774,null,8713784,10215885,15695358,null,null,null,null,null,null,null,null,null];
+const FIN_INCOME=JSON.parse(document.getElementById('_d_income').textContent||'null')||[];
+const FIN_EXPENSES=JSON.parse(document.getElementById('_d_expenses').textContent||'null')||[];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT=32.9;
