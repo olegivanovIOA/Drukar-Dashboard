@@ -1032,9 +1032,10 @@
 </div>
 <!-- ══════════════ /INVENTORY ══════════════ -->
 </div><!-- /main -->
+<script type="application/json" id="_d_income">{{INCOME}}</script>
+<script type="application/json" id="_d_expenses">{{EXPENSES}}</script>
 <script>
-const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];
-const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
+const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
 const PETG_ALL={{PETG_PROD}};
 const PLA_ALL={{PLA_PROD}};
 const TOTAL_ALL={{TOTAL_PROD}};
@@ -1046,8 +1047,8 @@ const W_PLA={{PLA_WASTE}};
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
-const FIN_INCOME={{INCOME}};
-const FIN_EXPENSES={{EXPENSES}};
+const FIN_INCOME=JSON.parse(document.getElementById('_d_income').textContent||'null')||[];
+const FIN_EXPENSES=JSON.parse(document.getElementById('_d_expenses').textContent||'null')||[];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT={{OKR_COMPANY_PCT}};
