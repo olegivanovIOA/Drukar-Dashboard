@@ -271,7 +271,7 @@
     </div>
     <div id="heatmapWrap"></div>
     <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
-      ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026
+      ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
     </div>
   </div>
   <div class="grid-2">
@@ -1094,6 +1094,31 @@ function trendline(data){
   const slope=vx?cov/vx:0,intercept=my-slope*mx;
   return data.map((_,i)=>i<xMin||i>xMax?null:+(slope*i+intercept).toFixed(1));
 }
+// Поліноміальний тренд ступінь 2 (МНК)
+function polyTrend(data, deg=2){
+  try {
+    const pts=data.map((v,i)=>({x:i,y:v})).filter(p=>p.y!==null&&p.y!==undefined&&!isNaN(+p.y)&&+p.y>0);
+    if(pts.length<deg+2) return trendline(data); // замало точок — лінійний
+    const ATA=Array.from({length:deg+1},(_,i)=>Array.from({length:deg+1},(_,j)=>pts.reduce((s,p)=>s+Math.pow(p.x,i+j),0)));
+    const ATb=Array.from({length:deg+1},(_,i)=>pts.reduce((s,p)=>s+Math.pow(p.x,i)*p.y,0));
+    const M=ATA.map((row,i)=>[...row,ATb[i]]);
+    for(let col=0;col<=deg;col++){
+      let maxR=col;
+      for(let r=col+1;r<=deg;r++) if(Math.abs(M[r][col])>Math.abs(M[maxR][col])) maxR=r;
+      [M[col],M[maxR]]=[M[maxR],M[col]];
+      if(Math.abs(M[col][col])<1e-10) return trendline(data); // сингулярна — fallback
+      for(let r=0;r<=deg;r++){
+        if(r===col) continue;
+        const fac=M[r][col]/M[col][col];
+        for(let c=col;c<=deg+1;c++) M[r][c]-=fac*M[col][c];
+      }
+    }
+    const coef=M.map((row,i)=>row[deg+1]/row[i]);
+    const poly=x=>coef.reduce((s,c,k)=>s+c*Math.pow(x,k),0);
+    const xMin=pts[0].x, xMax=pts[pts.length-1].x;
+    return data.map((_,i)=>i<xMin||i>xMax?null:+Math.max(0,poly(i)).toFixed(1));
+  } catch(e){ console.warn('polyTrend error:',e); return trendline(data); }
+}
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){
@@ -1176,8 +1201,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   try { new Chart(document.getElementById('prodMonthChart'),{data:{labels:_MS,datasets:[
     {type:'bar',label:'PETG',data:_PETG,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
     {type:'bar',label:'PLA',data:_PLA,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-    {type:'line',label:'Тренд Всього',data:trendline(_TOT),borderColor:'rgba(37,99,235,.6)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' т':v+' кг'},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;if(!v&&v!==0)return null;const t=(v/1000).toFixed(1);const k=v.toLocaleString('uk');return (ctx.dataset.label||'')+': '+t+' т / '+k+' кг';}}}}}}});
+    {type:'line',label:'Тренд PETG',data:polyTrend(_PETG,2),borderColor:'rgba(37,99,235,.75)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]},
+    {type:'line',label:'Тренд PLA', data:polyTrend(_PLA,2), borderColor:'rgba(180,148,0,.75)', borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,filter:i=>i.label!=='Тренд PETG'&&i.label!=='Тренд PLA'}},tooltip:{callbacks:{label:ctx=>{if(ctx.dataset.label.startsWith('Тренд'))return null;const v=ctx.raw;if(!v&&v!==0)return null;const t=(v/1000).toFixed(1);const k=v.toLocaleString('uk');return (ctx.dataset.label||'')+': '+t+' т / '+k+' кг';}}}},scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' т':v+' кг'}}}}}});
   } catch(e){ console.warn('[chart:prodMonthChart]', e); }
   try { (function(){
     // Показуємо всі місяці де є доход; витрати — null якщо відсутні (Chart.js пропустить стовпець)
@@ -1190,9 +1216,15 @@ window.addEventListener('DOMContentLoaded',()=>{
       {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3,skipNull:true}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}},tooltip:{callbacks:{label:ctx=>{if(ctx.raw===null)return null;return ctx.dataset.label+': '+(ctx.raw/1e6).toFixed(2)+'M грн';}}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
   })(); } catch(e){ console.warn('[chart:finOverviewChart]', e); }
-  try { new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:_MS,datasets:[{label:'НФ %',data:_NF,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:_NF.map(v=>v&&v>10?'#ff5555':'#ff6b47'),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=_NF.filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  try { new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:_MS,datasets:[
+    {label:'НФ %',data:_NF,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:_NF.map(v=>v&&v>10?'#ff5555':'#ff6b47'),pointRadius:4},
+    {label:'Ціль 5%',data:_MS.map(()=>5),borderColor:'rgba(22,163,74,0.6)',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Ціль 5%'?null:c.dataset.label+': '+c.raw+'%'}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:15,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   } catch(e){ console.warn('[chart:nfOvChart]', e); }
-  try { new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:_MS,datasets:[{label:'Відходи %',data:_WASTE,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',tension:.3,fill:true,pointBackgroundColor:'#2563eb',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[..._W_PETG,..._W_PLA].filter(x=>x!==null);return v.length?Math.max(+(Math.ceil(Math.max(...v)*1.5)).toFixed(0),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
+  try { new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:_MS,datasets:[
+    {label:'Відходи %',data:_WASTE,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',tension:.3,fill:true,pointBackgroundColor:'#2563eb',pointRadius:4},
+    {label:'Ціль 2.5%',data:_MS.map(()=>2.5),borderColor:'rgba(22,163,74,0.6)',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Ціль 2.5%'?null:c.dataset.label+': '+c.raw+'%'}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:15,ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
   } catch(e){ console.warn('[chart:wasteOvChart]', e); }
   try { new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#2563eb','#2563eb','#ff6b47','#b47bff','#16a34a','#ff9999'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'60%',plugins:{legend:{display:false}}}});
   } catch(e){ console.warn('[chart:costsDonut]', e); }
@@ -3492,7 +3524,7 @@ async function buildUtilHeatmap(){
 
   // Определяем локации (те же что в HM_DATA — по наличию данных)
   const LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
-  const LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8'];
+  const LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
   const isLoc2 = ln => LOC2.includes(ln);
 
   const totalCols = cols + 2; // лейбл + данные + итого
@@ -3693,7 +3725,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
     function textColor(pct){ return '#fff'; } // завжди білий
     function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
     const sortedLines=Object.keys(merged).sort((a,b)=>lineNum(a)-lineNum(b));
-    const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8']; const isLoc2=ln=>LOC2.includes(ln);
+    const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10']; const isLoc2=ln=>LOC2.includes(ln);
     const wLabels=weeks.map(w=>w.label); const wcols=weeks.length;
 
     let html=`<div class="hmap-grid" style="grid-template-columns:120px repeat(${wcols},1fr) 80px;min-width:${100+wcols*120}px">`;
