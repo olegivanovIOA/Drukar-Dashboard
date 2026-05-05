@@ -227,71 +227,6 @@ def parse_production_from_alldata(rows):
             monthly[ym]['pla_nf']     += nf
             monthly[ym]['pla_waste']  += waste
 
-    # ── SKU-агрегація: Запаковано шт × еталонна вага ──
-    import re as _re_sku
-
-    def _ref_kg(vid):
-        m = _re_sku.search(r'(\d+[.,]?\d*)\s*кг', str(vid), _re_sku.IGNORECASE)
-        return float(m.group(1).replace(',','.')) if m else None
-
-    def _norm_sku(vid):
-        m = _re_sku.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)\s*кг', str(vid), _re_sku.IGNORECASE)
-        if m:
-            return f"{m.group(1).upper()} {m.group(2).replace(',','.')}кг"
-        return None
-
-    from datetime import date as _dsk, timedelta as _tsk, datetime as _dtsk
-
-    # Другий прохід: рахуємо запаковані котушки по SKU
-    # Дедупліkація окрема від першого проходу — ключ включає vid
-    monthly_packed = defaultdict(lambda: defaultdict(float))  # [ym][sku] → packed_kg
-    seen_packed = set()
-
-    for row in rows[1:]:
-        if not row or len(row) < 11: continue
-        date_val = str(row[0]).strip() if row[0] else ''
-        ym = None; date_str = None
-        if date_val:
-            for _fmt in ('%Y-%m-%d', '%d.%m.%Y'):
-                try:
-                    _dt_p = _dtsk.strptime(date_val[:10], _fmt)
-                    ym = _dt_p.strftime('%Y-%m'); date_str = _dt_p.strftime('%Y-%m-%d'); break
-                except: pass
-        if not ym or ym < '2025-11': continue
-
-        shift = str(row[1]).strip() if len(row)>1 and row[1] else ''
-        line  = str(row[4]).strip().upper() if len(row)>4 and row[4] else ''
-        vid   = str(row[5]).strip() if len(row)>5 and row[5] else ''
-
-        sku = _norm_sku(vid)
-        ref = _ref_kg(vid)
-        if not sku or ref is None: continue
-
-        # Ключ: дата+зміна+лінія+SKU (один запис на комбінацію)
-        pk = (date_str, shift, line, sku)
-        if pk in seen_packed: continue
-        seen_packed.add(pk)
-
-        # col K = index 10: Запаковано шт
-        try:
-            packed_str = str(row[10]).replace(',','.').replace(' ','').replace('\xa0','').strip()
-            packed = float(packed_str) if packed_str else 0.0
-        except: packed = 0.0
-
-        if packed > 0:
-            monthly_packed[ym][sku] += packed * ref
-
-    # Формуємо sku_prod_data
-    all_sku_prod = sorted(set(s for ym_d in monthly_packed.values() for s in ym_d),
-                          key=lambda s:(0 if s.startswith('PETG') else 1,
-                                        float(_re_sku.search(r'(\d+[.,]?\d*)',s).group(1)) if _re_sku.search(r'(\d+[.,]?\d*)',s) else 0))
-    sku_prod_data = {}
-    for sku in all_sku_prod:
-        sku_prod_data[sku] = [round(monthly_packed[m].get(sku,0),1) if monthly_packed[m].get(sku,0)>0 else None for m in MONTH_ORDER]
-
-    print(f"  SKU prod keys: {list(sku_prod_data.keys())}")
-    print(f"  Packed samples: {dict(list(monthly_packed.items())[:2])}")
-
     # Формуємо масиви по MONTH_ORDER
     petg_prod  = [round(monthly[m]['petg'],1)       if m in monthly else None for m in MONTH_ORDER]
     pla_prod   = [round(monthly[m]['pla'],1)        if m in monthly else None for m in MONTH_ORDER]
@@ -334,7 +269,6 @@ def parse_production_from_alldata(rows):
         "profit":       [None]*MONTH_COUNT,
         "cost_petg_kg": [None]*MONTH_COUNT,
         "cost_pla_kg":  [None]*MONTH_COUNT,
-        "sku_prod":     sku_prod_data,
     }
 
     print(f"\n  PETG prod (from _AllData_Product): {data['petg_prod']}")
@@ -352,7 +286,6 @@ def _empty_production():
         "pla_waste": [None]*MONTH_COUNT, "income": [None]*MONTH_COUNT,
         "expenses": [None]*MONTH_COUNT, "profit": [None]*MONTH_COUNT,
         "cost_petg_kg": [None]*MONTH_COUNT, "cost_pla_kg": [None]*MONTH_COUNT,
-        "sku_prod": {},
     }
 
 def parse_production(rows):
@@ -877,42 +810,42 @@ def parse_sales(rows):
     sales_opt2_kg = [round(monthly_opt2_kg.get(m, 0) / 1000, 3) for m in months_sorted]
     sales_ret_kg  = [round(monthly_ret_kg.get(m, 0)  / 1000, 3) for m in months_sorted]
 
-    # ── SKU-продажі для вкладки Товар (по MONTH_ORDER, в кг) ──
-    import re as _re_sk
+    # ── SKU-продажі для вкладки Товар ──
+    # Нормалізуємо назву продукту: "PETG 2.5 кг (чорний)" → "PETG 2.5кг"
+    import re as _re_sku
+    def _norm_sku(product):
+        m = _re_sku.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)\s*кг', str(product), _re_sku.IGNORECASE)
+        if not m: return None
+        w = str(float(m.group(2).replace(',', '.'))).rstrip('0').rstrip('.')
+        return f"{m.group(1).upper()} {w}кг"
 
-    def _norm_sku_s(product):
-        m = _re_sk.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)\s*кг', str(product), _re_sk.IGNORECASE)
-        if m:
-            return f"{m.group(1).upper()} {m.group(2).replace(',','.')}кг"
-        return None
+    # Агрегуємо по SKU × ym × канал (кг), індексуємо по MONTH_ORDER
+    from collections import defaultdict as _dd
+    sku_opt_mo = _dd(lambda: [0.0]*MONTH_COUNT)  # [sku][i] = кг Опт
+    sku_ret_mo = _dd(lambda: [0.0]*MONTH_COUNT)  # [sku][i] = кг Роздр
 
-    # Агрегація по SKU × ym × канал (в кг), прив'язано до MONTH_ORDER
-    sku_mo = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))  # [ym][sku] → [opt_kg, ret_kg]
     for r in data_rows:
-        sku = _norm_sku_s(r['product'])
+        sku = _norm_sku(r['product'])
         if not sku or r['kg'] <= 0: continue
+        try:
+            mi = MONTH_ORDER.index(r['ym'])
+        except ValueError:
+            continue
         if r['channel'] == 'Опт':
-            sku_mo[r['ym']][sku][0] += r['kg']
+            sku_opt_mo[sku][mi] += r['kg']
         elif r['channel'] == 'Розница':
-            sku_mo[r['ym']][sku][1] += r['kg']
+            sku_ret_mo[sku][mi] += r['kg']
 
-    # Друкуємо для діагностики
-    print(f"  SKU sales sample: {dict(list({k: dict(list(v.items())[:3]) for k,v in list(sku_mo.items())[:2]}.items()))}")
-
-    # Всі SKU з продажів
-    all_sku_sales = sorted(
-        set(s for ym_d in sku_mo.values() for s in ym_d),
+    # Сортуємо SKU: PETG спочатку, потім за вагою
+    all_skus = sorted(
+        set(list(sku_opt_mo.keys()) + list(sku_ret_mo.keys())),
         key=lambda s: (0 if s.startswith('PETG') else 1,
-                       float(_re_sk.search(r'(\d+[.,]?\d*)', s).group(1).replace(',','.')) if _re_sk.search(r'(\d+[.,]?\d*)', s) else 0)
+                       float(_re_sku.search(r'(\d+\.?\d*)', s).group(1)) if _re_sku.search(r'(\d+\.?\d*)', s) else 0)
     )
-    print(f"  SKU sales keys: {all_sku_sales}")
-
-    # Формуємо по MONTH_ORDER
-    sku_sales_opt = {}
-    sku_sales_ret = {}
-    for sku in all_sku_sales:
-        sku_sales_opt[sku] = [round(sku_mo[m][sku][0], 1) if sku_mo[m].get(sku) and sku_mo[m][sku][0]>0 else None for m in MONTH_ORDER]
-        sku_sales_ret[sku] = [round(sku_mo[m][sku][1], 1) if sku_mo[m].get(sku) and sku_mo[m][sku][1]>0 else None for m in MONTH_ORDER]
+    # Формуємо масиви: None якщо 0 (для відображення "—")
+    sku_sales_opt = {sku: [round(v,1) if v>0 else None for v in sku_opt_mo[sku]] for sku in all_skus}
+    sku_sales_ret = {sku: [round(v,1) if v>0 else None for v in sku_ret_mo[sku]] for sku in all_skus}
+    print(f"  SKU sales: {all_skus}")
 
     result = {
         'sales_labels':      labels,
@@ -937,7 +870,7 @@ def parse_sales(rows):
         'donut_by_month':    donut_by_month,
         'sku_sales_opt':     sku_sales_opt,
         'sku_sales_ret':     sku_sales_ret,
-        'sku_list':          all_sku_sales,
+        'sku_list':          all_skus,
     }
     print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
     return result
@@ -1098,10 +1031,11 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{HM_LABELS}}':       jv(hm_labels or []),
         '{{HM_NORMS}}':        jv(line_norms or {}),
         '{{HM_DATA}}':         jv(hm_data or {}),
-        '{{SKU_PROD}}':        jv(data.get('sku_prod', {})),
     }
     if sales:
         # FC_FACT: {місяць_номер: тонни} для прогнозу — з реальних продажів
+        # MONTH_ORDER = ['2025-11','2025-12','2026-01',...] → місяць 1=Лис25, 2=Гру25...
+        # Для прогнозу потрібні місяці 2026 року: Січ=1, Лют=2, ..., Гру=12
         fc_fact = {}
         fc_last_m = 0
         opt1 = sales.get('sales_opt1_kg', [])
@@ -1109,7 +1043,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         ret  = sales.get('sales_ret_kg',  [])
         for i, ym in enumerate(MONTH_ORDER):
             if not ym.startswith('2026'): continue
-            month_num = int(ym.split('-')[1])
+            month_num = int(ym.split('-')[1])  # 01→1, 04→4
             total_kg = 0
             if i < len(opt1) and opt1[i]: total_kg += opt1[i]
             if i < len(opt2) and opt2[i]: total_kg += opt2[i]
@@ -1144,6 +1078,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{DONUT_BY_MONTH}}':     jv(sales.get('donut_by_month', {})),
             '{{SKU_SALES_OPT}}':      jv(sales.get('sku_sales_opt', {})),
             '{{SKU_SALES_RET}}':      jv(sales.get('sku_sales_ret', {})),
+            '{{SKU_LIST}}':           jv(sales.get('sku_list', [])),
         })
     else:
         subs.update({
@@ -1167,6 +1102,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{DONUT_BY_MONTH}}':     '{}',
             '{{SKU_SALES_OPT}}':      '{}',
             '{{SKU_SALES_RET}}':      '{}',
+            '{{SKU_LIST}}':           '[]',
         })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
     subs.update({
