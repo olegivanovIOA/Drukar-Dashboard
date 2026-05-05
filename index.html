@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 05.05.2026 17:19 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 05.05.2026 17:34 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -1057,9 +1057,11 @@
     </div>
   </div>
   <div style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
-    * <b>Вироблено</b> — кг з журналу виробництва (PETG_ALL / PLA_ALL)<br>
+    * <b>Вироблено</b> — кг готової продукції з журналу (PETG_ALL / PLA_ALL)<br>
+    * <b>НФ</b> — некондиційна продукція кг (PETG_NF_KG / PLA_NF_KG) — входить у Вироблено<br>
     * <b>Продано Опт / Роздр</b> — прямо з _AllData_$ по SKU і каналу (кг)<br>
-    * <b>Залишок ∑</b> — нарастаючий з Лис 2025: Вироблено(PETG+PLA) − Опт − Роздр. Поточний місяць *
+    * <b>Залишок міс</b> = Вироблено + НФ − Продано за місяць<br>
+    * <b>Залишок ∑</b> = нарастаючий з Лис 2025. Поточний місяць *
   </div>
 </div>
 <!-- ══════════════ /PRODUCT ══════════════ -->
@@ -1111,6 +1113,8 @@ const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Ма�
 const HM_LABELS=["Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26"];
 const HM_DATA={"ЛІНІЯ 1":[7494,8937,8108,8058,7956,7448,1314],"ЛІНІЯ 2":[5591,5592,1344,2499,4976,5489,1063],"ЛІНІЯ 3":[5111,3642,161,3936,5118,5420,811],"ЛІНІЯ 4":[3598,3171,3976,4180,5086,5006,659],"ЛІНІЯ 5":[0,5019,4748,6938,6645,7720,1131],"ЛІНІЯ 6":[0,0,5726,6624,6664,7354,1114],"ЛІНІЯ 7":[0,0,0,0,3339,5836,881],"ЛІНІЯ 8":[0,0,0,0,6092,5941,940],"ЛІНІЯ 9":[0,0,0,0,0,587,958],"ЛІНІЯ 10":[0,0,0,0,0,0,24]};
 const HM_NORMS={"ЛІНІЯ 1":{"PETG 2.5":151.0,"PETG 3.0":154.0},"ЛІНІЯ 2":{"PLA 3.0":97.0,"PETG 3.0":128.0,"PLA 2.5":87.0},"ЛІНІЯ 3":{"PETG 2.5":123.2,"PETG 3.0":107.0,"PETG 3.0 RED":123.2,"PLA 3.0":115.0},"ЛІНІЯ 4":{"PLA 3.0":145.0,"PETG 3.0":98.0,"PLA 2.5":90.2},"ЛІНІЯ 5":{"PETG 3.0":144.0},"ЛІНІЯ 6":{"PETG 3.0":141.0}};
+const PETG_NF_KG=[1019.4,681.4,3727.2,470.9,1216.5,884.3,108.4,null,null,null,null,null,null,null];
+const PLA_NF_KG=[13.0,174.3,3364.2,107.8,422.7,76.7,0.0,null,null,null,null,null,null,null];
 const SKU_SALES_OPT={"PETG 2.5кг":[3660.0,9112.5,7860.0,7040.0,7495.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[990.0,6957.0,3357.0,10431.0,11361.0,27804.0,4014.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,1480.0,7475.0,null,null,null,null,null,null,null,null,null],"PLA 3кг":[915.0,3480.0,5091.0,5091.0,1491.0,2028.0,null,null,null,null,null,null,null,null]};
 const SKU_SALES_RET={"PETG 2.5кг":[null,null,null,null,3006.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[2811.0,504.0,8538.0,7161.0,14052.0,16998.0,417.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"PLA 3кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null]};
 const SKU_LIST=["PETG 2.5кг","PETG 3кг","PLA 2.5кг","PLA 3кг"]; // {line: {vid: norm_kg_per_shift}}
@@ -4083,9 +4087,8 @@ function _fcRender() {
   var CUR_YM=(function(){var n=new Date();return n.getUTCFullYear()+'-'+String(n.getUTCMonth()+1).padStart(2,'0');})();
   var _filt='all';
 
-  function visSkus(){
-    return (SKU_LIST||[]).filter(function(s){return _filt==='all'||s.startsWith(_filt);});
-  }
+  function visSkus(){return (SKU_LIST||[]).filter(function(s){return _filt==='all'||s.startsWith(_filt);});}
+
   function fmtKg(v,bal){
     if(v===null||v===undefined) return '<span style="color:var(--muted)">\u2014</span>';
     if(v===0&&!bal) return '<span style="color:var(--muted)">0</span>';
@@ -4098,9 +4101,10 @@ function _fcRender() {
     var tbody=document.getElementById('prodTbody');
     if(!thead||!tbody) return;
 
+    // Активні колонки
     var lastIdx=0;
     for(var i=0;i<14;i++){
-      var p=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
+      var p=(PETG_ALL[i]||0)+(PLA_ALL[i]||0)+(PETG_NF_KG[i]||0)+(PLA_NF_KG[i]||0);
       var s=0;(SKU_LIST||[]).forEach(function(sk){s+=((SKU_SALES_OPT[sk]||[])[i]||0)+((SKU_SALES_RET[sk]||[])[i]||0);});
       if(p+s>0) lastIdx=i;
     }
@@ -4108,9 +4112,10 @@ function _fcRender() {
     if(curIdx>=0&&curIdx>lastIdx) lastIdx=curIdx;
     var N=Math.min(lastIdx+1,14);
 
+    // Заголовок
     var th='<tr style="background:var(--surface2)">';
     th+='<th style="position:sticky;left:0;z-index:3;background:var(--surface2);min-width:110px;padding:8px 14px;border-bottom:2px solid var(--border)">SKU</th>';
-    th+='<th style="padding:8px 12px;border-bottom:2px solid var(--border);min-width:115px;white-space:nowrap">Показник</th>';
+    th+='<th style="padding:8px 12px;border-bottom:2px solid var(--border);min-width:130px;white-space:nowrap">Показник</th>';
     for(var i=0;i<N;i++){
       var cur=MO[i]===CUR_YM;
       th+='<th style="padding:8px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap'+(cur?';color:var(--accent)':'')+'">'+MS[i]+(cur?'*':'')+'</th>';
@@ -4121,6 +4126,7 @@ function _fcRender() {
     var skus=visSkus();
     var colSpan=N+2;
 
+    // ── Рядки по кожному SKU ──
     skus.forEach(function(sku,si){
       var isPETG=sku.startsWith('PETG');
       var skuColor=isPETG?'var(--accent2)':'var(--good)';
@@ -4136,7 +4142,7 @@ function _fcRender() {
         if(ri===0){
           tr+='<td rowspan="2" style="position:sticky;left:0;z-index:2;background:'+bg+
               ';border-right:1px solid var(--border);padding:8px 14px;vertical-align:middle;'+
-              'font-family:\'Bebas Neue\',sans-serif;font-size:17px;letter-spacing:1px;color:'+skuColor+'">'+sku+'</td>';
+              "font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;color:"+skuColor+'">'+sku+'</td>';
         }
         tr+='<td style="padding:5px 12px;font-size:10px;color:'+row.color+';white-space:nowrap">'+row.label+'</td>';
         for(var i=0;i<N;i++){
@@ -4149,43 +4155,56 @@ function _fcRender() {
       html+='<tr><td colspan="'+colSpan+'" style="height:1px;background:var(--border);padding:0"></td></tr>';
     });
 
+    // ── Підсумок ВСЬОГО ──
     html+='<tr><td colspan="'+colSpan+'" style="height:3px;background:var(--border);padding:0"></td></tr>';
 
-    var totalDefs=[
-      {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;}, color:'var(--accent2)'},
-      {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},  color:'var(--good)'},
-      {label:'Продано Опт',    fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
-      {label:'Продано Роздр',  fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
-      {label:'Залишок \u2211', fn:null, color:'var(--text)', bold:true},
+    var totalRows=[
+      {label:'Вироблено PETG',  fn:function(i){return PETG_ALL[i]||null;},    color:'var(--accent2)'},
+      {label:'НФ PETG',         fn:function(i){return PETG_NF_KG[i]||null;},  color:'var(--muted)',  note:true},
+      {label:'Вироблено PLA',   fn:function(i){return PLA_ALL[i]||null;},     color:'var(--good)'},
+      {label:'НФ PLA',          fn:function(i){return PLA_NF_KG[i]||null;},   color:'var(--muted)',  note:true},
+      {label:'Продано Опт',     fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
+      {label:'Продано Роздр',   fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
+      {label:'Залишок міс',     fn:null, color:'var(--text)', monthly:true},
+      {label:'Залишок \u2211',  fn:null, color:'var(--text)', bold:true},
     ];
-    var nT=totalDefs.length;
+    var nT=totalRows.length;
     var bg2='var(--surface2)';
-    var cP=0,cO=0,cR=0;
+    var cumBal=0;
 
-    totalDefs.forEach(function(row,ri){
+    totalRows.forEach(function(row,ri){
       var tr='<tr style="background:'+bg2+'">';
       if(ri===0){
         tr+='<td rowspan="'+nT+'" style="position:sticky;left:0;z-index:2;background:'+bg2+
             ';border-right:1px solid var(--border);padding:8px 14px;vertical-align:middle;'+
-            'font-family:\'Bebas Neue\',sans-serif;font-size:15px;letter-spacing:1px;color:var(--muted)">ВСЬОГО</td>';
+            "font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--muted)">ВСЬОГО</td>";
       }
+      var isBold=row.bold||row.monthly;
       tr+='<td style="padding:5px 12px;font-size:10px;color:'+row.color+';white-space:nowrap'+
-          (row.bold?';font-weight:600;border-top:1px solid var(--border)':'')+'">'+row.label+'</td>';
-      if(row.bold){cP=0;cO=0;cR=0;}
+          (isBold?';font-weight:600;border-top:1px solid var(--border)':'')+(row.note?';font-style:italic':'')+'">'+row.label+'</td>';
+
+      // Скидаємо cumBal перед Залишком ∑
+      if(row.bold) cumBal=0;
+
       for(var i=0;i<N;i++){
-        var v=null,cur=MO[i]===CUR_YM;
-        if(row.bold){
-          cP+=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
-          var o=0,r=0;
-          (SKU_LIST||[]).forEach(function(sk){o+=(SKU_SALES_OPT[sk]||[])[i]||0;r+=(SKU_SALES_RET[sk]||[])[i]||0;});
-          cO+=o;cR+=r;
-          v=Math.round((cP-cO-cR)*10)/10;
+        var v=null, cur=MO[i]===CUR_YM;
+        if(row.monthly){
+          // Залишок за місяць: Вироблено(PETG+PLA) + НФ(PETG+PLA) - Опт - Роздр
+          var prod=(PETG_ALL[i]||0)+(PLA_ALL[i]||0)+(PETG_NF_KG[i]||0)+(PLA_NF_KG[i]||0);
+          var sold=0;(SKU_LIST||[]).forEach(function(sk){sold+=(SKU_SALES_OPT[sk]||[])[i]||0+(SKU_SALES_RET[sk]||[])[i]||0;});
+          v=Math.round((prod-sold)*10)/10;
+        } else if(row.bold){
+          // Накопичувальний залишок
+          var prod=(PETG_ALL[i]||0)+(PLA_ALL[i]||0)+(PETG_NF_KG[i]||0)+(PLA_NF_KG[i]||0);
+          var sold=0;(SKU_LIST||[]).forEach(function(sk){sold+=(SKU_SALES_OPT[sk]||[])[i]||0+(SKU_SALES_RET[sk]||[])[i]||0;});
+          cumBal+=prod-sold;
+          v=Math.round(cumBal*10)/10;
         } else {
           v=row.fn(i);
           if(v!==null) v=Math.round(v*10)/10;
         }
-        var isNeg=row.bold&&v!==null&&v<0;
-        tr+='<td style="padding:5px 10px;text-align:right'+(row.bold?';border-top:1px solid var(--border)':'')+(isNeg?';color:var(--bad)':'')+(cur?';background:rgba(37,99,235,.04)':'')+'">'+fmtKg(v,row.bold)+'</td>';
+        var isNeg=isBold&&v!==null&&v<0;
+        tr+='<td style="padding:5px 10px;text-align:right'+(isBold?';border-top:1px solid var(--border)':'')+(isNeg?';color:var(--bad)':'')+(cur?';background:rgba(37,99,235,.04)':'')+'">'+fmtKg(v,isBold)+'</td>';
       }
       html+=tr+'</tr>';
     });
