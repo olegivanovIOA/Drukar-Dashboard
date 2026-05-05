@@ -1032,7 +1032,6 @@
   </div>
 </div>
 <!-- ══════════════ /INVENTORY ══════════════ -->
-
 <!-- ══════════════ PRODUCT TAB ══════════════ -->
 <div id="tab-product" class="tab-content">
   <div class="section-title">Товар · По видах продукції · кг</div>
@@ -1105,9 +1104,9 @@ const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Ма�
 const HM_LABELS={{HM_LABELS}};
 const HM_DATA={{HM_DATA}};
 const HM_NORMS={{HM_NORMS}};
-const SKU_SALES_OPT={{SKU_SALES_OPT}}; // {sku:[kg|null ×14]} по MONTH_ORDER
-const SKU_SALES_RET={{SKU_SALES_RET}}; // {sku:[kg|null ×14]}
-const SKU_LIST={{SKU_LIST}};           // ['PETG 1кг','PETG 2.5кг',...] // {line: {vid: norm_kg_per_shift}}
+const SKU_SALES_OPT={{SKU_SALES_OPT}};
+const SKU_SALES_RET={{SKU_SALES_RET}};
+const SKU_LIST={{SKU_LIST}}; // {line: {vid: norm_kg_per_shift}}
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
@@ -4070,7 +4069,6 @@ function _fcRender() {
   if(el('fc-trend-m'))  el('fc-trend-m').textContent='~'+trendDec+' т';
   if(el('fc-gap-m')){   el('fc-gap-m').textContent=decGap.toFixed(0)+' т'; el('fc-gap-m').style.color=gapColor; }
 }
-
 // ══════════════ PRODUCT TAB ══════════════
 (function(){
   var MO=['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04',
@@ -4081,9 +4079,8 @@ function _fcRender() {
   function visSkus(){
     return (SKU_LIST||[]).filter(function(s){return _filt==='all'||s.startsWith(_filt);});
   }
-
   function fmtKg(v,bal){
-    if(v===null||v===undefined) return '<span style="color:var(--muted)">—</span>';
+    if(v===null||v===undefined) return '<span style="color:var(--muted)">\u2014</span>';
     if(v===0&&!bal) return '<span style="color:var(--muted)">0</span>';
     var s=(+v).toLocaleString('uk-UA',{minimumFractionDigits:1,maximumFractionDigits:1});
     return (bal&&v<0)?'<span style="color:var(--bad)">'+s+'</span>':s;
@@ -4094,18 +4091,16 @@ function _fcRender() {
     var tbody=document.getElementById('prodTbody');
     if(!thead||!tbody) return;
 
-    // Активні колонки
     var lastIdx=0;
     for(var i=0;i<14;i++){
       var p=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
-      var s=0; (SKU_LIST||[]).forEach(function(sk){s+=((SKU_SALES_OPT[sk]||[])[i]||0)+((SKU_SALES_RET[sk]||[])[i]||0);});
+      var s=0;(SKU_LIST||[]).forEach(function(sk){s+=((SKU_SALES_OPT[sk]||[])[i]||0)+((SKU_SALES_RET[sk]||[])[i]||0);});
       if(p+s>0) lastIdx=i;
     }
     var curIdx=MO.indexOf(CUR_YM);
     if(curIdx>=0&&curIdx>lastIdx) lastIdx=curIdx;
     var N=Math.min(lastIdx+1,14);
 
-    // Заголовок
     var th='<tr style="background:var(--surface2)">';
     th+='<th style="position:sticky;left:0;z-index:3;background:var(--surface2);min-width:110px;padding:8px 14px;border-bottom:2px solid var(--border)">SKU</th>';
     th+='<th style="padding:8px 12px;border-bottom:2px solid var(--border);min-width:115px;white-space:nowrap">Показник</th>';
@@ -4119,7 +4114,6 @@ function _fcRender() {
     var skus=visSkus();
     var colSpan=N+2;
 
-    // ── Рядки по кожному SKU: Продано Опт + Продано Роздр ──
     skus.forEach(function(sku,si){
       var isPETG=sku.startsWith('PETG');
       var skuColor=isPETG?'var(--accent2)':'var(--good)';
@@ -4148,15 +4142,14 @@ function _fcRender() {
       html+='<tr><td colspan="'+colSpan+'" style="height:1px;background:var(--border);padding:0"></td></tr>';
     });
 
-    // ── Підсумок ВСЬОГО ──
     html+='<tr><td colspan="'+colSpan+'" style="height:3px;background:var(--border);padding:0"></td></tr>';
 
     var totalDefs=[
-      {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;}, color:'var(--accent2)', span:true,  name:'ВСЬОГО'},
-      {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},  color:'var(--good)',    span:false, name:''},
-      {label:'Продано Опт',    fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)', span:false, name:''},
-      {label:'Продано Роздр',  fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)',   span:false, name:''},
-      {label:'Залишок ∑',      fn:null, color:'var(--text)', bold:true, span:false, name:''},
+      {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;}, color:'var(--accent2)'},
+      {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},  color:'var(--good)'},
+      {label:'Продано Опт',    fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
+      {label:'Продано Роздр',  fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
+      {label:'Залишок \u2211', fn:null, color:'var(--text)', bold:true},
     ];
     var nT=totalDefs.length;
     var bg2='var(--surface2)';
@@ -4171,7 +4164,6 @@ function _fcRender() {
       }
       tr+='<td style="padding:5px 12px;font-size:10px;color:'+row.color+';white-space:nowrap'+
           (row.bold?';font-weight:600;border-top:1px solid var(--border)':'')+'">'+row.label+'</td>';
-      // Скидаємо акумулятор для залишку
       if(row.bold){cP=0;cO=0;cR=0;}
       for(var i=0;i<N;i++){
         var v=null,cur=MO[i]===CUR_YM;
