@@ -261,6 +261,8 @@ def parse_production_from_alldata(rows):
         "nf_pct":       nf_pct, "waste_pct": waste_pct,
         "petg_nf":      petg_nf_r,
         "pla_nf":       pla_nf_r,
+        "petg_nf_kg":   petg_nf_kg,   # абсолютні кг НФ PETG
+        "pla_nf_kg":    pla_nf_kg,    # абсолютні кг НФ PLA
         "petg_waste":   petg_w_r,
         "pla_waste":    pla_w_r,
         # Фінансові дані — залишаємо порожніми (беруться з _Drukar_Product)
@@ -282,7 +284,8 @@ def _empty_production():
         "petg_prod": [None]*MONTH_COUNT, "pla_prod": [None]*MONTH_COUNT,
         "total_prod": [None]*MONTH_COUNT, "nf_pct": [None]*MONTH_COUNT,
         "waste_pct": [None]*MONTH_COUNT, "petg_nf": [None]*MONTH_COUNT,
-        "pla_nf": [None]*MONTH_COUNT, "petg_waste": [None]*MONTH_COUNT,
+        "pla_nf": [None]*MONTH_COUNT, "petg_nf_kg": [None]*MONTH_COUNT,
+        "pla_nf_kg": [None]*MONTH_COUNT, "petg_waste": [None]*MONTH_COUNT,
         "pla_waste": [None]*MONTH_COUNT, "income": [None]*MONTH_COUNT,
         "expenses": [None]*MONTH_COUNT, "profit": [None]*MONTH_COUNT,
         "cost_petg_kg": [None]*MONTH_COUNT, "cost_pla_kg": [None]*MONTH_COUNT,
@@ -811,7 +814,6 @@ def parse_sales(rows):
     sales_ret_kg  = [round(monthly_ret_kg.get(m, 0)  / 1000, 3) for m in months_sorted]
 
     # ── SKU-продажі для вкладки Товар ──
-    # Нормалізуємо назву: "PETG 2.5 кг (чорний)" → "PETG 2.5кг"
     import re as _rsk
     def _norm_sku(p):
         m = _rsk.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)', str(p), _rsk.IGNORECASE)
@@ -819,48 +821,19 @@ def parse_sales(rows):
         w = str(float(m.group(2).replace(',', '.'))).rstrip('0').rstrip('.')
         return f"{m.group(1).upper()} {w}кг"
 
-    # Рахуємо середню ціну по пластику (для fallback де kg=0)
-    price_sum = {'PETG': 0.0, 'PLA': 0.0}
-    price_cnt = {'PETG': 0,   'PLA': 0}
-    for r in data_rows:
-        if r['kg'] > 0 and r['revenue'] > 0:
-            pl = 'PETG' if 'PETG' in r['plastic'].upper() else ('PLA' if 'PLA' in r['plastic'].upper() else None)
-            if pl:
-                price_sum[pl] += r['revenue'] / r['kg']
-                price_cnt[pl] += 1
-    avg_price = {pl: (price_sum[pl]/price_cnt[pl] if price_cnt[pl] else 330.0) for pl in price_sum}
-    print(f"  Avg price PETG={avg_price['PETG']:.1f}, PLA={avg_price['PLA']:.1f} грн/кг")
-
     from collections import defaultdict as _dd2
     sku_opt = _dd2(lambda: [0.0] * MONTH_COUNT)
     sku_ret = _dd2(lambda: [0.0] * MONTH_COUNT)
-    # Діагностика
-    zero_kg_cnt = 0; zero_kg_rev = 0.0
 
     for r in data_rows:
         sku = _norm_sku(r['product'])
-        if not sku: continue
+        if not sku or r['kg'] <= 0: continue
         try:
             mi = MONTH_ORDER.index(r['ym'])
         except ValueError:
             continue
-
-        kg = r['kg']
-        # Fallback: якщо kg=0 але є виручка — обчислюємо з ціни
-        if kg <= 0 and r['revenue'] > 0:
-            pl = 'PETG' if sku.startswith('PETG') else 'PLA'
-            kg = r['revenue'] / avg_price[pl]
-            zero_kg_cnt += 1
-            zero_kg_rev += r['revenue']
-
-        if kg <= 0: continue
-
-        if r['channel'] == 'Опт':
-            sku_opt[sku][mi] += kg
-        elif r['channel'] == 'Розница':
-            sku_ret[sku][mi] += kg
-
-    print(f"  Zero-kg rows fixed: {zero_kg_cnt}, revenue covered: {round(zero_kg_rev):,} грн")
+        if r['channel'] == 'Опт':      sku_opt[sku][mi] += r['kg']
+        elif r['channel'] == 'Розница': sku_ret[sku][mi] += r['kg']
 
     all_skus = sorted(
         set(list(sku_opt.keys()) + list(sku_ret.keys())),
@@ -868,17 +841,13 @@ def parse_sales(rows):
                        float(_rsk.search(r'(\d+\.?\d*)', s).group(1)) if _rsk.search(r'(\d+\.?\d*)', s) else 0)
     )
     print(f"  SKU sales keys: {all_skus}")
+    for mk2 in ['2025-11','2026-04']:
+        if mk2 in MONTH_ORDER:
+            mi2 = MONTH_ORDER.index(mk2)
+            print(f"  {mk2}: Опт={round(sum(sku_opt[sk][mi2] for sk in all_skus)):,} кг, Роздр={round(sum(sku_ret[sk][mi2] for sk in all_skus)):,} кг")
 
-    # Діагностика по місяцях
-    for mk in ['2025-11','2026-04']:
-        if mk in MONTH_ORDER:
-            mi = MONTH_ORDER.index(mk)
-            tot_o = sum(sku_opt[sk][mi] for sk in all_skus)
-            tot_r = sum(sku_ret[sk][mi] for sk in all_skus)
-            print(f"  {mk}: Опт={round(tot_o):,} кг, Роздр={round(tot_r):,} кг")
-
-    sku_sales_opt = {sk: [round(v, 1) if v > 0 else None for v in sku_opt[sk]] for sk in all_skus}
-    sku_sales_ret = {sk: [round(v, 1) if v > 0 else None for v in sku_ret[sk]] for sk in all_skus}
+    sku_sales_opt = {sk: [round(v,1) if v>0 else None for v in sku_opt[sk]] for sk in all_skus}
+    sku_sales_ret = {sk: [round(v,1) if v>0 else None for v in sku_ret[sk]] for sk in all_skus}
 
     result = {
         'sales_labels':      labels,
@@ -1050,6 +1019,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{NF_PCT}}':          jv(data['nf_pct']),
         '{{PETG_NF}}':         jv(data['petg_nf']),
         '{{PLA_NF}}':          jv(data['pla_nf']),
+        '{{PETG_NF_KG}}':      jv(data.get('petg_nf_kg', [None]*MONTH_COUNT)),
+        '{{PLA_NF_KG}}':       jv(data.get('pla_nf_kg',  [None]*MONTH_COUNT)),
         '{{PETG_WASTE}}':      jv(data['petg_waste']),
         '{{PLA_WASTE}}':       jv(data['pla_waste']),
         '/*INCOME*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null]': jv(data['income']),
