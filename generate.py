@@ -811,18 +811,17 @@ def parse_sales(rows):
     sales_ret_kg  = [round(monthly_ret_kg.get(m, 0)  / 1000, 3) for m in months_sorted]
 
     # ── SKU-продажі для вкладки Товар ──
-    # Нормалізуємо назву продукту: "PETG 2.5 кг (чорний)" → "PETG 2.5кг"
-    import re as _re_sku
-    def _norm_sku(product):
-        m = _re_sku.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)\s*кг', str(product), _re_sku.IGNORECASE)
+    # Нормалізуємо назву: "PETG 2.5 кг (чорний)" / "PETG 3.0 (чорний)" → "PETG 2.5кг" / "PETG 3кг"
+    import re as _rsk
+    def _norm_sku(p):
+        m = _rsk.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)', str(p), _rsk.IGNORECASE)
         if not m: return None
         w = str(float(m.group(2).replace(',', '.'))).rstrip('0').rstrip('.')
         return f"{m.group(1).upper()} {w}кг"
 
-    # Агрегуємо по SKU × ym × канал (кг), індексуємо по MONTH_ORDER
-    from collections import defaultdict as _dd
-    sku_opt_mo = _dd(lambda: [0.0]*MONTH_COUNT)  # [sku][i] = кг Опт
-    sku_ret_mo = _dd(lambda: [0.0]*MONTH_COUNT)  # [sku][i] = кг Роздр
+    from collections import defaultdict as _dd2
+    sku_opt = _dd2(lambda: [0.0] * MONTH_COUNT)
+    sku_ret = _dd2(lambda: [0.0] * MONTH_COUNT)
 
     for r in data_rows:
         sku = _norm_sku(r['product'])
@@ -832,20 +831,21 @@ def parse_sales(rows):
         except ValueError:
             continue
         if r['channel'] == 'Опт':
-            sku_opt_mo[sku][mi] += r['kg']
+            sku_opt[sku][mi] += r['kg']
         elif r['channel'] == 'Розница':
-            sku_ret_mo[sku][mi] += r['kg']
+            sku_ret[sku][mi] += r['kg']
 
-    # Сортуємо SKU: PETG спочатку, потім за вагою
     all_skus = sorted(
-        set(list(sku_opt_mo.keys()) + list(sku_ret_mo.keys())),
+        set(list(sku_opt.keys()) + list(sku_ret.keys())),
         key=lambda s: (0 if s.startswith('PETG') else 1,
-                       float(_re_sku.search(r'(\d+\.?\d*)', s).group(1)) if _re_sku.search(r'(\d+\.?\d*)', s) else 0)
+                       float(_rsk.search(r'(\d+\.?\d*)', s).group(1)) if _rsk.search(r'(\d+\.?\d*)', s) else 0)
     )
-    # Формуємо масиви: None якщо 0 (для відображення "—")
-    sku_sales_opt = {sku: [round(v,1) if v>0 else None for v in sku_opt_mo[sku]] for sku in all_skus}
-    sku_sales_ret = {sku: [round(v,1) if v>0 else None for v in sku_ret_mo[sku]] for sku in all_skus}
-    print(f"  SKU sales: {all_skus}")
+    print(f"  SKU sales keys: {all_skus}")
+    for sk in all_skus[:3]:
+        print(f"    {sk}: opt={[round(v) for v in sku_opt[sk] if v]}, ret={[round(v) for v in sku_ret[sk] if v]}")
+
+    sku_sales_opt = {sk: [round(v, 1) if v > 0 else None for v in sku_opt[sk]] for sk in all_skus}
+    sku_sales_ret = {sk: [round(v, 1) if v > 0 else None for v in sku_ret[sk]] for sk in all_skus}
 
     result = {
         'sales_labels':      labels,
