@@ -163,36 +163,6 @@ def parse_production_from_alldata(rows):
     # Щоб не дублювати для H/D: зберігаємо унікальні (дата, зміна, лінія) вже оброблені
     seen_lines = set()
 
-    # Перший прохід: L (Упаковано) — просто сумуємо всі рядки БЕЗ дедупліkації
-    # L вже є фінальне значення на кожного оператора (його частка упакованого)
-    for row in rows[1:]:
-        if not row or len(row) < 12: continue
-        date_val = row[0]
-        ym = None
-        if hasattr(date_val, 'strftime'):
-            ym = date_val.strftime('%Y-%m')
-        elif isinstance(date_val, (int, float)) and 40000 < date_val < 60000:
-            from datetime import date as _date2, timedelta as _td2
-            ym = (_date2(1899,12,30)+_td2(days=int(date_val))).strftime('%Y-%m')
-        elif isinstance(date_val, str) and len(date_val) >= 7:
-            for _fmt in ('%Y-%m-%d','%d.%m.%Y'):
-                try: ym=_dt.strptime(date_val[:10],_fmt).strftime('%Y-%m'); break
-                except: pass
-        if not ym or ym < '2025-11': continue
-
-        vid = str(row[5]).strip().upper() if len(row)>5 and row[5] else ''
-        def safe_f2(val):
-            try: return float(str(val).replace(',','.').replace(' ','').strip()) if val else 0.0
-            except: return 0.0
-        packed = safe_f2(row[11])
-        if packed <= 0: continue
-
-        is_petg = 'PETG' in vid
-        is_pla  = 'PLA' in vid and 'PETG' not in vid
-        if is_petg:   monthly[ym]['petg_packed'] += packed
-        elif is_pla:  monthly[ym]['pla_packed']  += packed
-
-    # Другий прохід: H/D, НФ, Відхід — з дедупліkацією (один запис на зміну-лінію)
     for row in rows[1:]:
         if not row or len(row) < 8: continue
 
@@ -245,17 +215,19 @@ def parse_production_from_alldata(rows):
         weight = safe_f(row[7]) / contrib if contrib > 0 else 0.0  # H=Вес кг (вклад)
         nf     = safe_f(row[8]) / contrib if len(row) > 8 else 0.0  # I=НФ кг (вклад)
         waste  = safe_f(row[9]) / contrib if len(row) > 9 else 0.0  # J=Відхід кг (вклад)
-        # packed (L) — рахується в окремому проході вище
+        packed = safe_f(row[11]) if len(row) > 11 else 0.0           # L=Автопідрахунок вес кг (один раз на зміну-лінію)
 
         is_petg = 'PETG' in vid
         is_pla  = 'PLA' in vid and 'PETG' not in vid
 
         if is_petg:
             monthly[ym]['petg']        += weight
+            monthly[ym]['petg_packed'] += packed
             monthly[ym]['petg_nf']     += nf
             monthly[ym]['petg_waste']  += waste
         elif is_pla:
             monthly[ym]['pla']         += weight
+            monthly[ym]['pla_packed']  += packed
             monthly[ym]['pla_nf']      += nf
             monthly[ym]['pla_waste']   += waste
 
