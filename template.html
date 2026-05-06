@@ -4152,13 +4152,13 @@ function _fcRender() {
 
     var totalDefs=[
       {label:'Виробили PETG (H/D)', fn:function(i){return PETG_ALL[i]||null;},    color:'var(--accent2)',  note:true},
-      {label:'Упакували PETG (L)',  fn:function(i){return (typeof PETG_PACKED!=='undefined'&&PETG_PACKED[i])||null;}, color:'var(--accent2)'},
+      {label:'Упакували PETG (L)',  fn:function(i){return (typeof PETG_PACKED!=='undefined'&&PETG_PACKED[i])||null;}, color:'var(--accent2)', strong:true},
       {label:'НФ PETG',             fn:function(i){return (typeof PETG_NF_KG!=='undefined'&&PETG_NF_KG[i])||null;}, color:'var(--muted)', italic:true},
       {label:'Виробили PLA (H/D)',  fn:function(i){return PLA_ALL[i]||null;},     color:'var(--good)',    note:true},
-      {label:'Упакували PLA (L)',   fn:function(i){return (typeof PLA_PACKED!=='undefined'&&PLA_PACKED[i])||null;},  color:'var(--good)'},
+      {label:'Упакували PLA (L)',   fn:function(i){return (typeof PLA_PACKED!=='undefined'&&PLA_PACKED[i])||null;},  color:'var(--good)', strong:true},
       {label:'НФ PLA',              fn:function(i){return (typeof PLA_NF_KG!=='undefined'&&PLA_NF_KG[i])||null;},   color:'var(--muted)', italic:true},
-      {label:'Продано Опт',         fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
-      {label:'Продано Роздр',       fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
+      {label:'Продано Опт',         fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)', strong:true},
+      {label:'Продано Роздр',       fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)', strong:true},
       {label:'Залишок міс',         fn:null, monthly:true, color:'var(--text)', semi:true},
       {label:'Залишок \u2211',      fn:null, cumul:true,   color:'var(--text)', bold:true},
     ];
@@ -4175,7 +4175,7 @@ function _fcRender() {
       }
       var isBold=row.bold||row.semi;
       tr+='<td style="padding:5px 12px;font-size:10px;color:'+row.color+';white-space:nowrap'+
-          (isBold?';font-weight:600;border-top:1px solid var(--border)':'')+(row.italic?';font-style:italic':'')+'">'+row.label+'</td>';
+          (isBold?';font-weight:700;border-top:1px solid var(--border)':'')+(row.strong?';font-weight:600':'')+(row.italic?';font-style:italic':'')+(row.note?';opacity:.6':'')+'">'+row.label+'</td>';
       for(var i=0;i<N;i++){
         var v=null,cur=MO[i]===CUR_YM;
         // Для залишку використовуємо "Упаковано" (L) + НФ — реально готова продукція

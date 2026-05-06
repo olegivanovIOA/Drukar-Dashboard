@@ -215,7 +215,7 @@ def parse_production_from_alldata(rows):
         weight = safe_f(row[7]) / contrib if contrib > 0 else 0.0  # H=Вес кг (вклад)
         nf     = safe_f(row[8]) / contrib if len(row) > 8 else 0.0  # I=НФ кг (вклад)
         waste  = safe_f(row[9]) / contrib if len(row) > 9 else 0.0  # J=Відхід кг (вклад)
-        packed = safe_f(row[11]) if len(row) > 11 else 0.0           # L=Автопідрахунок вес кг (один раз на зміну-лінію)
+        packed = safe_f(row[11]) / contrib if len(row) > 11 and contrib > 0 else 0.0  # L=Автопідрахунок вес кг (вклад)
 
         is_petg = 'PETG' in vid
         is_pla  = 'PLA' in vid and 'PETG' not in vid
