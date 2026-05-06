@@ -155,6 +155,7 @@ def parse_production_from_alldata(rows):
     # key = (ym, вид) → {petg_kg, pla_kg, petg_nf, pla_nf, petg_waste, pla_waste}
     monthly = defaultdict(lambda: {
         'petg': 0.0, 'pla': 0.0,
+        'petg_packed': 0.0, 'pla_packed': 0.0,
         'petg_nf': 0.0, 'pla_nf': 0.0,
         'petg_waste': 0.0, 'pla_waste': 0.0,
     })
@@ -214,26 +215,31 @@ def parse_production_from_alldata(rows):
         weight = safe_f(row[7]) / contrib if contrib > 0 else 0.0  # H=Вес кг (вклад)
         nf     = safe_f(row[8]) / contrib if len(row) > 8 else 0.0  # I=НФ кг (вклад)
         waste  = safe_f(row[9]) / contrib if len(row) > 9 else 0.0  # J=Відхід кг (вклад)
+        packed = safe_f(row[11]) if len(row) > 11 else 0.0           # L=Автопідрахунок вес кг (упаковано)
 
         is_petg = 'PETG' in vid
         is_pla  = 'PLA' in vid and 'PETG' not in vid
 
         if is_petg:
-            monthly[ym]['petg']       += weight
-            monthly[ym]['petg_nf']    += nf
-            monthly[ym]['petg_waste'] += waste
+            monthly[ym]['petg']        += weight
+            monthly[ym]['petg_packed'] += packed
+            monthly[ym]['petg_nf']     += nf
+            monthly[ym]['petg_waste']  += waste
         elif is_pla:
-            monthly[ym]['pla']        += weight
-            monthly[ym]['pla_nf']     += nf
-            monthly[ym]['pla_waste']  += waste
+            monthly[ym]['pla']         += weight
+            monthly[ym]['pla_packed']  += packed
+            monthly[ym]['pla_nf']      += nf
+            monthly[ym]['pla_waste']   += waste
 
     # Формуємо масиви по MONTH_ORDER
-    petg_prod  = [round(monthly[m]['petg'],1)       if m in monthly else None for m in MONTH_ORDER]
-    pla_prod   = [round(monthly[m]['pla'],1)        if m in monthly else None for m in MONTH_ORDER]
-    petg_nf_kg = [round(monthly[m]['petg_nf'],1)    if m in monthly else None for m in MONTH_ORDER]
-    pla_nf_kg  = [round(monthly[m]['pla_nf'],1)     if m in monthly else None for m in MONTH_ORDER]
-    petg_w_kg  = [round(monthly[m]['petg_waste'],1) if m in monthly else None for m in MONTH_ORDER]
-    pla_w_kg   = [round(monthly[m]['pla_waste'],1)  if m in monthly else None for m in MONTH_ORDER]
+    petg_prod   = [round(monthly[m]['petg'],1)        if m in monthly else None for m in MONTH_ORDER]
+    pla_prod    = [round(monthly[m]['pla'],1)         if m in monthly else None for m in MONTH_ORDER]
+    petg_packed = [round(monthly[m]['petg_packed'],1) if m in monthly else None for m in MONTH_ORDER]
+    pla_packed  = [round(monthly[m]['pla_packed'],1)  if m in monthly else None for m in MONTH_ORDER]
+    petg_nf_kg  = [round(monthly[m]['petg_nf'],1)     if m in monthly else None for m in MONTH_ORDER]
+    pla_nf_kg   = [round(monthly[m]['pla_nf'],1)      if m in monthly else None for m in MONTH_ORDER]
+    petg_w_kg   = [round(monthly[m]['petg_waste'],1)  if m in monthly else None for m in MONTH_ORDER]
+    pla_w_kg    = [round(monthly[m]['pla_waste'],1)   if m in monthly else None for m in MONTH_ORDER]
 
     # НФ % і Брак %
     nf_pct = []; waste_pct = []
@@ -257,6 +263,8 @@ def parse_production_from_alldata(rows):
         "updated":      datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
         "petg_prod":    petg_prod,
         "pla_prod":     pla_prod,
+        "petg_packed":  petg_packed,
+        "pla_packed":   pla_packed,
         "total_prod":   total_prod,
         "nf_pct":       nf_pct, "waste_pct": waste_pct,
         "petg_nf":      petg_nf_r,
@@ -282,6 +290,7 @@ def _empty_production():
     return {
         "updated": datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
         "petg_prod": [None]*MONTH_COUNT, "pla_prod": [None]*MONTH_COUNT,
+        "petg_packed": [None]*MONTH_COUNT, "pla_packed": [None]*MONTH_COUNT,
         "total_prod": [None]*MONTH_COUNT, "nf_pct": [None]*MONTH_COUNT,
         "waste_pct": [None]*MONTH_COUNT, "petg_nf": [None]*MONTH_COUNT,
         "pla_nf": [None]*MONTH_COUNT, "petg_nf_kg": [None]*MONTH_COUNT,
@@ -1055,6 +1064,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{PLA_NF}}':          jv(data['pla_nf']),
         '{{PETG_NF_KG}}':      jv(data.get('petg_nf_kg', [None]*MONTH_COUNT)),
         '{{PLA_NF_KG}}':       jv(data.get('pla_nf_kg',  [None]*MONTH_COUNT)),
+        '{{PETG_PACKED}}':     jv(data.get('petg_packed', [None]*MONTH_COUNT)),
+        '{{PLA_PACKED}}':      jv(data.get('pla_packed',  [None]*MONTH_COUNT)),
         '{{PETG_WASTE}}':      jv(data['petg_waste']),
         '{{PLA_WASTE}}':       jv(data['pla_waste']),
         '/*INCOME*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null]': jv(data['income']),

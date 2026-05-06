@@ -1050,10 +1050,11 @@
     </div>
   </div>
   <div style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
-    * <b>Вироблено</b> — кг готової продукції з журналу (PETG_ALL / PLA_ALL)<br>
-    * <b>НФ</b> — некондиційна продукція кг (курсив) — також продається, входить у підрахунок залишку<br>
+    * <b>Виробили (H/D)</b> — вага екструдованого матеріалу (кол. H ÷ Вклад%)<br>
+    * <b>Упакували (L)</b> — автопідрахунок готової продукції кол. L (Запаковано шт × еталонна вага)<br>
+    * <b>НФ</b> — некондиційна продукція кг (курсив) — продається, входить у залишок<br>
     * <b>Продано Опт / Роздр</b> — прямо з _AllData_$ по SKU і каналу (кг)<br>
-    * <b>Залишок міс</b> = Вироблено + НФ − Продано за місяць &nbsp;|&nbsp; <b>Залишок ∑</b> = нарастаючий з Лис 2025. *
+    * <b>Залишок</b> = Упаковали + НФ − Продано. Міс — за місяць, ∑ — нарастаючий з Лис 2025. *
   </div>
 <!-- ══════════════ /PRODUCT ══════════════ -->
 </div><!-- /main -->
@@ -1106,6 +1107,8 @@ const HM_DATA={{HM_DATA}};
 const HM_NORMS={{HM_NORMS}};
 const PETG_NF_KG={{PETG_NF_KG}};
 const PLA_NF_KG={{PLA_NF_KG}};
+const PETG_PACKED={{PETG_PACKED}};
+const PLA_PACKED={{PLA_PACKED}};
 const SKU_SALES_OPT={{SKU_SALES_OPT}};
 const SKU_SALES_RET={{SKU_SALES_RET}};
 const SKU_LIST={{SKU_LIST}}; // {line: {vid: norm_kg_per_shift}}
@@ -4148,14 +4151,16 @@ function _fcRender() {
     html+='<tr><td colspan="'+colSpan+'" style="height:3px;background:var(--border);padding:0"></td></tr>';
 
     var totalDefs=[
-      {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;}, color:'var(--accent2)'},
-      {label:'НФ PETG',        fn:function(i){return (typeof PETG_NF_KG!=='undefined'&&PETG_NF_KG[i])||null;}, color:'var(--muted)', italic:true},
-      {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},  color:'var(--good)'},
-      {label:'НФ PLA',         fn:function(i){return (typeof PLA_NF_KG!=='undefined'&&PLA_NF_KG[i])||null;},  color:'var(--muted)', italic:true},
-      {label:'Продано Опт',    fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
-      {label:'Продано Роздр',  fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
-      {label:'Залишок міс',    fn:null, monthly:true, color:'var(--text)', semi:true},
-      {label:'Залишок \u2211', fn:null, cumul:true,   color:'var(--text)', bold:true},
+      {label:'Виробили PETG (H/D)', fn:function(i){return PETG_ALL[i]||null;},    color:'var(--accent2)',  note:true},
+      {label:'Упакували PETG (L)',  fn:function(i){return (typeof PETG_PACKED!=='undefined'&&PETG_PACKED[i])||null;}, color:'var(--accent2)'},
+      {label:'НФ PETG',             fn:function(i){return (typeof PETG_NF_KG!=='undefined'&&PETG_NF_KG[i])||null;}, color:'var(--muted)', italic:true},
+      {label:'Виробили PLA (H/D)',  fn:function(i){return PLA_ALL[i]||null;},     color:'var(--good)',    note:true},
+      {label:'Упакували PLA (L)',   fn:function(i){return (typeof PLA_PACKED!=='undefined'&&PLA_PACKED[i])||null;},  color:'var(--good)'},
+      {label:'НФ PLA',              fn:function(i){return (typeof PLA_NF_KG!=='undefined'&&PLA_NF_KG[i])||null;},   color:'var(--muted)', italic:true},
+      {label:'Продано Опт',         fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
+      {label:'Продано Роздр',       fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
+      {label:'Залишок міс',         fn:null, monthly:true, color:'var(--text)', semi:true},
+      {label:'Залишок \u2211',      fn:null, cumul:true,   color:'var(--text)', bold:true},
     ];
     var nT=totalDefs.length;
     var bg2='var(--surface2)';
@@ -4173,10 +4178,12 @@ function _fcRender() {
           (isBold?';font-weight:600;border-top:1px solid var(--border)':'')+(row.italic?';font-style:italic':'')+'">'+row.label+'</td>';
       for(var i=0;i<N;i++){
         var v=null,cur=MO[i]===CUR_YM;
-        // Вироблено з урахуванням НФ (НФ входить у виробництво)
+        // Для залишку використовуємо "Упаковано" (L) + НФ — реально готова продукція
+        var packedP=(typeof PETG_PACKED!=='undefined'&&PETG_PACKED[i])||0;
+        var packedL=(typeof PLA_PACKED!=='undefined'&&PLA_PACKED[i])||0;
         var nfP=(typeof PETG_NF_KG!=='undefined'&&PETG_NF_KG[i])||0;
         var nfL=(typeof PLA_NF_KG!=='undefined'&&PLA_NF_KG[i])||0;
-        var prod=(PETG_ALL[i]||0)+(PLA_ALL[i]||0)+nfP+nfL;
+        var prod=packedP+packedL+nfP+nfL;
         var sold=0;(SKU_LIST||[]).forEach(function(sk){sold+=(SKU_SALES_OPT[sk]||[])[i]||0;sold+=(SKU_SALES_RET[sk]||[])[i]||0;});
         if(row.monthly){
           v=Math.round((prod-sold)*10)/10;
