@@ -1052,7 +1052,7 @@
   <div style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
     * <b>Вироблено</b> — кг з журналу виробництва (PETG_ALL / PLA_ALL)<br>
     * <b>Продано Опт / Роздр</b> — прямо з _AllData_$ по SKU і каналу (кг)<br>
-    * <b>Залишок ∑</b> — нарастаючий з Лис 2025: Вироблено(PETG+PLA) − Опт − Роздр. Поточний місяць *
+    * <b>Залишок міс</b> = Вироблено − Продано за місяць &nbsp;|&nbsp; <b>Залишок ∑</b> = нарастаючий з Лис 2025. *
   </div>
 </div>
 <!-- ══════════════ /PRODUCT ══════════════ -->
@@ -1235,8 +1235,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   try { new Chart(document.getElementById('prodMonthChart'),{data:{labels:_MS,datasets:[
     {type:'bar',label:'PETG',data:_PETG,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
     {type:'bar',label:'PLA',data:_PLA,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-    {type:'line',label:'Тренд PETG',data:polyTrend(_PETG,2),borderColor:'rgba(37,99,235,.75)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]},
-    {type:'line',label:'Тренд PLA', data:polyTrend(_PLA,2), borderColor:'rgba(180,148,0,.75)', borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]}
+    {type:'line',label:'Тренд PETG',data:trendline(_PETG),borderColor:'rgba(37,99,235,.75)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]},
+    {type:'line',label:'Тренд PLA', data:trendline(_PLA), borderColor:'rgba(180,148,0,.75)', borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]}
   ]},options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{
@@ -4152,15 +4152,16 @@ function _fcRender() {
     html+='<tr><td colspan="'+colSpan+'" style="height:3px;background:var(--border);padding:0"></td></tr>';
 
     var totalDefs=[
-      {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;}, color:'var(--accent2)'},
-      {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},  color:'var(--good)'},
-      {label:'Продано Опт',    fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)'},
-      {label:'Продано Роздр',  fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)'},
-      {label:'Залишок \u2211', fn:null, color:'var(--text)', bold:true},
+      {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;},  color:'var(--accent2)', dim:true},
+      {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},   color:'var(--good)',    dim:true},
+      {label:'Продано Опт',    fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_OPT[sk]||[])[i]||0;});return s||null;}, color:'var(--accent)', bold:true},
+      {label:'Продано Роздр',  fn:function(i){var s=0;(SKU_LIST||[]).forEach(function(sk){s+=(SKU_SALES_RET[sk]||[])[i]||0;});return s||null;}, color:'var(--good)', bold:true},
+      {label:'Залишок міс',    fn:null, monthly:true,  color:'var(--text)', semi:true},
+      {label:'Залишок \u2211', fn:null, cumul:true,    color:'var(--text)', bold:true},
     ];
     var nT=totalDefs.length;
     var bg2='var(--surface2)';
-    var cP=0,cO=0,cR=0;
+    var cumBal=0;
 
     totalDefs.forEach(function(row,ri){
       var tr='<tr style="background:'+bg2+'">';
@@ -4169,23 +4170,30 @@ function _fcRender() {
             ';border-right:1px solid var(--border);padding:8px 14px;vertical-align:middle;'+
             'font-family:\'Bebas Neue\',sans-serif;font-size:15px;letter-spacing:1px;color:var(--muted)">ВСЬОГО</td>';
       }
-      tr+='<td style="padding:5px 12px;font-size:10px;color:'+row.color+';white-space:nowrap'+
-          (row.bold?';font-weight:600;border-top:1px solid var(--border)':'')+'">'+row.label+'</td>';
-      if(row.bold){cP=0;cO=0;cR=0;}
+      var isBold=row.bold||row.semi||row.cumul;
+      var borderTop=row.semi||row.cumul?';border-top:2px solid var(--border)':'';
+      var fw=row.bold||row.cumul?';font-weight:700':row.semi?';font-weight:600':'';
+      var op=row.dim?';opacity:.65':'';
+      tr+='<td style="padding:5px 12px;font-size:10px;color:'+row.color+';white-space:nowrap'+fw+op+borderTop+'">'+row.label+'</td>';
+
       for(var i=0;i<N;i++){
         var v=null,cur=MO[i]===CUR_YM;
-        if(row.bold){
-          cP+=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
-          var o=0,r=0;
-          (SKU_LIST||[]).forEach(function(sk){o+=(SKU_SALES_OPT[sk]||[])[i]||0;r+=(SKU_SALES_RET[sk]||[])[i]||0;});
-          cO+=o;cR+=r;
-          v=Math.round((cP-cO-cR)*10)/10;
+        var prod=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
+        var sold=0;(SKU_LIST||[]).forEach(function(sk){sold+=(SKU_SALES_OPT[sk]||[])[i]||0;sold+=(SKU_SALES_RET[sk]||[])[i]||0;});
+
+        if(row.monthly){
+          v=Math.round((prod-sold)*10)/10;
+        } else if(row.cumul){
+          cumBal+=prod-sold;
+          v=Math.round(cumBal*10)/10;
         } else {
           v=row.fn(i);
           if(v!==null) v=Math.round(v*10)/10;
         }
-        var isNeg=row.bold&&v!==null&&v<0;
-        tr+='<td style="padding:5px 10px;text-align:right'+(row.bold?';border-top:1px solid var(--border)':'')+(isNeg?';color:var(--bad)':'')+(cur?';background:rgba(37,99,235,.04)':'')+'">'+fmtKg(v,row.bold)+'</td>';
+        var isNeg=isBold&&v!==null&&v<0;
+        var cellBg=cur?';background:rgba(37,99,235,.04)':'';
+        var negColor=isNeg?';color:var(--bad)':'';
+        tr+='<td style="padding:5px 10px;text-align:right'+fw+borderTop+negColor+cellBg+'">'+fmtKg(v,isBold)+'</td>';
       }
       html+=tr+'</tr>';
     });
