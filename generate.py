@@ -711,10 +711,11 @@ def parse_sales(rows):
         if len(row) < 10: continue
         date_raw = str(row[0]).strip()
         if not date_raw or date_raw in ('Дата', 'NaN', 'nan', ''): continue
-        # Дата — підтримуємо всі формати включно з американським MM/DD/YYYY
+        # Дата
         try:
             from datetime import datetime as dt
-            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):
+            # разные форматы
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y', '%#m/%#d/%Y'):
                 try: d = dt.strptime(date_raw[:10], fmt[:len(fmt)]); break
                 except: pass
             else: continue
