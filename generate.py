@@ -711,7 +711,7 @@ def parse_sales(rows):
         if len(row) < 10: continue
         date_raw = str(row[0]).strip()
         if not date_raw or date_raw in ('Дата', 'NaN', 'nan', ''): continue
-        # Дата — підтримуємо всі формати включно з американським M/D/YYYY без нулів
+        # Дата — підтримуємо всі формати включно з M/D/YYYY без нулів
         try:
             from datetime import datetime as dt
             d = None
@@ -719,19 +719,13 @@ def parse_sales(rows):
                 try: d = dt.strptime(date_raw[:10], fmt); break
                 except: pass
             if d is None:
-                # Fallback: розбираємо M/D/YYYY або D/M/YYYY вручну
-                try:
-                    parts = date_raw.split('/')
-                    if len(parts) == 3:
-                        p0, p1, p2 = int(parts[0]), int(parts[1]), int(parts[2])
-                        if p2 > 1000:   # M/D/YYYY
-                            d = dt(p2, p0, p1)
-                        else:           # D/M/YY або подібне
-                            d = dt(p2, p1, p0)
-                except: pass
+                parts = date_raw.split('/')
+                if len(parts) == 3:
+                    p0, p1, p2 = int(parts[0]), int(parts[1]), int(parts[2])
+                    if p2 > 1000: d = dt(p2, p0, p1)
+                    else: d = dt(p2, p1, p0)
             if d is None: continue
-            # Відкидаємо явно невалідні дати (наприклад 1899 = порожня дата Sheets)
-            if d.year < 2020: continue
+            if d.year < 2020: continue  # відкидаємо 1899 та інші фіктивні дати
         except: continue
         channel = str(row[10]).strip() if len(row) > 10 else ''
         if channel not in ('Опт', 'Розница'): continue
@@ -1182,20 +1176,22 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
     if missing: print(f"WARNING unreplaced: {missing}")
     return html
 
-
 if __name__ == '__main__':
     line_norms = {}
 
-    # ── Виробництво (_AllData_Product) ──
+    # ── 1. Виробництво (_AllData_Product) ──────────────────────
+    prod_rows = []
+    data = None
     try:
         prod_rows = fetch_csv(SHEET_ID, "_AllData_Product")
         data = parse_production_from_alldata(prod_rows)
     except Exception as e:
         print(f"WARNING _AllData_Product: {e}")
-        prod_rows = [[], []]
+        import traceback; traceback.print_exc()
+    if data is None:
         data = _empty_production()
 
-    # ── Фінансові дані (_AllData_Sebest) ──
+    # ── 2. Фінансові дані (_AllData_Sebest) ────────────────────
     try:
         fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
         print(f"  _AllData_Sebest: {len(fin_rows)} rows")
@@ -1251,10 +1247,9 @@ if __name__ == '__main__':
         print(f"WARNING _AllData_Sebest: {e}")
         import traceback; traceback.print_exc()
 
+    # ── 3. Калькулятор ─────────────────────────────────────────
     calc     = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
     calc_ext = {"granule": 112.2}
-    sales    = None
-    okr      = None
     try:
         calc = parse_calculator(fetch_csv(CALC_SHEET_ID, "Калькулятор"))
     except Exception as e:
@@ -1263,10 +1258,11 @@ if __name__ == '__main__':
         calc_ext = parse_calc_extended(fetch_csv(CALC_SHEET_ID, "Расширенный"))
     except Exception as e:
         print(f"WARNING calc ext: {e}")
+
+    # ── 4. Продажі (_AllData_$) ────────────────────────────────
+    sales = None
     try:
         sales = parse_sales(fetch_csv(SHEET_ID, "_AllData_$"))
-        # ── Заповнюємо income з _AllData_$ якщо _AllData_Sebest не дав даних ──
-        # sales['donut_by_month'] = {ym: [opt_грн, ret_грн]}
         if sales and 'donut_by_month' in sales:
             for i, ym in enumerate(MONTH_ORDER):
                 if data['income'][i] is None and ym in sales['donut_by_month']:
@@ -1275,14 +1271,16 @@ if __name__ == '__main__':
             print(f"  Income after sales backfill: {data['income']}")
     except Exception as e:
         print(f"WARNING sales: {e}")
+
+    # ── 5. OKR (стратегія xlsx) ────────────────────────────────
+    okr = None
     try:
         fetch_xlsx(STRATEGY_SHEET_ID, STRATEGY_FILE)
         import importlib, os as _os
-        # Перевіряємо що файл скачався нормально
         _fsize = _os.path.getsize(STRATEGY_FILE)
         print(f"  Strategy file: {_fsize:,} bytes")
         if _fsize < 10000:
-            raise ValueError(f"Strategy file too small ({_fsize} bytes) — download failed?")
+            raise ValueError(f"Strategy file too small ({_fsize} bytes)")
         import okr_tracker
         importlib.reload(okr_tracker)
         okr_result = okr_tracker.run(STRATEGY_FILE)
@@ -1292,42 +1290,19 @@ if __name__ == '__main__':
         print(f"WARNING okr: {e}")
         import traceback; traceback.print_exc()
 
-    # ── Lines heatmap ──
+    # ── 6. Lines heatmap + норми ───────────────────────────────
     hm_labels, hm_data = [], {}
     try:
-        def fetch_lines_sheet(sheet_id, candidates):
-            """Try multiple sheet names, return first that has date+line data."""
-            for name in candidates:
-                try:
-                    rows = fetch_csv(sheet_id, name)
-                    if not rows or len(rows) < 3:
-                        print(f"  Lines HM: '{name}' — too few rows ({len(rows)}), skipping")
-                        continue
-                    # Quick check: does any of first 3 rows look like a journal header?
-                    preview = ' '.join(str(c) for row in rows[:3] for c in row if c).lower()
-                    if 'лін' in preview or 'лини' in preview or 'line' in preview:
-                        print(f"  Lines HM: '{name}' — OK ({len(rows)} rows)")
-                        return rows
-                    else:
-                        print(f"  Lines HM: '{name}' — no line column found, skipping")
-                except Exception as e:
-                    print(f"  Lines HM: '{name}' failed: {e}")
-            return []
-
-        # Тепловая карта — из _AllData_Product (уже загружен, дедупликация правильная)
         hm_labels, hm_data = parse_lines_heatmap_from_alldata(prod_rows)
         print(f"  Lines HM result: {len(hm_labels)} months, {len(hm_data)} lines")
-        # Читаємо норми з листа НОРМЫ
-        try:
-            norms_rows = fetch_csv(LINES_SHEET_ID, 'НОРМЫ')
-            line_norms = parse_norms(norms_rows)
-        except Exception as e_n:
-            print(f"  WARNING norms: {e_n}")
-            line_norms = {}
     except Exception as e:
-        import traceback
         print(f"WARNING lines heatmap: {e}")
-        traceback.print_exc()
+    try:
+        norms_rows = fetch_csv(LINES_SHEET_ID, 'НОРМЫ')
+        line_norms = parse_norms(norms_rows)
+    except Exception as e:
+        print(f"WARNING norms: {e}")
+        line_norms = {}
 
     html = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data, line_norms)
     with open('index.html', 'w', encoding='utf-8') as f:
