@@ -707,27 +707,36 @@ def parse_sales(rows):
 
     # Пропускаем строки-заголовки (первые 2)
     data_rows = []
-    # Діагностика — перші 5 рядків
-    print(f"  _AllData_$ total rows: {len(rows)}")
-    for ri, row in enumerate(rows[:5]):
-        print(f"  row[{ri}] len={len(row)}: {[str(x)[:20] for x in row[:12]]}")
     for row in rows[1:]:
         if len(row) < 10: continue
         date_raw = str(row[0]).strip()
         if not date_raw or date_raw in ('Дата', 'NaN', 'nan', ''): continue
-        # Дата
+        # Дата — підтримуємо всі формати включно з американським M/D/YYYY без нулів
         try:
             from datetime import datetime as dt
-            # разные форматы
-            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y', '%#m/%#d/%Y'):
-                try: d = dt.strptime(date_raw[:10], fmt[:len(fmt)]); break
+            d = None
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):
+                try: d = dt.strptime(date_raw[:10], fmt); break
                 except: pass
-            else: continue
+            if d is None:
+                # Fallback: розбираємо M/D/YYYY або D/M/YYYY вручну
+                try:
+                    parts = date_raw.split('/')
+                    if len(parts) == 3:
+                        p0, p1, p2 = int(parts[0]), int(parts[1]), int(parts[2])
+                        if p2 > 1000:   # M/D/YYYY
+                            d = dt(p2, p0, p1)
+                        else:           # D/M/YY або подібне
+                            d = dt(p2, p1, p0)
+                except: pass
+            if d is None: continue
+            # Відкидаємо явно невалідні дати (наприклад 1899 = порожня дата Sheets)
+            if d.year < 2020: continue
         except: continue
-        channel = str(row[9]).strip() if len(row) > 9 else ''
+        channel = str(row[10]).strip() if len(row) > 10 else ''
         if channel not in ('Опт', 'Розница'): continue
         product = str(row[1]).strip()
-        plastic  = str(row[8]).strip()
+        plastic  = str(row[9]).strip()
         try: revenue = float(str(row[5]).replace(',','.').replace(' ','').replace('\xa0','')) if row[5] else 0
         except: revenue = 0
         try: kg = float(str(row[4]).replace(',','.').replace(' ','').replace('\xa0','')) if row[4] else 0
@@ -1173,90 +1182,79 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
     if missing: print(f"WARNING unreplaced: {missing}")
     return html
 
+
 if __name__ == '__main__':
+    line_norms = {}
+
+    # ── Виробництво (_AllData_Product) ──
     try:
         prod_rows = fetch_csv(SHEET_ID, "_AllData_Product")
         data = parse_production_from_alldata(prod_rows)
-        # Фінансові дані — з _AllData_Sebest
-        # Структура: рядок 1 = заголовки місяців (кожен займає 3 col: кг, грн, %)
-        # Собівартість — колонка "грн" (друга з трьох для кожного місяця)
-        try:
-            fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
-            print(f"  _AllData_Sebest: {len(fin_rows)} rows")
-
-            # detect_month_columns знаходить колонку "кг" (напр. B=col1)
-            # Нам потрібна "Грн, без ПДВ" = col_кг + 1
-            col_map_kg, _ = detect_month_columns(fin_rows)
-            col_map_grn = {mk: ci + 1 for mk, ci in col_map_kg.items()}
-            print(f"  col_map_kg:  {col_map_kg}")
-            print(f"  col_map_grn: {col_map_grn}")
-
-            # Діагностика назв рядків
-            print("  _AllData_Sebest row labels (col A):")
-            for i, row in enumerate(fin_rows):
-                v = str(row[0]).strip() if row else ''
-                if v: print(f"    [{i}] '{v}'")
-
-            def sebest_vals(keywords, cmap=col_map_grn):
-                """Шукає рядок за keywords, читає з колонок грн"""
-                for kw in keywords:
-                    row = get_row(fin_rows, kw)
-                    if row is not None:
-                        print(f"  sebest_vals matched '{kw}': {[row[cmap[mk]] if cmap.get(mk) and cmap[mk]<len(row) else None for mk in MONTH_ORDER]}")
-                        return extract_row_by_month(row, cmap)
-                print(f"  WARNING: none of {keywords} found")
-                return [None] * MONTH_COUNT
-
-            # Рядок 29 (0-indexed=28): ДОХОД
-            # Рядок 23 (0-indexed=22): Разом (всі витрати)
-            income   = sebest_vals(['ДОХОД'])
-            expenses = sebest_vals(['Разом (всі витрати)', 'Разом (всі', 'Разом'])
-            profit   = sebest_vals(['Операційний прибуток', 'Операційний'])
-
-            data["income"]   = [round(v) if v else None for v in income]
-            data["expenses"] = [round(v) if v else None for v in expenses]
-            data["profit"]   = [round(v) if v else None for v in profit]
-            print(f"  Income:   {data['income']}")
-            print(f"  Expenses: {data['expenses']}")
-
-            # ── Собівартість 1 кг (PETG і PLA) ──
-            # Рядок 24 "Себестоимость 1 кг, без НДС", рядки 25=PETG, 26=PLA
-            cpkg_petg = [None] * MONTH_COUNT
-            cpkg_pla  = [None] * MONTH_COUNT
-            for i, row in enumerate(fin_rows):
-                joined = ' '.join(str(c) for c in row).lower()
-                if 'себест' in joined and '1 кг' in joined:
-                    print(f"  Sebest 1кг header at row {i}")
-                    if i + 1 < len(fin_rows):
-                        r = fin_rows[i + 1]
-                        for j, mk in enumerate(MONTH_ORDER):
-                            ci = col_map_grn.get(mk)
-                            if ci is not None and ci < len(r):
-                                cpkg_petg[j] = f(r[ci])
-                    if i + 2 < len(fin_rows):
-                        r = fin_rows[i + 2]
-                        for j, mk in enumerate(MONTH_ORDER):
-                            ci = col_map_grn.get(mk)
-                            if ci is not None and ci < len(r):
-                                cpkg_pla[j] = f(r[ci])
-                    break
-
-            print(f"  Cost PETG: {cpkg_petg}")
-            print(f"  Cost PLA:  {cpkg_pla}")
-            data["cost_petg_kg"] = [round(v, 2) if v else None for v in cpkg_petg]
-            data["cost_pla_kg"]  = [round(v, 2) if v else None for v in cpkg_pla]
-        except Exception as e:
-            print(f"  WARNING fin data: {e}")
-            import traceback; traceback.print_exc()
     except Exception as e:
-        print(f"ERROR: {e}")
-        import traceback; traceback.print_exc()
-        exit(1)
+        print(f"WARNING _AllData_Product: {e}")
+        prod_rows = [[], []]
+        data = _empty_production()
 
-    calc = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
+    # ── Фінансові дані (_AllData_Sebest) ──
+    try:
+        fin_rows = fetch_csv(SHEET_ID, "_AllData_Sebest")
+        print(f"  _AllData_Sebest: {len(fin_rows)} rows")
+        col_map_kg, _ = detect_month_columns(fin_rows)
+        col_map_grn = {mk: ci + 1 for mk, ci in col_map_kg.items()}
+        print(f"  col_map_kg:  {col_map_kg}")
+        print(f"  col_map_grn: {col_map_grn}")
+        print("  _AllData_Sebest row labels (col A):")
+        for i, row in enumerate(fin_rows):
+            v = str(row[0]).strip() if row else ''
+            if v: print(f"    [{i}] '{v}'")
+
+        def sebest_vals(keywords, cmap=col_map_grn):
+            for kw in keywords:
+                row = get_row(fin_rows, kw)
+                if row is not None:
+                    print(f"  sebest_vals matched '{kw}': {[row[cmap[mk]] if cmap.get(mk) and cmap[mk]<len(row) else None for mk in MONTH_ORDER]}")
+                    return extract_row_by_month(row, cmap)
+            print(f"  WARNING: none of {keywords} found")
+            return [None] * MONTH_COUNT
+
+        income   = sebest_vals(['ДОХОД'])
+        expenses = sebest_vals(['Разом (всі витрати)', 'Разом (всі', 'Разом'])
+        profit   = sebest_vals(['Операційний прибуток', 'Операційний'])
+        data["income"]   = [round(v) if v else None for v in income]
+        data["expenses"] = [round(v) if v else None for v in expenses]
+        data["profit"]   = [round(v) if v else None for v in profit]
+        print(f"  Income:   {data['income']}")
+        print(f"  Expenses: {data['expenses']}")
+
+        cpkg_petg = [None] * MONTH_COUNT
+        cpkg_pla  = [None] * MONTH_COUNT
+        for i, row in enumerate(fin_rows):
+            joined = ' '.join(str(c) for c in row).lower()
+            if 'себест' in joined and '1 кг' in joined:
+                print(f"  Sebest 1кг header at row {i}")
+                if i + 1 < len(fin_rows):
+                    r = fin_rows[i + 1]
+                    for j, mk in enumerate(MONTH_ORDER):
+                        ci = col_map_grn.get(mk)
+                        if ci is not None and ci < len(r): cpkg_petg[j] = f(r[ci])
+                if i + 2 < len(fin_rows):
+                    r = fin_rows[i + 2]
+                    for j, mk in enumerate(MONTH_ORDER):
+                        ci = col_map_grn.get(mk)
+                        if ci is not None and ci < len(r): cpkg_pla[j] = f(r[ci])
+                break
+        print(f"  Cost PETG: {cpkg_petg}")
+        print(f"  Cost PLA:  {cpkg_pla}")
+        data["cost_petg_kg"] = [round(v, 2) if v else None for v in cpkg_petg]
+        data["cost_pla_kg"]  = [round(v, 2) if v else None for v in cpkg_pla]
+    except Exception as e:
+        print(f"WARNING _AllData_Sebest: {e}")
+        import traceback; traceback.print_exc()
+
+    calc     = {"petg_price": 146.4, "pla_price": 175.5, "waste_pct": 5.0}
     calc_ext = {"granule": 112.2}
-    sales = None
-    okr   = None
+    sales    = None
+    okr      = None
     try:
         calc = parse_calculator(fetch_csv(CALC_SHEET_ID, "Калькулятор"))
     except Exception as e:
