@@ -707,6 +707,10 @@ def parse_sales(rows):
 
     # Пропускаем строки-заголовки (первые 2)
     data_rows = []
+    # Діагностика — перші 5 рядків
+    print(f"  _AllData_$ total rows: {len(rows)}")
+    for ri, row in enumerate(rows[:5]):
+        print(f"  row[{ri}] len={len(row)}: {[str(x)[:20] for x in row[:12]]}")
     for row in rows[1:]:
         if len(row) < 10: continue
         date_raw = str(row[0]).strip()
