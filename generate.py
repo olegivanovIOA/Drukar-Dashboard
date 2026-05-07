@@ -711,19 +711,18 @@ def parse_sales(rows):
         if len(row) < 10: continue
         date_raw = str(row[0]).strip()
         if not date_raw or date_raw in ('Дата', 'NaN', 'nan', ''): continue
-        # Дата
+        # Дата — підтримуємо всі формати включно з американським MM/DD/YYYY
         try:
             from datetime import datetime as dt
-            # разные форматы
-            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y'):
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):
                 try: d = dt.strptime(date_raw[:10], fmt[:len(fmt)]); break
                 except: pass
             else: continue
         except: continue
-        channel = str(row[10]).strip() if len(row) > 10 else ''
+        channel = str(row[9]).strip() if len(row) > 9 else ''
         if channel not in ('Опт', 'Розница'): continue
         product = str(row[1]).strip()
-        plastic  = str(row[9]).strip()
+        plastic  = str(row[8]).strip()
         try: revenue = float(str(row[5]).replace(',','.').replace(' ','').replace('\xa0','')) if row[5] else 0
         except: revenue = 0
         try: kg = float(str(row[4]).replace(',','.').replace(' ','').replace('\xa0','')) if row[4] else 0
