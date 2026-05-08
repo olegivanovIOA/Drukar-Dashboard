@@ -314,10 +314,6 @@
     <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
       ℹ Розрахунок: (фактичний кг/місяць) ÷ (норма × 2 × дні_в_місяці) × 100%
     </div>
-    <div style="margin-top:8px;display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;flex-wrap:wrap">
-      <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);border-radius:3px;padding:3px 9px;color:#fbbf24;letter-spacing:.5px"><span style="font-size:10px">✦</span> ≥ 80% — КПІ досягнуто · заслуга ІТВ</span>
-      <span style="color:var(--muted)">Золотий контур = лінія відпрацювала місяць на цільовому рівні або вище</span>
-    </div>
   </div>
 </div>
 
@@ -3574,20 +3570,21 @@ async function buildUtilHeatmap(){
     return '#16a34a';
   }
   function textColor(pct){ return '#fff'; }
-  // Рендер ячейки з урахуванням КПІ ≥80%
+  // КПІ-рендер: ≥80% — золотий фон-смужка + зірочка
   function utilCell(pct, title, extraStyle){
     const bg = utilColor(pct);
-    const tc = textColor(pct);
     const label = pct ? pct+'%' : '—';
     const kpi = pct >= 80;
-    const outline = kpi ? ';outline:2px solid #fbbf24;outline-offset:-2px;z-index:1;position:relative' : '';
     const extra = extraStyle || '';
     if(kpi){
-      return `<div class="hmap-cell" style="background:${bg};color:${tc}${outline}${extra};font-weight:700" title="${title}">` +
-        `<span style="position:absolute;top:2px;right:3px;font-size:7px;color:#fbbf24;line-height:1">✦</span>` +
-        `${label}</div>`;
+      // Яскравий gold overlay + товстий outline + зірка
+      return `<div class="hmap-cell" style="background:${bg};color:#fff;outline:2px solid #f59e0b;outline-offset:-2px;box-shadow:inset 0 0 0 1px rgba(251,191,36,.35),0 0 8px rgba(251,191,36,.25);font-weight:700;position:relative${extra}" title="${title}">` +
+        `<span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:2px 2px 0 0"></span>` +
+        `${label}` +
+        `<span style="position:absolute;bottom:2px;right:3px;font-size:8px;color:#fde68a;line-height:1">✦</span>` +
+        `</div>`;
     }
-    return `<div class="hmap-cell" style="background:${bg};color:${tc}${extra}" title="${title}">${label}</div>`;
+    return `<div class="hmap-cell" style="background:${bg};color:#fff${extra}" title="${title}">${label}</div>`;
   }
 
   function lineNum(ln){ const m=ln.match(/\d+/); return m?parseInt(m[0]):999; }
@@ -3631,7 +3628,6 @@ async function buildUtilHeatmap(){
     vals.forEach((pct,i) => {
       html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct}%`, '');
     });
-    const avgBg = utilColor(avg);
     html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700');
   });
 
@@ -3789,9 +3785,23 @@ async function buildUtilHeatmapWeekly(monthIdx){
       if(!pct) return '#0d1117';
       if(pct<20) return '#1a2a1a'; if(pct<40) return '#1a3d1a';
       if(pct<60) return '#1a5c1a'; if(pct<80) return '#1a7a1a';
-      if(pct<95) return '#16a34a'; return '#22c55e';
+      if(pct<100) return '#15803d'; return '#16a34a';
     }
-    function textColor(pct){ return '#fff'; } // завжди білий
+    function textColor(pct){ return '#fff'; }
+    function utilCell(pct, title, extraStyle){
+      const bg = utilColor(pct);
+      const label = pct ? pct+'%' : '—';
+      const kpi = pct >= 80;
+      const extra = extraStyle || '';
+      if(kpi){
+        return `<div class="hmap-cell" style="background:${bg};color:#fff;outline:2px solid #f59e0b;outline-offset:-2px;box-shadow:inset 0 0 0 1px rgba(251,191,36,.35),0 0 8px rgba(251,191,36,.25);font-weight:700;position:relative${extra}" title="${title}">` +
+          `<span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:2px 2px 0 0"></span>` +
+          `${label}` +
+          `<span style="position:absolute;bottom:2px;right:3px;font-size:8px;color:#fde68a;line-height:1">✦</span>` +
+          `</div>`;
+      }
+      return `<div class="hmap-cell" style="background:${bg};color:#fff${extra}" title="${title}">${label}</div>`;
+    }
     function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
     const sortedLines=Object.keys(merged).sort((a,b)=>lineNum(a)-lineNum(b));
     const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10']; const isLoc2=ln=>LOC2.includes(ln);
@@ -3816,9 +3826,9 @@ async function buildUtilHeatmapWeekly(monthIdx){
       const avg=Math.round(pctArr.reduce((a,b)=>a+b,0)/wcols);
       html+=`<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
       pctArr.forEach((pct,i)=>{
-        html+=`<div class="hmap-cell" style="background:${utilColor(pct)};color:${textColor(pct)}" title="${ln} · ${wLabels[i]}: ${pct}%">${pct?pct+'%':'—'}</div>`;
+        html+=utilCell(pct, `${ln} · ${wLabels[i]}: ${pct}%`, '');
       });
-      html+=`<div class="hmap-cell" style="background:${utilColor(avg)};color:${textColor(avg)};font-weight:700">${avg}%</div>`;
+      html+=utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700');
     });
     html+=`<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
     html+=`<div class="hmap-label" style="color:#fff;font-size:13px;font-weight:700">ВСЬОГО</div>`;
