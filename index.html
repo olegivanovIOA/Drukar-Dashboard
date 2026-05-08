@@ -167,7 +167,7 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 08.05.2026 03:45 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 08.05.2026 04:56 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 <div class="tabs">
@@ -1589,8 +1589,8 @@ async function buildHeatmap(){
   if(!lines.length||!HM_LABELS.length){document.getElementById('heatmapWrap').innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px">Немає даних теплової карти</div>';return;}
   const allVals=Object.values(HM_DATA).flat();
   const maxVal=Math.max(...allVals,1);
-  function cc(v){if(v===0)return'#0e1219';const r=v/maxVal;if(r<0.05)return'#18202e';if(r<0.15)return'#1a2d48';if(r<0.30)return'#1a4068';if(r<0.55)return'#1a5a8a';if(r<0.80)return'#2080b8';return'#2563eb';}
-  function tc(v){return v/maxVal>0.40?'rgba(255,255,255,.9)':'rgba(255,255,255,.25)';}
+  function cc(v){if(v===0)return'#1a2035';const r=v/maxVal;if(r<0.05)return'#1e2d45';if(r<0.15)return'#1e4070';if(r<0.30)return'#1a5a96';if(r<0.55)return'#1e7ac0';if(r<0.80)return'#2b9de0';return'#4db8ff';}
+  function tc(v){return v===0?'rgba(255,255,255,.18)':'#ffffff';}
   function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
   function fmtFull(v){return v.toLocaleString('uk');}
   function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
@@ -1766,7 +1766,7 @@ async function buildHeatmapWeekly(monthIdx){
         const nm=line.match(/\d+/);
         if(!nm) continue;
         const lineNum=parseInt(nm[0]);
-        if(lineNum<1||lineNum>8) continue; // тільки лінії 1-8
+        if(lineNum<1||lineNum>16) continue; // лінії 1-16 (з запасом)
         line='ЛІНІЯ '+lineNum;
 
         const shift=String(row[1]||'').trim();
@@ -1837,8 +1837,8 @@ async function buildHeatmapWeekly(monthIdx){
     });
     const allVals=Object.values(merged).flat();
     const maxVal=Math.max(...allVals,1);
-    function cc(v){if(v===0)return'#0e1219';const r=v/maxVal;if(r<0.05)return'#18202e';if(r<0.15)return'#1a2d48';if(r<0.30)return'#1a4068';if(r<0.55)return'#1a5a8a';if(r<0.80)return'#2080b8';return'#2563eb';}
-    function tc(v){return v/maxVal>0.40?'rgba(255,255,255,.9)':'rgba(255,255,255,.25)';}
+    function cc(v){if(v===0)return'#1a2035';const r=v/maxVal;if(r<0.05)return'#1e2d45';if(r<0.15)return'#1e4070';if(r<0.30)return'#1a5a96';if(r<0.55)return'#1e7ac0';if(r<0.80)return'#2b9de0';return'#4db8ff';}
+    function tc(v){return v===0?'rgba(255,255,255,.18)':'#ffffff';}
     function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
     function fmtFull(v){return v.toLocaleString('uk');}
     function getLoc(ln){const n=parseInt(ln.match(/\d+/)||0);if(n<=6)return 1;if(n<=14)return 2;return 3;}
