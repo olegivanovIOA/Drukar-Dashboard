@@ -55,12 +55,38 @@ function getPrevMonthVal(arr){
   return prev>=0 && arr[prev]!==undefined ? arr[prev] : null;
 }
 
+// Реєстр chart-об'єктів для оновлення при фільтрації
+window._charts = {};
+window._chartDataFns = {};
+
+function registerChartForFilter(id, chart, dataFn) {
+  window._charts[id] = chart;
+  window._chartDataFns[id] = dataFn;
+}
+
 function onFilterChange(){
   var ys=document.getElementById('filterYear');
   var ms=document.getElementById('filterMonth');
   filterState.year  = ys.value==='all'?'all':parseInt(ys.value);
   filterState.month = ms.value==='all'?'all':parseInt(ms.value);
   updateFilterBadge();
+  applyFilterToAllCharts();
+}
+
+function applyFilterToAllCharts(){
+  Object.keys(window._charts).forEach(function(id){
+    try {
+      var chart = window._charts[id];
+      var dataFn = window._chartDataFns[id];
+      if(!chart || !dataFn) return;
+      var nd = dataFn();
+      if(nd.labels) chart.data.labels = nd.labels;
+      nd.datasets.forEach(function(ds,i){
+        if(chart.data.datasets[i]) chart.data.datasets[i].data = ds.data;
+      });
+      chart.update('none');
+    } catch(e){ console.warn('[filter] chart '+id+':', e); }
+  });
 }
 
 function updateFilterBadge(){
@@ -83,8 +109,7 @@ function updateFilterBadge(){
 // ── TAB VISIBILITY (mid-режим) ───────────────────────────────────
 function applyTabVisibility(){
   var isTop = DASHBOARD_MODE==='top';
-  var adminBtn=document.getElementById('adminToggleBtn');
-  if(adminBtn) adminBtn.style.display=isTop?'flex':'none';
+  // Кнопка ⚙ — показуємо тільки в TOP, показ через initDashboard()
 
   if(!isTop){
     // Ховаємо кнопки і контент неактивних табок
@@ -231,6 +256,11 @@ async function adminSave(){
   updateFilterBadge();
   applyTabVisibility();
   showTabErrors();
+  // Показуємо ⚙ кнопку тільки для TOP режиму
+  if(DASHBOARD_MODE === 'top') {
+    var ab = document.getElementById('adminToggleBtn');
+    if(ab) ab.style.display = 'flex';
+  }
 })();
 
 </script>
@@ -435,39 +465,35 @@ async function adminSave(){
 <body>
 <header>
   <div><div class="logo">DRUKAR<span>ВИРОБНИЧИЙ ДАШБОРД</span></div></div>
-  <div style="flex:1;padding:0 28px;min-width:0;display:flex;align-items:center;gap:10px;overflow:hidden">
-    <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
-    <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
+  <div style="flex:1;padding:0 20px;min-width:0;display:flex;align-items:center;gap:16px;overflow:hidden">
+    <span style="font-size:14px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
+    <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;flex:1;">...</span>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;border-left:1px solid var(--border);padding-left:16px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Рік</span>
+      <select class="filter-select" id="filterYear" onchange="onFilterChange()" style="padding:4px 24px 4px 8px;font-size:10px">
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="all">Всі</option>
+      </select>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap">Місяць</span>
+      <select class="filter-select" id="filterMonth" onchange="onFilterChange()" style="padding:4px 24px 4px 8px;font-size:10px">
+        <option value="all" selected>Всі</option>
+        <option value="1">Січ</option><option value="2">Лют</option>
+        <option value="3">Бер</option><option value="4">Кві</option>
+        <option value="5">Тра</option><option value="6">Чер</option>
+        <option value="7">Лип</option><option value="8">Сер</option>
+        <option value="9">Вер</option><option value="10">Жов</option>
+        <option value="11">Лис</option><option value="12">Гру</option>
+      </select>
+      <span class="filter-period-badge" id="filterBadge" style="font-size:9px;padding:3px 8px">2026 · Всі</span>
+      <span id="filterCompareBadge" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap"></span>
+      <button class="admin-toggle" id="adminToggleBtn" onclick="toggleAdmin()" title="Налаштування Мідл-дашборду" style="display:none;margin-left:4px">⚙</button>
+    </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.05.2026 07:01 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.05.2026 07:14 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
-<!-- ══ FILTER BAR ══ -->
-<div class="filter-bar" id="filterBar">
-  <span class="filter-bar-label">Рік</span>
-  <select class="filter-select" id="filterYear" onchange="onFilterChange()">
-    <option value="2025">2025</option>
-    <option value="2026" selected>2026</option>
-    <option value="all">Всі роки</option>
-  </select>
-  <span class="filter-bar-sep"></span>
-  <span class="filter-bar-label">Місяць</span>
-  <select class="filter-select" id="filterMonth" onchange="onFilterChange()">
-    <option value="all" selected>Всі місяці</option>
-    <option value="1">Січень</option><option value="2">Лютий</option>
-    <option value="3">Березень</option><option value="4">Квітень</option>
-    <option value="5">Травень</option><option value="6">Червень</option>
-    <option value="7">Липень</option><option value="8">Серпень</option>
-    <option value="9">Вересень</option><option value="10">Жовтень</option>
-    <option value="11">Листопад</option><option value="12">Грудень</option>
-  </select>
-  <span class="filter-bar-sep"></span>
-  <span class="filter-period-badge" id="filterBadge">2026 · Всі місяці</span>
-  <span id="filterCompareBadge" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)"></span>
-  <div style="margin-left:auto">
-    <button class="admin-toggle" id="adminToggleBtn" onclick="toggleAdmin()" title="Налаштування дашбордів" style="display:none">⚙</button>
-  </div>
-</div>
+
 <!-- ══ ADMIN OVERLAY ══ -->
 <div class="admin-overlay" id="adminOverlay" onclick="toggleAdmin()"></div>
 <!-- ══ ADMIN PANEL ══ -->
@@ -1556,18 +1582,31 @@ window.addEventListener('DOMContentLoaded',()=>{
       if(btn){switchTab(hash,btn);}
     }
   } catch(e){ console.warn('[hash-restore]', e); }
-  // Overview charts — кожен незалежно
+  // Overview charts — з підтримкою глобального фільтра
+  function _getFilteredOverview(){
+    var idxs=getFilteredIndices();
+    return {
+      labels: idxs.map(function(i){return MS[i];}),
+      petg:   idxs.map(function(i){return PETG_ALL[i];}),
+      pla:    idxs.map(function(i){return PLA_ALL[i];}),
+      tot:    idxs.map(function(i){return TOTAL_ALL[i];}),
+      nf:     idxs.map(function(i){return NF_PCT[i];}),
+      waste:  idxs.map(function(i){return WASTE_PCT[i];}),
+      wPetg:  idxs.map(function(i){return W_PETG[i];}),
+      wPla:   idxs.map(function(i){return W_PLA[i];}),
+    };
+  }
   try {
-  const _lastIdx=(()=>{let li=0;TOTAL_ALL.forEach((v,i)=>{if(v!==null)li=i;});return Math.min(li+1,MS.length-1);})();
-  const _MS=MS.slice(0,_lastIdx+1);
-  const _PETG=PETG_ALL.slice(0,_lastIdx+1);
-  const _PLA=PLA_ALL.slice(0,_lastIdx+1);
-  const _TOT=TOTAL_ALL.slice(0,_lastIdx+1);
-  const _NF=NF_PCT.slice(0,_lastIdx+1);
-  const _WASTE=WASTE_PCT.slice(0,_lastIdx+1);
-  const _W_PETG=W_PETG.slice(0,_lastIdx+1);
-  const _W_PLA=W_PLA.slice(0,_lastIdx+1);
-  try { new Chart(document.getElementById('prodMonthChart'),{data:{labels:_MS,datasets:[
+  var _fo=_getFilteredOverview();
+  const _MS=_fo.labels;
+  const _PETG=_fo.petg;
+  const _PLA=_fo.pla;
+  const _TOT=_fo.tot;
+  const _NF=_fo.nf;
+  const _WASTE=_fo.waste;
+  const _W_PETG=_fo.wPetg;
+  const _W_PLA=_fo.wPla;
+  try { var _prodChart=new Chart(document.getElementById('prodMonthChart'),{data:{labels:_MS,datasets:[
     {type:'bar',label:'PETG',data:_PETG,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
     {type:'bar',label:'PLA',data:_PLA,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
     {type:'line',label:'Тренд PETG',data:trendline(_PETG),borderColor:'rgba(37,99,235,.75)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]},
@@ -1603,12 +1642,12 @@ window.addEventListener('DOMContentLoaded',()=>{
       {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3,skipNull:true}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}},tooltip:{callbacks:{label:ctx=>{if(ctx.raw===null)return null;return ctx.dataset.label+': '+(ctx.raw/1e6).toFixed(2)+'M грн';}}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
   })(); } catch(e){ console.warn('[chart:finOverviewChart]', e); }
-  try { new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:_MS,datasets:[
+  try { var _nfOvChart=new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:_MS,datasets:[
     {label:'НФ %',data:_NF,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:_NF.map(v=>v&&v>10?'#ff5555':'#ff6b47'),pointRadius:4},
     {label:'Ціль 5%',data:_MS.map(()=>5),borderColor:'rgba(22,163,74,0.6)',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Ціль 5%'?null:c.dataset.label+': '+c.raw+'%'}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:15,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
   } catch(e){ console.warn('[chart:nfOvChart]', e); }
-  try { new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:_MS,datasets:[
+  try { var _wasteOvChart=new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:_MS,datasets:[
     {label:'Відходи %',data:_WASTE,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',tension:.3,fill:true,pointBackgroundColor:'#2563eb',pointRadius:4},
     {label:'Ціль 2.5%',data:_MS.map(()=>2.5),borderColor:'rgba(22,163,74,0.6)',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Ціль 2.5%'?null:c.dataset.label+': '+c.raw+'%'}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:15,ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
@@ -1711,7 +1750,7 @@ async function loadProductionCharts(){
     const petgVals=allMonths.map(ym=>petg[ym]?Math.round(petg[ym]):null);
     const plaVals=allMonths.map(ym=>pla[ym]?Math.round(pla[ym]):null);
 
-    new Chart(document.getElementById('petgChart'),{
+    var _petgTabChart=new Chart(document.getElementById('petgChart'),{
       data:{labels,datasets:[
         {type:'bar',label:'PETG кг',data:petgVals,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(petgVals),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
@@ -1719,7 +1758,7 @@ async function loadProductionCharts(){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
         scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}
     });
-    new Chart(document.getElementById('plaChart'),{
+    var _plaTabChart=new Chart(document.getElementById('plaChart'),{
       data:{labels,datasets:[
         {type:'bar',label:'PLA кг',data:plaVals,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(plaVals),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
@@ -2231,8 +2270,8 @@ async function buildHeatmapWeekly(monthIdx){
 }
 
 function initQuality(){
-  new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
-  new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
+  var _nfDetChart=new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  var _wasteDetChart=new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
 }
 function initCosts(){
   (function(){
