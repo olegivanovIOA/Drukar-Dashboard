@@ -4,7 +4,236 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DRUKAR — Виробничий Дашборд</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+
+// ══════════════════════════════════════════════════════════════════
+// DASHBOARD MODE + GLOBAL FILTER + ADMIN PANEL
+// (підставляється generate.py)
+// ══════════════════════════════════════════════════════════════════
+const DASHBOARD_MODE = "top";
+const MIDDLE_CONFIG  = {"overview": {"top": true, "mid": true}, "production": {"top": true, "mid": true}, "quality": {"top": true, "mid": false}, "costs": {"top": true, "mid": false}, "operators": {"top": true, "mid": true}, "calculator": {"top": true, "mid": false}, "lines": {"top": true, "mid": true}, "sales": {"top": true, "mid": false}, "okr": {"top": true, "mid": false}};
+const ACTIVE_TABS    = ["overview", "production", "quality", "costs", "operators", "calculator", "lines", "sales", "okr"];
+const DATA_ERRORS    = {};
+
+// Метадані місяців для фільтра
+const ALL_MONTHS_META = [
+  '2025-11','2025-12','2026-01','2026-02','2026-03','2026-04',
+  '2026-05','2026-06','2026-07','2026-08','2026-09','2026-10',
+  '2026-11','2026-12'
+].map(function(k,i){
+  var p=k.split('-'); return {key:k,year:parseInt(p[0]),month:parseInt(p[1]),idx:i};
+});
+
+var filterState={year:2026,month:'all'};
+
+function getFilteredIndices(){
+  return ALL_MONTHS_META.filter(function(m){
+    var yOk = filterState.year==='all' || m.year===filterState.year;
+    var mOk = filterState.month==='all' || m.month===filterState.month;
+    return yOk && mOk;
+  }).map(function(m){return m.idx;});
+}
+
+function filterArray(arr){
+  if(!arr) return [];
+  return getFilteredIndices().map(function(i){return arr[i]!==undefined?arr[i]:null;});
+}
+
+function filterLabels(){
+  var S=['Лис','Гру','Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+  return getFilteredIndices().map(function(i){
+    var m=ALL_MONTHS_META[i];
+    return S[i]+' '+String(m.year).slice(2);
+  });
+}
+
+function getPrevMonthVal(arr){
+  if(!arr) return null;
+  var idxs=getFilteredIndices();
+  if(!idxs.length) return null;
+  var prev=idxs[idxs.length-1]-1;
+  return prev>=0 && arr[prev]!==undefined ? arr[prev] : null;
+}
+
+function onFilterChange(){
+  var ys=document.getElementById('filterYear');
+  var ms=document.getElementById('filterMonth');
+  filterState.year  = ys.value==='all'?'all':parseInt(ys.value);
+  filterState.month = ms.value==='all'?'all':parseInt(ms.value);
+  updateFilterBadge();
+}
+
+function updateFilterBadge(){
+  var badge=document.getElementById('filterBadge');
+  var cmpBadge=document.getElementById('filterCompareBadge');
+  var UA=['','Січень','Лютий','Березень','Квітень','Травень','Червень',
+          'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  var yStr=filterState.year==='all'?'Всі роки':filterState.year;
+  var mStr=filterState.month==='all'?'Всі місяці':UA[filterState.month];
+  if(badge) badge.textContent=yStr+' · '+mStr;
+  if(cmpBadge){
+    if(filterState.month!=='all'){
+      var prevM=filterState.month===1?12:filterState.month-1;
+      var prevY=filterState.month===1?(filterState.year==='all'?'':filterState.year-1):(filterState.year==='all'?'':filterState.year);
+      cmpBadge.textContent='vs '+UA[prevM]+(prevY?' '+String(prevY).slice(2):'');
+    } else {cmpBadge.textContent='';}
+  }
+}
+
+// ── TAB VISIBILITY (mid-режим) ───────────────────────────────────
+function applyTabVisibility(){
+  var isTop = DASHBOARD_MODE==='top';
+  var adminBtn=document.getElementById('adminToggleBtn');
+  if(adminBtn) adminBtn.style.display=isTop?'flex':'none';
+
+  if(!isTop){
+    // Ховаємо кнопки і контент неактивних табок
+    document.querySelectorAll('.tab[data-tab-id]').forEach(function(btn){
+      var tid=btn.getAttribute('data-tab-id');
+      if(!ACTIVE_TABS.includes(tid)) btn.style.display='none';
+    });
+    document.querySelectorAll('.tab-content[data-tab-id]').forEach(function(div){
+      var tid=div.getAttribute('data-tab-id');
+      if(!ACTIVE_TABS.includes(tid)){
+        div.style.display='none';
+        div.classList.remove('active');
+      }
+    });
+    // Активуємо першу доступну табку
+    if(ACTIVE_TABS.length){
+      var first=ACTIVE_TABS[0];
+      document.querySelectorAll('.tab[data-tab-id]').forEach(function(b){
+        b.classList.toggle('active',b.getAttribute('data-tab-id')===first);
+      });
+      document.querySelectorAll('.tab-content[data-tab-id]').forEach(function(d){
+        var tid=d.getAttribute('data-tab-id');
+        if(ACTIVE_TABS.includes(tid)){
+          d.classList.toggle('active',tid===first);
+          d.style.display=tid===first?'block':'none';
+        }
+      });
+    }
+  }
+}
+
+// ── TAB ERROR BANNERS ────────────────────────────────────────────
+var TAB_ERR_MAP={
+  'overview':'_err_production','production':'_err_production',
+  'quality':'_err_production','costs':'_err_production',
+  'operators':'_err_production','sales':'_err_sales',
+  'forecast':'_err_sales','okr':'_err_okr','calculator':'_err_calculator'
+};
+function showTabErrors(){
+  Object.keys(TAB_ERR_MAP).forEach(function(tabId){
+    var errKey=TAB_ERR_MAP[tabId];
+    if(!DATA_ERRORS[errKey]) return;
+    var div=document.getElementById('tab-'+tabId);
+    if(!div) return;
+    var b=document.createElement('div');
+    b.className='tab-err-banner';
+    b.innerHTML='<span style="font-size:16px">⚠</span><div><strong>Джерело даних недоступне</strong><br>Дані можуть бути застарілими або відображаються з кешу.</div>';
+    div.insertBefore(b,div.firstChild);
+  });
+}
+
+// ── ADMIN PANEL ──────────────────────────────────────────────────
+var ADMIN_TAB_LABELS={
+  overview:'Огляд', production:'Виробництво', quality:'Якість',
+  costs:'Фінанси', operators:'Оператори', calculator:'Калькулятор',
+  lines:'Лінії', sales:'Продажі', forecast:'Прогноз',
+  okr:'OKR 2026', inventory:'Склад', product:'Товар'
+};
+
+function buildAdminPanel(){
+  var tbody=document.getElementById('adminTabsBody');
+  if(!tbody) return;
+  var rows='';
+  Object.keys(ADMIN_TAB_LABELS).forEach(function(tabId){
+    var lbl=ADMIN_TAB_LABELS[tabId];
+    var cfg=MIDDLE_CONFIG[tabId]||{top:true,mid:false};
+    var midChk=cfg.mid?'checked':'';
+    rows+='<tr><td>'+lbl+'</td>'+
+          '<td><input type="checkbox" class="admin-cb" checked disabled></td>'+
+          '<td><input type="checkbox" class="admin-cb" id="adm_'+tabId+'_mid" '+midChk+'></td></tr>';
+  });
+  tbody.innerHTML=rows;
+  // Відновлюємо токен із сесії
+  var tok=sessionStorage.getItem('drukar_gh_token');
+  var inp=document.getElementById('adminGhToken');
+  if(tok&&inp) inp.value=tok;
+}
+
+function toggleAdmin(){
+  var panel=document.getElementById('adminPanel');
+  var overlay=document.getElementById('adminOverlay');
+  var isOpen=panel.classList.toggle('open');
+  if(overlay) overlay.classList.toggle('open',isOpen);
+  if(isOpen) buildAdminPanel();
+}
+
+async function adminSave(){
+  var token=document.getElementById('adminGhToken').value.trim();
+  var status=document.getElementById('adminStatus');
+  var btn=document.getElementById('adminSaveBtn');
+  if(!token){status.textContent='⚠ Введіть GitHub токен';status.className='admin-status err';return;}
+
+  var newCfg={tabs:{},updated:new Date().toISOString().slice(0,10)};
+  Object.keys(ADMIN_TAB_LABELS).forEach(function(tabId){
+    var midCb=document.getElementById('adm_'+tabId+'_mid');
+    newCfg.tabs[tabId]={top:true,mid:midCb?midCb.checked:false};
+  });
+
+  btn.disabled=true;
+  status.textContent='⏳ Зберігаємо...';
+  status.className='admin-status loading';
+
+  try{
+    var getResp=await fetch(
+      'https://api.github.com/repos/olegivanovIOA/Drukar-Dashboard/contents/middle_config.json',
+      {headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github.v3+json'}}
+    );
+    var sha='';
+    if(getResp.ok){var gj=await getResp.json();sha=gj.sha||'';}
+
+    var content=btoa(unescape(encodeURIComponent(JSON.stringify(newCfg,null,2))));
+    var putBody={
+      message:'dashboard: update middle_config ['+new Date().toISOString().slice(0,16)+']',
+      content:content
+    };
+    if(sha) putBody.sha=sha;
+
+    var putResp=await fetch(
+      'https://api.github.com/repos/olegivanovIOA/Drukar-Dashboard/contents/middle_config.json',
+      {method:'PUT',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(putBody)}
+    );
+    if(!putResp.ok){var ej=await putResp.json();throw new Error(ej.message||putResp.status);}
+
+    sessionStorage.setItem('drukar_gh_token',token);
+    status.textContent='✓ Збережено! middle.html оновиться за ~2 хв';
+    status.className='admin-status ok';
+  }catch(e){
+    status.textContent='✗ Помилка: '+e.message;
+    status.className='admin-status err';
+  }finally{btn.disabled=false;}
+}
+
+// ── ІНІЦІАЛІЗАЦІЯ ────────────────────────────────────────────────
+(function initDashboard(){
+  // Поточний рік за замовчуванням
+  var now=new Date();
+  var curY=now.getFullYear();
+  var ySel=document.getElementById('filterYear');
+  if(ySel){
+    for(var i=0;i<ySel.options.length;i++){
+      if(parseInt(ySel.options[i].value)===curY){ySel.selectedIndex=i;filterState.year=curY;break;}
+    }
+  }
+  updateFilterBadge();
+  applyTabVisibility();
+  showTabErrors();
+})();
+
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
   :root{
@@ -158,6 +387,49 @@
     .card-subtitle{font-size:11px}
   }
   @keyframes pulse-icon{0%,100%{filter:drop-shadow(0 0 4px rgba(37,99,235,.4))}50%{filter:drop-shadow(0 0 10px rgba(37,99,235,.9))}}
+
+  /* ── GLOBAL FILTER BAR ── */
+  .filter-bar{background:var(--surface);border-bottom:2px solid var(--border);padding:8px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:96px;z-index:98;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .filter-bar-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+  .filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:5px 28px 5px 10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;transition:border-color .2s}
+  .filter-select:focus{border-color:var(--accent)}
+  .filter-period-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);padding:4px 10px;border:1px solid rgba(37,99,235,.3);border-radius:3px;background:rgba(37,99,235,.06);white-space:nowrap}
+  .filter-bar-sep{width:1px;height:20px;background:var(--border)}
+  /* ── ADMIN PANEL ── */
+  .admin-toggle{background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 9px;color:var(--muted);cursor:pointer;font-size:14px;transition:all .2s;flex-shrink:0;line-height:1}
+  .admin-toggle:hover{border-color:var(--accent);color:var(--accent)}
+  .admin-panel{display:none;position:fixed;top:0;right:0;width:340px;height:100vh;background:var(--surface);border-left:2px solid var(--border);z-index:300;overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.12)}
+  .admin-panel.open{display:flex;flex-direction:column}
+  .admin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:299}
+  .admin-overlay.open{display:block}
+  .admin-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .admin-title{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase}
+  .admin-close{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 8px;line-height:1}
+  .admin-close:hover{color:var(--text)}
+  .admin-body{padding:18px 20px;flex:1}
+  .admin-section-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .admin-tbl{width:100%;border-collapse:collapse;margin-bottom:18px}
+  .admin-tbl th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);padding:5px 8px;text-transform:uppercase}
+  .admin-tbl th:first-child{text-align:left}
+  .admin-tbl th:not(:first-child){text-align:center;width:52px}
+  .admin-tbl td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.05)}
+  .admin-tbl td:first-child{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text)}
+  .admin-tbl td:not(:first-child){text-align:center}
+  .admin-cb{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+  .admin-cb:disabled{opacity:.3;cursor:not-allowed}
+  .admin-footer{padding:14px 20px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+  .admin-save-btn{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;width:100%;transition:all .15s}
+  .admin-save-btn:hover{filter:brightness(1.1)}
+  .admin-save-btn:disabled{opacity:.4;cursor:not-allowed}
+  .admin-token-row{display:flex;flex-direction:column;gap:4px}
+  .admin-token-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .admin-token-inp{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;outline:none;width:100%;transition:border-color .2s}
+  .admin-token-inp:focus{border-color:var(--accent)}
+  .admin-status{font-family:'IBM Plex Mono',monospace;font-size:9px;text-align:center;min-height:14px;line-height:1.4}
+  .admin-status.ok{color:var(--good)}.admin-status.err{color:var(--bad)}.admin-status.loading{color:var(--warn)}
+  /* ── TAB ERROR BANNER ── */
+  .tab-err-banner{background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--bad);display:flex;align-items:center;gap:10px}
+  .tab-err-banner strong{font-size:11px}
 </style>
 </head>
 <body>
@@ -167,27 +439,83 @@
     <span style="font-size:16px;flex-shrink:0;animation:pulse-icon 3s ease-in-out infinite">💡</span>
     <span id="quoteText" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">...</span>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.05.2026 04:49 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.05.2026 07:01 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
+<!-- ══ FILTER BAR ══ -->
+<div class="filter-bar" id="filterBar">
+  <span class="filter-bar-label">Рік</span>
+  <select class="filter-select" id="filterYear" onchange="onFilterChange()">
+    <option value="2025">2025</option>
+    <option value="2026" selected>2026</option>
+    <option value="all">Всі роки</option>
+  </select>
+  <span class="filter-bar-sep"></span>
+  <span class="filter-bar-label">Місяць</span>
+  <select class="filter-select" id="filterMonth" onchange="onFilterChange()">
+    <option value="all" selected>Всі місяці</option>
+    <option value="1">Січень</option><option value="2">Лютий</option>
+    <option value="3">Березень</option><option value="4">Квітень</option>
+    <option value="5">Травень</option><option value="6">Червень</option>
+    <option value="7">Липень</option><option value="8">Серпень</option>
+    <option value="9">Вересень</option><option value="10">Жовтень</option>
+    <option value="11">Листопад</option><option value="12">Грудень</option>
+  </select>
+  <span class="filter-bar-sep"></span>
+  <span class="filter-period-badge" id="filterBadge">2026 · Всі місяці</span>
+  <span id="filterCompareBadge" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)"></span>
+  <div style="margin-left:auto">
+    <button class="admin-toggle" id="adminToggleBtn" onclick="toggleAdmin()" title="Налаштування дашбордів" style="display:none">⚙</button>
+  </div>
+</div>
+<!-- ══ ADMIN OVERLAY ══ -->
+<div class="admin-overlay" id="adminOverlay" onclick="toggleAdmin()"></div>
+<!-- ══ ADMIN PANEL ══ -->
+<div class="admin-panel" id="adminPanel">
+  <div class="admin-header">
+    <span class="admin-title">⚙ Налаштування</span>
+    <button class="admin-close" onclick="toggleAdmin()">✕</button>
+  </div>
+  <div class="admin-body">
+    <div class="admin-section-title">Видимість табок у Мідл-дашборді</div>
+    <table class="admin-tbl">
+      <thead><tr><th>Табка</th><th>ТОП</th><th>Мідл</th></tr></thead>
+      <tbody id="adminTabsBody"></tbody>
+    </table>
+    <div class="admin-section-title">GitHub токен (для збереження)</div>
+    <div class="admin-token-row">
+      <span class="admin-token-label">Fine-grained token (Contents: Write)</span>
+      <input class="admin-token-inp" id="adminGhToken" type="password" placeholder="github_pat_..." autocomplete="off">
+    </div>
+  </div>
+  <div class="admin-footer">
+    <div class="admin-status" id="adminStatus"></div>
+    <button class="admin-save-btn" id="adminSaveBtn" onclick="adminSave()">💾 ЗБЕРЕГТИ І ПЕРЕГЕНЕРУВАТИ</button>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);text-align:center;line-height:1.7">
+      Збереже middle_config.json у репо<br>GitHub Actions оновить middle.html за ~2 хв
+    </div>
+  </div>
+</div>
+
+
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('overview',this)">Огляд</button>
-  <button class="tab" onclick="switchTab('production',this)">Виробництво</button>
-  <button class="tab" onclick="switchTab('quality',this)">Якість</button>
-  <button class="tab" onclick="switchTab('costs',this)">Собівартість</button>
-  <button class="tab" onclick="switchTab('operators',this)">Оператори</button>
-  <button class="tab" onclick="switchTab('calculator',this)">🧮 Калькулятор</button>
-  <button class="tab" onclick="switchTab('lines',this)">📊 Лінії</button>
-  <button class="tab" onclick="switchTab('sales',this)">💰 Продажі</button>
-  <button class="tab" onclick="switchTab('forecast',this)">📈 Прогноз</button>
-  <button class="tab" onclick="switchTab('okr',this)">🎯 OKR 2026</button>
-  <button class="tab" onclick="switchTab('inventory',this)">📦 Склад</button>
-  <button class="tab" onclick="switchTab('product',this)">📋 Товар</button>
+  <button class="tab active" onclick="switchTab('overview',this)" data-tab-id="overview">Огляд</button>
+  <button class="tab" onclick="switchTab('production',this)" data-tab-id="production">Виробництво</button>
+  <button class="tab" onclick="switchTab('quality',this)" data-tab-id="quality">Якість</button>
+  <button class="tab" onclick="switchTab('costs',this)" data-tab-id="costs">Фінанси</button>
+  <button class="tab" onclick="switchTab('operators',this)" data-tab-id="operators">Оператори</button>
+  <button class="tab" onclick="switchTab('calculator',this)" data-tab-id="calculator">🧮 Калькулятор</button>
+  <button class="tab" onclick="switchTab('lines',this)" data-tab-id="lines">📊 Лінії</button>
+  <button class="tab" onclick="switchTab('sales',this)" data-tab-id="sales">💰 Продажі</button>
+  <button class="tab" onclick="switchTab('forecast',this)" data-tab-id="forecast">📈 Прогноз</button>
+  <button class="tab" onclick="switchTab('okr',this)" data-tab-id="okr">🎯 OKR 2026</button>
+  <button class="tab" onclick="switchTab('inventory',this)" data-tab-id="inventory">📦 Склад</button>
+  <button class="tab" onclick="switchTab('product',this)" data-tab-id="product">📋 Товар</button>
 </div>
 <div class="main">
 
 <!-- ══════════════ OVERVIEW ══════════════ -->
-<div id="tab-overview" class="tab-content active">
+<div id="tab-overview" class="tab-content active" data-tab-id="overview">
   <div class="kpi-row">
     <div class="kpi-card" style="--accent-bar:var(--accent)">
       <div class="kpi-label">Всього продукції · Кві '26</div>
@@ -256,7 +584,7 @@
 </div>
 
 <!-- ══════════════ PRODUCTION ══════════════ -->
-<div id="tab-production" class="tab-content">
+<div id="tab-production" class="tab-content" data-tab-id="production">
   <div class="section-title">Динаміка виробництва</div>
   <div class="card" style="margin-bottom:14px">
     <div class="card-header">
@@ -318,7 +646,7 @@
 </div>
 
 <!-- ══════════════ QUALITY ══════════════ -->
-<div id="tab-quality" class="tab-content">
+<div id="tab-quality" class="tab-content" data-tab-id="quality">
   <div class="section-title">Якість та відходи</div>
   <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
     <div class="kpi-card" style="--accent-bar:var(--good)"><div class="kpi-label">Брак PETG · Лис 2025</div><div class="kpi-value" style="color:var(--good)">1.51%</div><div class="kpi-unit">від обсягу виробництва</div></div>
@@ -339,13 +667,13 @@
 <tr><td>Лютий 2026</td><td style="color:var(--good)">1.84%</td><td style="color:var(--good)">1.25%</td><td style="color:var(--good)">1.61%</td><td style="color:var(--good)">1.36%</td><td style="color:var(--good)">1.80%</td><td style="color:var(--good)">1.28%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
 <tr><td>Березень 2026</td><td style="color:var(--good)">3.32%</td><td style="color:var(--good)">1.76%</td><td style="color:var(--good)">4.60%</td><td style="color:var(--good)">1.90%</td><td style="color:var(--good)">3.57%</td><td style="color:var(--good)">1.79%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
 <tr><td>Квітень 2026</td><td style="color:var(--good)">1.96%</td><td style="color:var(--good)">1.28%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.89%</td><td style="color:var(--good)">1.29%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
-<tr><td>Травень 2026*</td><td style="color:var(--good)">1.06%</td><td style="color:var(--good)">1.01%</td><td style="color:var(--good)">1.64%</td><td style="color:var(--warn)">2.83%</td><td style="color:var(--good)">1.10%</td><td style="color:var(--good)">1.15%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
+<tr><td>Травень 2026*</td><td style="color:var(--good)">1.07%</td><td style="color:var(--good)">1.03%</td><td style="color:var(--good)">1.55%</td><td style="color:var(--warn)">2.69%</td><td style="color:var(--good)">1.11%</td><td style="color:var(--good)">1.16%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
 </tbody></table>
   </div>
 </div>
 
 <!-- ══════════════ COSTS ══════════════ -->
-<div id="tab-costs" class="tab-content">
+<div id="tab-costs" class="tab-content" data-tab-id="costs">
   <div class="section-title">Фінансовий аналіз</div>
   <div class="card" style="margin-bottom:14px">
     <div class="card-header"><div><div class="card-title">Структура собівартості · виберіть місяць</div><div class="card-subtitle">Статті витрат у грн та % від загальних витрат</div></div></div>
@@ -368,7 +696,7 @@
 </div>
 
 <!-- ══════════════ OPERATORS ══════════════ -->
-<div id="tab-operators" class="tab-content">
+<div id="tab-operators" class="tab-content" data-tab-id="operators">
   <div class="section-title">Аналіз операторів</div>
   <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">МІСЯЦЬ:</span>
@@ -453,7 +781,7 @@
 </div>
 
 <!-- ══════════════ LINES RECORDS ══════════════ -->
-<div id="tab-lines" class="tab-content">
+<div id="tab-lines" class="tab-content" data-tab-id="lines">
   <div class="section-title">Рекорди продуктивності ліній</div>
 
   <div class="lines-controls">
@@ -532,7 +860,7 @@
 
 
 <!-- ══════════════ CALCULATOR ══════════════ -->
-<div id="tab-calculator" class="tab-content">
+<div id="tab-calculator" class="tab-content" data-tab-id="calculator">
   <div class="section-title">Калькулятор собівартості</div>
 
   <!-- Sub-tabs -->
@@ -694,7 +1022,7 @@
 
 
 <!-- ══════════════ SALES ══════════════ -->
-<div id="tab-sales" class="tab-content">
+<div id="tab-sales" class="tab-content" data-tab-id="sales">
   <div class="section-title">Аналіз продажів</div>
 
   <!-- KPI row -->
@@ -812,7 +1140,7 @@
 </div>
 
 <!-- ══════════════ FORECAST ══════════════ -->
-<div id="tab-forecast" class="tab-content">
+<div id="tab-forecast" class="tab-content" data-tab-id="forecast">
   <div style="padding:10px 0 8px;display:flex;align-items:center;gap:12px">
     <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text)">📈 Прогноз продажів 2026 · тонни</h2>
     <span class="badge badge-blue">Ціль грудня: 320 т</span>
@@ -917,7 +1245,7 @@
 </div>
 
 <!-- ══════════════ OKR 2026 ══════════════ -->
-<div id="tab-okr" class="tab-content">
+<div id="tab-okr" class="tab-content" data-tab-id="okr">
   <div class="section-title">Стратегічні цілі 2026 — OKR Трекінг</div>
 
   <!-- Top OKR block: left = company % + bars, right = stats -->
@@ -976,7 +1304,7 @@
 
 
 <!-- ══════════════ INVENTORY ══════════════ -->
-<div id="tab-inventory" class="tab-content">
+<div id="tab-inventory" class="tab-content" data-tab-id="inventory">
   <div class="section-title">Залишки на складах · Bitrix24 Inventory</div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
     <div style="display:flex;flex-direction:column;gap:4px">
@@ -1040,7 +1368,7 @@
 </div>
 <!-- ══════════════ /INVENTORY ══════════════ -->
 <!-- ══════════════ PRODUCT TAB ══════════════ -->
-<div id="tab-product" class="tab-content">
+<div id="tab-product" class="tab-content" data-tab-id="product">
   <div class="section-title">Товар · По видах продукції · кг</div>
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
     <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase">Фільтр:</span>
@@ -1066,14 +1394,14 @@
 </div><!-- /main -->
 <script>
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
-const PETG_ALL=[21127.6,22878.6,18742.8,25556.2,36682.7,45213.1,19482.0,null,null,null,null,null,null,null];
-const PLA_ALL=[667.0,3483.5,5319.7,6678.7,9193.1,5698.6,1644.2,null,null,null,null,null,null,null];
-const TOTAL_ALL=[21794.6,26362.1,24062.5,32234.9,45875.8,50911.7,21126.2,null,null,null,null,null,null,null];
-const NF_PCT=[4.74,3.25,29.47,1.8,3.57,1.89,1.1,null,null,null,null,null,null,null];
-const NF_PETG=[4.82,2.98,19.89,1.84,3.32,1.96,1.06,null,null,null,null,null,null,null];
-const NF_PLA=[1.95,5.0,63.24,1.61,4.6,1.35,1.64,null,null,null,null,null,null,null];
-const W_PETG=[1.39,1.92,2.52,1.25,1.76,1.28,1.01,null,null,null,null,null,null,null];
-const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,2.83,null,null,null,null,null,null,null];
+const PETG_ALL=[21127.6,22878.6,18742.8,25556.2,36682.7,45213.1,20068.7,null,null,null,null,null,null,null];
+const PLA_ALL=[667.0,3483.5,5319.7,6678.7,9193.1,5698.6,1730.2,null,null,null,null,null,null,null];
+const TOTAL_ALL=[21794.6,26362.1,24062.5,32234.9,45875.8,50911.7,21798.9,null,null,null,null,null,null,null];
+const NF_PCT=[4.74,3.25,29.47,1.8,3.57,1.89,1.11,null,null,null,null,null,null,null];
+const NF_PETG=[4.82,2.98,19.89,1.84,3.32,1.96,1.07,null,null,null,null,null,null,null];
+const NF_PLA=[1.95,5.0,63.24,1.61,4.6,1.35,1.55,null,null,null,null,null,null,null];
+const W_PETG=[1.39,1.92,2.52,1.25,1.76,1.28,1.03,null,null,null,null,null,null,null];
+const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,2.69,null,null,null,null,null,null,null];
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
@@ -1109,7 +1437,7 @@ const COSTS={
 const OP_ALL=[["Щербакова Олена",10223.1],["Макалюк Вікторія",9466.3],["Макалюк Володимир",9400.6],["Ременчук Юлія",8304.3],["Бараш Костянтин",8103.8],["Пивовар Олександр",4661.2],["Гарбар Денис",3326.1],["Бондарчук Дмитро",3278.5],["Пінчук Олександр",3226.0],["Нужда Олексій",2502.9],["Криволапчук Олександр",1192.2],["Хімич Богдан",1183.7],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Степанчук Владислав",1054.1],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6],["Борисов Дмитро",372.5]];
 const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Макалюк Володимир",2448.5],["Бондарчук Дмитро",2066.1],["Щербакова Олена",1613.7],["Ременчук Юлія",1548.2],["Бараш Костянтин",1287.6],["Степанчук Владислав",1054.1],["Борисов Дмитро",103.4]],"2025-12":[["Ременчук Юлія",2641.3],["Макалюк Володимир",2398.3],["Бараш Костянтин",2281.3],["Щербакова Олена",2171.2],["Пінчук Олександр",1476.7],["Макалюк Вікторія",1412.8],["Бондарчук Дмитро",1212.4],["Пивовар Олександр",838.1],["Борисов Дмитро",169.5]],"2026-01":[["Макалюк Вікторія",2468.8],["Щербакова Олена",2337.1],["Макалюк Володимир",1901.9],["Ременчук Юлія",1524.8],["Бараш Костянтин",1477.4],["Пивовар Олександр",1297.3],["Гарбар Денис",577.8],["Пінчук Олександр",522.5],["Нужда Олексій",322.3]],"2026-02":[["Щербакова Олена",2384.7],["Бараш Костянтин",2077.3],["Макалюк Вікторія",1859.0],["Макалюк Володимир",1541.6],["Гарбар Денис",1518.9],["Пивовар Олександр",1517.9],["Ременчук Юлія",1516.7],["Нужда Олексій",1368.7],["Пінчук Олександр",1226.8],["Хімич Богдан",314.8],["Борисов Дмитро",99.7]],"2026-03":[["Щербакова Олена",1716.4],["Гарбар Денис",1229.4],["Криволапчук Олександр",1192.2],["Макалюк Вікторія",1114.1],["Макалюк Володимир",1110.2],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Ременчук Юлія",1073.3],["Пивовар Олександр",1007.9],["Бараш Костянтин",980.2],["Хімич Богдан",868.9],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Нужда Олексій",811.9],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6]]};
 const HM_LABELS=["Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26"];
-const HM_DATA={"ЛІНІЯ 1":[7494,8937,8108,8058,7956,7463,3815],"ЛІНІЯ 2":[5591,5592,1344,2499,4976,5508,2532],"ЛІНІЯ 3":[5111,3642,161,3936,5118,5434,1805],"ЛІНІЯ 4":[3598,3171,3976,4180,5086,5021,664],"ЛІНІЯ 5":[0,5019,4748,6938,6645,7745,2557],"ЛІНІЯ 6":[0,0,5726,6624,6664,7377,3134],"ЛІНІЯ 7":[0,0,0,0,3339,5836,2375],"ЛІНІЯ 8":[0,0,0,0,6092,5941,1202],"ЛІНІЯ 9":[0,0,0,0,0,587,3017],"ЛІНІЯ 10":[0,0,0,0,0,0,24]};
+const HM_DATA={"ЛІНІЯ 1":[7494,8937,8108,8058,7956,7463,3935],"ЛІНІЯ 2":[5591,5592,1344,2499,4976,5508,2618],"ЛІНІЯ 3":[5111,3642,161,3936,5118,5434,1890],"ЛІНІЯ 4":[3598,3171,3976,4180,5086,5021,755],"ЛІНІЯ 5":[0,5019,4748,6938,6645,7745,2703],"ЛІНІЯ 6":[0,0,5726,6624,6664,7377,3278],"ЛІНІЯ 7":[0,0,0,0,3339,5836,2375],"ЛІНІЯ 8":[0,0,0,0,6092,5941,1202],"ЛІНІЯ 9":[0,0,0,0,0,587,3017],"ЛІНІЯ 10":[0,0,0,0,0,0,24]};
 const HM_NORMS={"ЛІНІЯ 1":{"PETG 2.5":151.0,"PETG 3.0":154.0},"ЛІНІЯ 2":{"PLA 3.0":97.0,"PETG 3.0":128.0,"PLA 2.5":87.0},"ЛІНІЯ 3":{"PETG 2.5":123.2,"PETG 3.0":107.0,"PETG 3.0 RED":123.2,"PLA 3.0":115.0},"ЛІНІЯ 4":{"PLA 3.0":145.0,"PETG 3.0":98.0,"PLA 2.5":90.2},"ЛІНІЯ 5":{"PETG 3.0":144.0},"ЛІНІЯ 6":{"PETG 3.0":141.0}};
 const SKU_SALES_OPT={"PETG 2.5кг":[3660.0,9112.5,7860.0,7040.0,7495.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[990.0,6957.0,3357.0,10431.0,11361.0,31740.0,13824.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,1480.0,7475.0,null,null,null,null,null,null,null,null,null],"PLA 3кг":[915.0,3480.0,5091.0,5091.0,1491.0,5451.0,null,null,null,null,null,null,null,null]};
 const SKU_SALES_RET={"PETG 2.5кг":[null,null,null,null,3006.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[2811.0,504.0,8538.0,7161.0,14052.0,16998.0,6294.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"PLA 3кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null]};
