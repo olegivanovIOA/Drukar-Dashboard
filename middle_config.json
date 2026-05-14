@@ -1,14 +1,17 @@
 {
   "tabs": {
-    "overview":    { "top": true, "mid": true },
-    "production":  { "top": true, "mid": true },
-    "quality":     { "top": true, "mid": false },
-    "costs":       { "top": true, "mid": false },
-    "operators":   { "top": true, "mid": true },
-    "calculator":  { "top": true, "mid": false },
-    "lines":       { "top": true, "mid": true },
-    "sales":       { "top": true, "mid": false },
-    "okr":         { "top": true, "mid": false }
+    "overview":   { "top": true, "mid": false },
+    "production": { "top": true, "mid": true },
+    "quality":    { "top": true, "mid": true },
+    "costs":      { "top": true, "mid": false },
+    "operators":  { "top": true, "mid": true },
+    "calculator": { "top": true, "mid": false },
+    "lines":      { "top": true, "mid": true },
+    "sales":      { "top": true, "mid": false },
+    "forecast":   { "top": true, "mid": false },
+    "okr":        { "top": true, "mid": true },
+    "inventory":  { "top": true, "mid": true },
+    "product":    { "top": true, "mid": false }
   },
   "updated": "2026-05-14"
 }
