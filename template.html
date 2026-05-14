@@ -1274,9 +1274,11 @@ function applyTabVisibility(){
       document.querySelectorAll('.tab-content[data-tab-id]').forEach(function(d){
         var tid=d.getAttribute('data-tab-id');
         if(ACTIVE_TABS.includes(tid)){
-          d.classList.toggle('active',tid===first);
-          d.style.display=tid===first?'block':'none';
+          var isFirst = tid===first;
+          d.classList.toggle('active', isFirst);
+          d.style.display = isFirst ? 'block' : 'none';
         }
+        // Неактивні для mid вже приховані вище
       });
     }
   }
@@ -1487,9 +1489,23 @@ function polyTrend(data, deg=2){
 let opCI=null,costCI=null;
 const rendered={};
 function switchTab(id,el){
-  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
+  // Ховаємо всі tab-content
+  document.querySelectorAll('.tab-content').forEach(function(e){
+    e.classList.remove('active');
+    // В mid-режимі: ховаємо неактивні табки через display (ACTIVE_TABS може бути undefined якщо TOP)
+    if(typeof ACTIVE_TABS !== 'undefined' && DASHBOARD_MODE !== 'top'){
+      var tid = e.getAttribute('data-tab-id');
+      if(tid && ACTIVE_TABS.includes(tid)){
+        e.style.display = 'none'; // ховаємо всі активні, нижче покажемо обрану
+      }
+    }
+  });
+  document.querySelectorAll('.tab').forEach(function(e){e.classList.remove('active');});
+  var target = document.getElementById('tab-'+id);
+  if(target){
+    target.classList.add('active');
+    target.style.display = 'block'; // явно показуємо незалежно від попереднього display
+  }
   el.classList.add('active');
   // Зберігаємо таб в hash БЕЗ scroll-jump
   history.replaceState(null,'','#'+id);
