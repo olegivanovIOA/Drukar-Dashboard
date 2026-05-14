@@ -3,7 +3,7 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 """
-import os, requests, io, csv
+import os, requests, io, csv, json
 from datetime import datetime
 
 SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
@@ -13,6 +13,35 @@ LINES_SHEET_ID2 = os.environ.get("LINES_SHEET_ID2", "1NJkxtyha_oSpeaB7Jzmf440-kO
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
+
+# ── Middle dashboard config ─────────────────────────────────────────────────
+DEFAULT_CONFIG = {
+    "tabs": {
+        "overview":   {"top": True, "mid": False},
+        "production": {"top": True, "mid": True},
+        "quality":    {"top": True, "mid": True},
+        "costs":      {"top": True, "mid": False},
+        "operators":  {"top": True, "mid": True},
+        "calculator": {"top": True, "mid": False},
+        "lines":      {"top": True, "mid": True},
+        "sales":      {"top": True, "mid": False},
+        "forecast":   {"top": True, "mid": False},
+        "okr":        {"top": True, "mid": True},
+        "inventory":  {"top": True, "mid": True},
+        "product":    {"top": True, "mid": False},
+    }
+}
+
+def load_config():
+    try:
+        with open("middle_config.json", "r", encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        print("OK middle_config.json loaded")
+        return cfg
+    except Exception as e:
+        print(f"WARN middle_config.json not found ({e}), using defaults")
+        import copy
+        return copy.deepcopy(DEFAULT_CONFIG)
 
 # 14 месяцев: Ноябрь 2025 — Декабрь 2026
 # Позиция в массиве (0-based): Nov25=0, Dec25=1, Jan26=2 ... Dec26=13
@@ -1007,8 +1036,16 @@ def generate_quality_table_rows(data):
 
     return rows_html or '<tr><td colspan="8" style="text-align:center;color:var(--muted)">Немає даних</td></tr>'
 
-def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None, line_norms=None):
+def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data=None, line_norms=None, mode="top", config=None, data_errors=None):
     if line_norms is None: line_norms = {}
+    if config is None: config = DEFAULT_CONFIG
+    tabs_cfg = config.get('tabs', DEFAULT_CONFIG['tabs'])
+    active_tabs = [k for k, v in tabs_cfg.items() if v.get(mode, False)]
+    _mode_str          = json.dumps(mode)
+    _middle_config_str = json.dumps(tabs_cfg, ensure_ascii=False)
+    _active_tabs_str   = json.dumps(active_tabs, ensure_ascii=False)
+    _data_errors_str   = json.dumps(data_errors or {}, ensure_ascii=False)
+
     with open('template.html', 'r', encoding='utf-8') as f:
         html = f.read()
     # KPI — останній закритий місяць
@@ -1167,8 +1204,13 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{OKR_PEOPLE}}':        okr['people_json']    if okr else '[]',
         '{{OKR_KR_DATA}}':       okr['kr_data_json']   if okr else '[]',
     })
-
-
+    # ── Mode/config placeholders (for tab visibility + admin panel) ──
+    subs.update({
+        '{{DASHBOARD_MODE}}': _mode_str,
+        '{{MIDDLE_CONFIG}}':  _middle_config_str,
+        '{{ACTIVE_TABS}}':    _active_tabs_str,
+        '{{DATA_ERRORS}}':    _data_errors_str,
+    })
 
     for k, v in subs.items():
         html = html.replace(k, v)
@@ -1304,7 +1346,20 @@ if __name__ == '__main__':
         print(f"WARNING norms: {e}")
         line_norms = {}
 
-    html = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data, line_norms)
+    config = load_config()
+    data_errors = {}
+
+    # index.html — TOP (всі табки)
+    html_top = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data, line_norms,
+                        mode="top", config=config, data_errors=data_errors)
     with open('index.html', 'w', encoding='utf-8') as f:
-        f.write(html)
+        f.write(html_top)
+    print(f"OK index.html ({len(html_top):,} bytes)")
+
+    # middle.html — MID (тільки табки з mid:true)
+    html_mid = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data, line_norms,
+                        mode="mid", config=config, data_errors=data_errors)
+    with open('middle.html', 'w', encoding='utf-8') as f:
+        f.write(html_mid)
+    print(f"OK middle.html ({len(html_mid):,} bytes)")
     print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")
