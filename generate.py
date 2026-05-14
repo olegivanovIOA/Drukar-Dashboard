@@ -1362,4 +1362,4 @@ if __name__ == '__main__':
     with open('middle.html', 'w', encoding='utf-8') as f:
         f.write(html_mid)
     print(f"OK middle.html ({len(html_mid):,} bytes)")
-    print(f"\n✅ Done — {len(html):,} chars, updated {data['updated']}")
+    print(f"\n✅ Done — index: {len(html_top):,} / middle: {len(html_mid):,} chars, updated {data['updated']}")
