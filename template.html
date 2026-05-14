@@ -1389,6 +1389,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var ab=document.getElementById('adminToggleBtn');
     if(ab) ab.style.display='flex';
   }
+  // Для mid-режиму: примусово ініціалізуємо першу активну табку
+  // (switchTab не викликається при першому відкритті)
+  if(DASHBOARD_MODE!=='top' && typeof ACTIVE_TABS!=='undefined' && ACTIVE_TABS.length){
+    var firstTab = ACTIVE_TABS[0];
+    if(typeof rendered!=='undefined' && !rendered[firstTab]){
+      rendered[firstTab] = true;
+      if(typeof initTab==='function') initTab(firstTab);
+    }
+  }
 });
 
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
