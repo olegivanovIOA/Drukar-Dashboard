@@ -1899,25 +1899,25 @@ function renderShiftData(){
   const dp=(d/tot*100).toFixed(1),np=(n/tot*100).toFixed(1);
   const fmt=v=>v.toLocaleString('uk');
   const bw=Math.round(d/tot*100);
-  wrap.innerHTML=`<div style="width:100%;padding:0 20px 16px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent);line-height:1">${fmt(d)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ · ${dp}%</div>
-      </div>
-      <div style="display:flex;align-items:center"><div style="width:1px;height:60px;background:var(--border)"></div></div>
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent2);line-height:1">${fmt(n)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ · ${np}%</div>
-      </div>
-    </div>
-    <div style="height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)">
-      <div style="height:100%;width:${bw}%;background:var(--accent);transition:width .4s"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">
-      <span>День ${dp}%</span><span>Ніч ${np}%</span>
-    </div>
-  </div>`;
+  var mono="font-family:IBM Plex Mono,monospace";
+  var bebas="font-family:Bebas Neue,sans-serif";
+  wrap.innerHTML='<div style="width:100%;padding:0 20px 16px">'
+    +'<div style="display:flex;justify-content:space-between;margin-bottom:16px">'
+    +'<div style="text-align:center">'
+    +'<div style="'+bebas+';font-size:48px;color:var(--accent);line-height:1">'+fmt(d)+'</div>'
+    +'<div style="'+mono+';font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ · '+dp+'%</div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center"><div style="width:1px;height:60px;background:var(--border)"></div></div>'
+    +'<div style="text-align:center">'
+    +'<div style="'+bebas+';font-size:48px;color:var(--accent2);line-height:1">'+fmt(n)+'</div>'
+    +'<div style="'+mono+';font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ · '+np+'%</div>'
+    +'</div></div>'
+    +'<div style="height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)">'
+    +'<div style="height:100%;width:'+bw+'%;background:var(--accent);transition:width .4s"></div>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;margin-top:4px;'+mono+';font-size:9px;color:var(--muted)">'
+    +'<span>День '+dp+'%</span><span>Ніч '+np+'%</span>'
+    +'</div></div>';
 }
 async function buildHeatmap(){
   // If generate.py didn't fill HM data, load from Google Sheets directly
