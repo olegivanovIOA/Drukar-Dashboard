@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 04:13 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 04:19 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1532,14 +1532,15 @@ function switchTab(id,el){
     initTab(id);
     if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
   } else {
-    // Табка вже була відкрита. safeCreateChart вже знищив старі instances при першому init.
-    // Просто оновлюємо розміри через rAF після того як layout оновився.
+    // Табка вже ініціалізована — чекаємо 2 rAF щоб браузер оновив layout після display:block
     requestAnimationFrame(function(){
-      document.querySelectorAll('#tab-'+id+' canvas').forEach(function(canvas){
-        var ch = Chart.getChart ? Chart.getChart(canvas) : null;
-        if(ch){ try{ ch.resize(); }catch(e){} }
+      requestAnimationFrame(function(){
+        document.querySelectorAll('#tab-'+id+' canvas').forEach(function(canvas){
+          var ch = typeof Chart!=='undefined'&&Chart.getChart ? Chart.getChart(canvas) : null;
+          if(ch){ try{ ch.resize(); ch.update('none'); }catch(e){} }
+        });
+        if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
       });
-      if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
     });
   }
 }
@@ -1746,6 +1747,7 @@ function initProduction(){
     if(!lns.length) return;
     const lineChartEl = document.getElementById('lineChart');
     if(!lineChartEl) return;
+    var _existLC=Chart.getChart?Chart.getChart(lineChartEl):null; if(_existLC) _existLC.destroy();
     new Chart(lineChartEl,{type:'bar',data:{labels:lns.map(l=>l.n),datasets:[{label:'кг',data:lns.map(l=>l.kg),backgroundColor:lns.map((_,i)=>`rgba(71,180,255,${Math.max(0.25,0.85-i*0.08)})`),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
   })();
   buildHeatmap();
@@ -3389,6 +3391,7 @@ function initSales() {
       if(eid('salesRetVal'))   eid('salesRetVal').textContent   = (ret/1e6).toFixed(1);
     }
 
+    var _existSD=Chart.getChart?Chart.getChart(eid('salesDonutChart')):null; if(_existSD)_existSD.destroy();
     const donutChart = new Chart(eid('salesDonutChart'), {
       type: 'doughnut',
       data:{
