@@ -60,9 +60,9 @@
   .month-btn.active{border-color:var(--accent);background:rgba(37,99,235,.08);color:var(--accent)}
   #heatmapWrap{overflow-x:auto;padding-bottom:4px}
   .hmap-grid{display:inline-grid;gap:2px;min-width:100%}
-  .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;height:32px;cursor:default;font-weight:500}
+  .hmap-cell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;height:22px;cursor:default;font-weight:500}
   .hmap-cell:hover{outline:1px solid rgba(255,255,255,.35)}
-  .hmap-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);padding:4px 2px;display:flex;align-items:center;white-space:nowrap}
+  .hmap-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);padding:2px 2px;display:flex;align-items:center;white-space:nowrap}
   .legend-item{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap}
   .legend-dot{width:10px;height:10px;border-radius:2px}
   @keyframes pulse-border{0%,100%{border-color:rgba(255,85,85,.3)}50%{border-color:rgba(255,85,85,.8)}}
@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 05:02 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 05:23 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -356,87 +356,88 @@
 <div id="tab-production" class="tab-content" data-tab-id="production">
   <div class="section-title">Динаміка виробництва</div>
 
-  <!-- ── Рядок 1: Завантаженість % + День/Ніч ── -->
-  <div class="grid-2" style="margin-bottom:14px">
+  <!-- ── Верхній ряд: 2 колонки ── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
 
-    <!-- Завантаженість ліній % -->
-    <div class="card">
-      <div class="card-header" style="flex-wrap:wrap;gap:8px">
+    <!-- ЛІВО: Завантаженість % — займає повну висоту -->
+    <div class="card" style="grid-row:span 2">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
         <div>
           <div class="card-title" id="utilTitle">Завантаженість ліній · %</div>
           <div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму</div>
         </div>
         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
-          <div id="utilMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap">
-            <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
+          <div id="utilMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
           </div>
           <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
             <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
-            <div style="width:60px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#16a34a)"></div>
+            <div style="width:50px;height:6px;border-radius:3px;background:linear-gradient(to right,#131720,#16a34a)"></div>
             <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
           </div>
         </div>
       </div>
-      <div style="margin-bottom:6px">
-        <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">⟳ Завантаження норм...</span>
+      <div style="margin-bottom:4px">
+        <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">⟳ Завантаження норм...</span>
       </div>
       <div id="utilHeatmapWrap"></div>
-      <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">
+      <div style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted)">
         ℹ Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%
       </div>
     </div>
 
-    <!-- День vs Ніч + фільтр лінії -->
+    <!-- ПРАВО ЗВЕРХУ: PETG + PLA по місяцях -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div>
+        </div>
+        <div class="cw"><canvas id="petgChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div>
+        </div>
+        <div class="cw"><canvas id="plaChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ПРАВО ЗНИЗУ: День vs Ніч -->
     <div class="card">
-      <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
         <div>
           <div class="card-title">День vs Ніч</div>
           <div class="card-subtitle">Загальний обсяг по змінах</div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
           <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Лінія</span>
           <select id="shiftLineFilter" onchange="renderShiftData()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
             <option value="all">Всі лінії</option>
           </select>
         </div>
       </div>
-      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:200px;gap:40px">
+      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:160px;gap:40px">
         <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
       </div>
     </div>
+
   </div>
 
-  <!-- ── Рядок 2: PETG + PLA по місяцях ── -->
-  <div class="grid-2" style="margin-bottom:14px">
-    <div class="card">
-      <div class="card-header">
-        <div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div>
-      </div>
-      <div class="cw"><canvas id="petgChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div>
-      </div>
-      <div class="cw"><canvas id="plaChart"></canvas></div>
-    </div>
-  </div>
-
-  <!-- ── Рядок 3: Теплова карта ── -->
+  <!-- ── Нижній ряд: Теплова карта ── -->
   <div class="card">
     <div class="card-header">
       <div><div class="card-title" id="hmTitle">Теплова карта: Лінія × Місяць</div><div class="card-subtitle" id="hmSubtitle">Реальний обсяг з даних · кг/місяць</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0 кг</span>
-        <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
+        <div style="width:70px;height:7px;border-radius:3px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">~12 800 кг</span>
-        <div id="hmMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap;margin-left:8px">
-          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
+        <div id="hmMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap;margin-left:8px">
+          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
         </div>
       </div>
     </div>
     <div id="heatmapWrap"></div>
-    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
+    <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);line-height:1.8">
       ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
     </div>
   </div>
@@ -1272,8 +1273,6 @@ function applyFilterToAllCharts(){
       chart.update('none');
     } catch(e){ console.warn('[filter] chart '+id+':', e); }
   });
-  if(typeof renderOvKpis==='function') try{ renderOvKpis(); }catch(e){}
-  if(typeof window._prodRebuildFn==='function') try{ window._prodRebuildFn(); }catch(e){}
 }
 
 function updateFilterBadge(){
@@ -1798,47 +1797,22 @@ async function loadProductionCharts(){
     const petgVals=allMonths.map(ym=>petg[ym]?Math.round(petg[ym]):null);
     const plaVals=allMonths.map(ym=>pla[ym]?Math.round(pla[ym]):null);
 
-    // Зберігаємо сирі дані для фільтрації
-    window._prodAllMonths = allMonths;
-    window._prodPetgByMonth = petg;
-    window._prodPlaByMonth  = pla;
-
-    function buildProdCharts(){
-      // Фільтруємо по глобальному filterState
-      var idxs = getFilteredIndices();
-      // allMonths = ['2025-11','2025-12',...] — беремо ті що входять у фільтр
-      var filtMonths, filtLabels, filtPetg, filtPla;
-      if(typeof filterState!=='undefined' && (filterState.year!=='all'||filterState.month!=='all')){
-        filtMonths = allMonths.filter(function(ym){
-          var y=parseInt(ym.split('-')[0]), m=parseInt(ym.split('-')[1]);
-          var yOk=filterState.year==='all'||y===filterState.year;
-          var mOk=filterState.month==='all'||m===filterState.month;
-          return yOk&&mOk;
-        });
-      } else { filtMonths=allMonths; }
-      filtLabels=filtMonths.map(function(ym){var p=ym.split('-');return UA[p[1]]+' '+p[0].slice(2);});
-      filtPetg=filtMonths.map(function(ym){return petg[ym]?Math.round(petg[ym]):null;});
-      filtPla =filtMonths.map(function(ym){return pla[ym] ?Math.round(pla[ym]) :null;});
-
-      var petgEl=document.getElementById('petgChart');
-      var plaEl =document.getElementById('plaChart');
-      var existP=Chart.getChart?Chart.getChart(petgEl):null; if(existP) existP.destroy();
-      var existL=Chart.getChart?Chart.getChart(plaEl):null;  if(existL) existL.destroy();
-
-      var cfg={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
-        scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return (v/1000).toFixed(1)+'k';}}}}};
-      window._petgTabChart=new Chart(petgEl,{data:{labels:filtLabels,datasets:[
-        {type:'bar',label:'PETG кг',data:filtPetg,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
-        {type:'line',label:'Тренд',data:polyTrend(filtPetg),borderColor:'rgba(37,99,235,.7)',borderWidth:2,pointRadius:0,fill:false,tension:0.5,spanGaps:true}
-      ]},options:cfg});
-      window._plaTabChart=new Chart(plaEl,{data:{labels:filtLabels,datasets:[
-        {type:'bar',label:'PLA кг',data:filtPla,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-        {type:'line',label:'Тренд',data:polyTrend(filtPla),borderColor:'rgba(180,148,0,.7)',borderWidth:2,pointRadius:0,fill:false,tension:0.5,spanGaps:true}
-      ]},options:cfg});
-    }
-    buildProdCharts();
-    // Реєструємо в глобальному фільтрі — при зміні перебудовуємо charts
-    window._prodRebuildFn = buildProdCharts;
+    var _petgTabChart=new Chart(document.getElementById('petgChart'),{
+      data:{labels,datasets:[
+        {type:'bar',label:'PETG кг',data:petgVals,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
+        {type:'line',label:'Тренд',data:trendline(petgVals),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
+        scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}
+    });
+    var _plaTabChart=new Chart(document.getElementById('plaChart'),{
+      data:{labels,datasets:[
+        {type:'bar',label:'PLA кг',data:plaVals,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
+        {type:'line',label:'Тренд',data:trendline(plaVals),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
+        scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(1)+'k'}}}}
+    });
   } catch(e){
     console.warn('loadProductionCharts failed:',e);
     // Fallback to static data
@@ -1915,104 +1889,21 @@ async function loadShiftData(){
     const total=dayKg+nightKg; if(total===0) throw new Error('no shift data');
     const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
     const fmt=v=>v.toLocaleString('uk');
-    // Зберігаємо повні дані по лінії для фільтрації
-    window._shiftByLine = {};
-    // Збираємо по лінії окремо
-    const allLines = new Set();
-    function calcShiftsByLine(rows){
-      if(!rows||rows.length<3) return {};
-      let ci_shift=-1,ci_weight=-1,ci_contrib=-1,ci_line=-1,dataStart=1;
-      for(let hi=0;hi<Math.min(3,rows.length);hi++){
-        const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
-        const s=hdr.findIndex(h=>h==='смена'||h==='зміна'||h.includes('зміна')||h.includes('смена'));
-        const w=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
-        const c=hdr.findIndex(h=>h==='вклад %'||h.includes('вклад %'));
-        const l=hdr.findIndex(h=>h==='лінія'||h==='линия'||h==='line');
-        if(s>=0){ci_shift=s;dataStart=hi+1;} if(w>=0) ci_weight=w;
-        if(c>=0) ci_contrib=c; if(l>=0) ci_line=l;
-      }
-      if(ci_shift<0) ci_shift=1; if(ci_weight<0) ci_weight=7;
-      if(ci_line<0) ci_line=4;
-      const isAnaliz=ci_contrib>=0;
-      const byLine={};
-      const seen=new Set();
-      let curDate=null,curShift=null;
-      for(let i=dataStart;i<rows.length;i++){
-        const row=rows[i];
-        const dRaw=row[0]; if(dRaw){const d=lParseDate(String(dRaw));if(d)curDate=d;}
-        const sRaw=String(row[ci_shift]||'').trim().toLowerCase(); if(sRaw) curShift=sRaw;
-        if(!curDate||!curShift) continue;
-        const lineRaw=String(row[ci_line]||'').toUpperCase().replace(/\s+/g,'').trim();
-        if(!lineRaw) continue;
-        const key=curDate+'|'+curShift+'|'+lineRaw;
-        if(seen.has(key)) continue; seen.add(key);
-        const w=parseFloat(String(row[ci_weight]||'').replace(',','.')); if(isNaN(w)||w<=0) continue;
-        let kg=w;
-        if(isAnaliz&&ci_contrib>=0){let c=parseFloat(String(row[ci_contrib]||'').replace(',','.'));if(!isNaN(c)&&c>0){if(c>1.5)c/=100;kg=w/c;}}
-        if(!byLine[lineRaw]) byLine[lineRaw]={day:0,night:0};
-        allLines.add(lineRaw);
-        if(curShift.includes('ден')||curShift.includes('day')) byLine[lineRaw].day+=kg;
-        else if(curShift.includes('ніч')||curShift.includes('ноч')||curShift.includes('night')) byLine[lineRaw].night+=kg;
-      }
-      return byLine;
-    }
-    const bl=calcShiftsByLine(r1);
-    for(const [ln,v] of Object.entries(bl)){
-      if(!window._shiftByLine[ln]) window._shiftByLine[ln]={day:0,night:0};
-      window._shiftByLine[ln].day+=v.day; window._shiftByLine[ln].night+=v.night;
-    }
-    // Заповнюємо select лінії
-    const sel=document.getElementById('shiftLineFilter');
-    if(sel){
-      const sorted=[...allLines].sort((a,b)=>{
-        const n1=parseInt(a.replace(/\D/g,'')||'0'),n2=parseInt(b.replace(/\D/g,'')||'0');
-        return n1-n2;
-      });
-      sorted.forEach(function(ln){
-        const opt=document.createElement('option'); opt.value=ln; opt.textContent=ln; sel.appendChild(opt);
-      });
-    }
-    renderShiftData();
+    wrap.innerHTML=`
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${dayPct}%</div>
+      </div>
+      <div style="width:1px;height:70px;background:var(--border)"></div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${nightPct}%</div>
+      </div>`;
   }catch(e){
-    const wrap=document.getElementById('shiftWrap');
-    if(wrap) wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:\'IBM Plex Mono\',monospace">⚠ '+e.message+'</div>';
+    if(wrap) wrap.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
   }
-}
-function renderShiftData(){
-  const wrap=document.getElementById('shiftWrap'); if(!wrap) return;
-  const sel=document.getElementById('shiftLineFilter');
-  const selLine=sel?sel.value:'all';
-  const byLine=window._shiftByLine||{};
-  let dayKg=0,nightKg=0;
-  if(selLine==='all'){
-    Object.values(byLine).forEach(function(v){dayKg+=v.day;nightKg+=v.night;});
-  } else {
-    const v=byLine[selLine]||{day:0,night:0};
-    dayKg=v.day; nightKg=v.night;
-  }
-  dayKg=Math.round(dayKg); nightKg=Math.round(nightKg);
-  const total=dayKg+nightKg;
-  if(total===0){wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:\'IBM Plex Mono\',monospace">Дані відсутні</div>';return;}
-  const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
-  const fmt=function(v){return v.toLocaleString('uk');};
-  const barW=Math.round(dayKg/total*100);
-  wrap.innerHTML='<div style="width:100%;padding:0 20px 16px">'
-    +'<div style="display:flex;justify-content:space-between;margin-bottom:12px">'
-    +'<div style="text-align:center">'
-    +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:44px;color:var(--accent);line-height:1">'+fmt(dayKg)+'</div>'
-    +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-top:2px">КГ · ДЕНЬ · '+dayPct+'%</div>'
-    +'</div>'
-    +'<div style="display:flex;align-items:center"><div style="width:1px;height:60px;background:var(--border)"></div></div>'
-    +'<div style="text-align:center">'
-    +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:44px;color:var(--accent2);line-height:1">'+fmt(nightKg)+'</div>'
-    +'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-top:2px">КГ · НІЧ · '+nightPct+'%</div>'
-    +'</div></div>'
-    +'<div style="height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)">'
-    +'<div style="height:100%;width:'+barW+'%;background:var(--accent);border-radius:5px;transition:width .4s"></div>'
-    +'</div>'
-    +'<div style="display:flex;justify-content:space-between;margin-top:4px;font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:var(--muted)">'
-    +'<span>День '+dayPct+'%</span><span>Ніч '+nightPct+'%</span></div>'
-    +'</div>';
 }
 async function buildHeatmap(){
   // If generate.py didn't fill HM data, load from Google Sheets directly
@@ -2125,9 +2016,9 @@ async function buildHeatmap(){
   const cols=HM_LABELS.length;
   const gridCols=`112px repeat(${cols},minmax(52px,1fr)) 70px`;
   let html=`<div class="hmap-grid" style="grid-template-columns:${gridCols}">`;
-  html+=`<div class="hmap-label" style="font-weight:700;font-size:13px;color:var(--accent);letter-spacing:1px">ЛІНІЯ</div>`;
-  HM_LABELS.forEach(lbl=>{html+=`<div class="hmap-cell" style="background:transparent;color:var(--text);font-size:13px;height:28px;letter-spacing:.5px;font-weight:600">${lbl}</div>`;});
-  html+=`<div class="hmap-cell" style="background:transparent;color:var(--text);font-size:13px;height:28px;font-weight:600;letter-spacing:.5px">РАЗОМ</div>`;
+  html+=`<div class="hmap-label" style="font-weight:700;font-size:10px;color:var(--accent);letter-spacing:1px">ЛІНІЯ</div>`;
+  HM_LABELS.forEach(lbl=>{html+=`<div class="hmap-cell" style="background:transparent;color:var(--text);font-size:11px;height:22px;letter-spacing:.5px;font-weight:600">${lbl}</div>`;});
+  html+=`<div class="hmap-cell" style="background:transparent;color:var(--text);font-size:11px;height:22px;font-weight:600;letter-spacing:.5px">РАЗОМ</div>`;
   let prevLoc=null;
   lines.forEach(ln=>{
     const loc=getLoc(ln);
@@ -2137,7 +2028,7 @@ async function buildHeatmap(){
         const locLines=lines.filter(l=>getLoc(l)===prevLoc);
         const lct=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
         const lt=lct.reduce((a,b)=>a+b,0);
-        html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:11px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
+        html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
         lct.forEach(v=>{html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)">${fmt(v)}</div>`;});
         html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9">${fmt(lt)}</div>`;
       }
@@ -2148,7 +2039,7 @@ async function buildHeatmap(){
     const vals=HM_DATA[ln];
     const lineTotal=vals.reduce((a,b)=>a+b,0);
     const activeMonths=vals.filter(v=>v>0).length;
-    html+=`<div class="hmap-label" style="border-left:2px solid ${locColor}44;padding-left:6px;font-size:12px;font-weight:600;color:var(--text)" title="${ln} · всього ${Math.round(lineTotal/1000)}т · активних міс: ${activeMonths}">${ln}</div>`;
+    html+=`<div class="hmap-label" style="border-left:2px solid ${locColor}44;padding-left:6px;font-size:10px;font-weight:600;color:var(--text)" title="${ln} · всього ${Math.round(lineTotal/1000)}т · активних міс: ${activeMonths}">${ln}</div>`;
     vals.forEach((v,i)=>{
       const tip=v>0?`${ln} · ${HM_LABELS[i]}: ${fmtFull(v)} кг`:`${ln} · ${HM_LABELS[i]}: немає даних`;
       html+=`<div class="hmap-cell" style="background:${cc(v)};color:${tc(v)};font-size:${v>=10000?'11px':'12px'}" title="${tip}">${fmt(v)}</div>`;
@@ -2159,7 +2050,7 @@ async function buildHeatmap(){
     const locLines=lines.filter(l=>getLoc(l)===prevLoc);
     const lct=HM_LABELS.map((_,i)=>locLines.reduce((s,l)=>s+(HM_DATA[l][i]||0),0));
     const lt=lct.reduce((a,b)=>a+b,0);
-    html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:11px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
+    html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
     lct.forEach(v=>{html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)">${fmt(v)}</div>`;});
     html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9">${fmt(lt)}</div>`;
   }
@@ -2374,7 +2265,7 @@ async function buildHeatmapWeekly(monthIdx){
     const grandTotal=colTotals.reduce((a,b)=>a+b,0);
 
     let html=`<div class="hmap-grid" style="grid-template-columns:${gridCols}">`;
-    html+=`<div class="hmap-label" style="font-weight:700;font-size:13px;color:var(--accent);letter-spacing:1px">ЛІНІЯ</div>`;
+    html+=`<div class="hmap-label" style="font-weight:700;font-size:10px;color:var(--accent);letter-spacing:1px">ЛІНІЯ</div>`;
     wLabels.forEach(lbl=>{html+=`<div class="hmap-cell" style="background:transparent;color:var(--text);font-size:11px;height:28px;font-weight:600">${lbl}</div>`;});
     html+=`<div class="hmap-cell" style="background:transparent;color:var(--text);font-size:13px;height:28px;font-weight:600">РАЗОМ</div>`;
 
@@ -2387,7 +2278,7 @@ async function buildHeatmapWeekly(monthIdx){
           const locLines=lines.filter(l=>getLoc(l)===prevLoc);
           const lct=wLabels.map((_,i)=>locLines.reduce((s,l)=>s+(merged[l][i]||0),0));
           const lt=lct.reduce((a,b)=>a+b,0);
-          html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:11px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
+          html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
           lct.forEach(v=>{html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)">${fmt(v)}</div>`;});
           html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9">${fmt(lt)}</div>`;
         }
@@ -2408,7 +2299,7 @@ async function buildHeatmapWeekly(monthIdx){
       const locLines=lines.filter(l=>getLoc(l)===prevLoc);
       const lct=wLabels.map((_,i)=>locLines.reduce((s,l)=>s+(merged[l][i]||0),0));
       const lt=lct.reduce((a,b)=>a+b,0);
-      html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:11px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
+      html+=`<div class="hmap-label" style="color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:600;padding-left:4px">∑ ${LOC_LABELS[prevLoc]}</div>`;
       lct.forEach(v=>{html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;opacity:.8;border-top:1px solid rgba(255,255,255,.06)">${fmt(v)}</div>`;});
       html+=`<div class="hmap-cell" style="background:rgba(255,255,255,0.03);color:${LOC_COLORS[prevLoc]};font-size:9px;font-weight:700;opacity:.9">${fmt(lt)}</div>`;
     }
@@ -4129,7 +4020,7 @@ async function buildUtilHeatmap(){
   let html = `<div class="hmap-grid" style="grid-template-columns:120px repeat(${cols},1fr) 80px;min-width:${100+cols*80}px">`;
 
   // Header
-  html += `<div class="hmap-label" style="font-weight:700;color:var(--accent)">ЛІНІЯ</div>`;
+  html += `<div class="hmap-label" style="font-weight:700;color:var(--accent);font-size:10px">ЛІНІЯ</div>`;
   HM_LABELS.forEach(l => { html += `<div class="hmap-label" style="justify-content:center;font-weight:600">${l}</div>`; });
   html += `<div class="hmap-label" style="justify-content:center;font-weight:600;color:var(--accent)">СЕРЕДНЄ</div>`;
 
@@ -4140,7 +4031,7 @@ async function buildUtilHeatmap(){
     if(loc !== prevLoc){
       if(prevLoc !== null){
         // Итого по предыдущей локации
-        html += `<div class="hmap-label" style="color:#0ea5e9;font-size:11px;padding-left:4px">∑ ${prevLoc}</div>`;
+        html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
         const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
         for(let i=0;i<cols;i++){
           const avg = locLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/locLines.length;
@@ -4154,7 +4045,7 @@ async function buildUtilHeatmap(){
     }
     const vals = utilData[ln];
     const avg = Math.round(vals.reduce((a,b)=>a+b,0)/cols);
-    html += `<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
+    html += `<div class="hmap-label" style="padding-left:6px;font-size:10px">${ln}</div>`;
     vals.forEach((pct,i) => {
       html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct}%`, '');
     });
@@ -4163,7 +4054,7 @@ async function buildUtilHeatmap(){
 
   // Итого по последней локации
   if(prevLoc){
-    html += `<div class="hmap-label" style="color:#0ea5e9;font-size:11px;padding-left:4px">∑ ${prevLoc}</div>`;
+    html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
     const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
     for(let i=0;i<cols;i++){
       const avg = locLines.length ? locLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/locLines.length : 0;
