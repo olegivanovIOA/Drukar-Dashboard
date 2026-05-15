@@ -25,7 +25,7 @@
   .tab:hover{color:var(--text);border-color:var(--border)}
   .tab.active{color:var(--accent);border-color:var(--accent);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px;font-weight:600}
   .main{padding:22px 28px;max-width:1700px;margin:0 auto}
-  .tab-content{display:block!important;position:absolute;visibility:hidden;opacity:0;pointer-events:none;height:0;overflow:hidden;}.tab-content.active{position:static!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:auto!important;overflow:visible!important;}
+  .tab-content{display:none}.tab-content.active{display:block}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
   .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s;box-shadow:var(--shadow)}
   .kpi-card:hover{border-color:var(--accent2)}
@@ -285,126 +285,131 @@
 
 <!-- ══════════════ OVERVIEW ══════════════ -->
 <div id="tab-overview" class="tab-content active" data-tab-id="overview">
-  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px">
-    <div class="kpi-card" style="--accent-bar:var(--accent);padding:12px 14px">
-      <div class="kpi-label" id="ovKpi_totalLabel" style="font-size:9px">Виробництво · міс.</div>
-      <div class="kpi-value" id="ovKpi_total" style="font-size:22px">—</div>
-      <div class="kpi-unit" id="ovKpi_totalSub" style="font-size:9px">кг</div>
-      <div id="ovKpi_totalDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
+  <div class="kpi-row">
+    <div class="kpi-card" style="--accent-bar:var(--accent)">
+      <div class="kpi-label">Всього продукції · {{KPI_MONTH_LABEL}}</div>
+      <div class="kpi-value">{{KPI_TOTAL_KG}}</div>
+      <div class="kpi-unit">кг (PETG {{KPI_PETG_KG}} + PLA {{KPI_PLA_KG}})</div>
+      <div class="kpi-delta {{KPI_TOTAL_DELTA_CLASS}}">{{KPI_TOTAL_DELTA}}</div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--accent2);padding:12px 14px">
-      <div class="kpi-label" style="font-size:9px">PETG · міс.</div>
-      <div class="kpi-value" id="ovKpi_petg" style="font-size:22px">—</div>
-      <div class="kpi-unit" style="font-size:9px">кілограм</div>
-      <div id="ovKpi_petgDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
+    <div class="kpi-card" style="--accent-bar:var(--accent2)">
+      <div class="kpi-label">PETG · {{KPI_MONTH_LABEL}}</div>
+      <div class="kpi-value">{{KPI_PETG_KG}}</div>
+      <div class="kpi-unit">кілограм</div>
+      <div class="kpi-delta {{KPI_PETG_DELTA_CLASS}}">{{KPI_PETG_DELTA}}</div>
     </div>
-    <div class="kpi-card" style="--accent-bar:#c8b400;padding:12px 14px">
-      <div class="kpi-label" style="font-size:9px">PLA · міс.</div>
-      <div class="kpi-value" id="ovKpi_pla" style="font-size:22px">—</div>
-      <div class="kpi-unit" style="font-size:9px">кілограм</div>
-      <div id="ovKpi_plaDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
+    <div class="kpi-card kpi-alert" style="--accent-bar:var(--bad)">
+      <div class="kpi-label">НФ PLA — Аномалія Бер '26</div>
+      <div class="kpi-value" style="color:var(--bad)">7.16%</div>
+      <div class="kpi-unit">від обсягу виробництва</div>
+      <div class="kpi-delta delta-down">▼ норма &lt; 4%</div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--good);padding:12px 14px">
-      <div class="kpi-label" style="font-size:9px">Дохід · міс.</div>
-      <div class="kpi-value" id="ovKpi_income" style="font-size:22px;color:var(--good)">—</div>
-      <div class="kpi-unit" style="font-size:9px">грн</div>
-      <div id="ovKpi_incomeDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
+    <div class="kpi-card" style="--accent-bar:var(--good)">
+      <div class="kpi-label">Прибуток · Бер '26</div>
+      <div class="kpi-value" style="color:var(--good)">196</div>
+      <div class="kpi-unit">тис. грн</div>
+      <div class="kpi-delta delta-up">▲ Лют: -285 тис.</div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--good);padding:12px 14px">
-      <div class="kpi-label" style="font-size:9px">Прибуток · міс.</div>
-      <div class="kpi-value" id="ovKpi_profit" style="font-size:22px">—</div>
-      <div class="kpi-unit" style="font-size:9px">тис. грн</div>
-      <div id="ovKpi_profitDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
-    </div>
-    <div class="kpi-card" style="--accent-bar:var(--warn);padding:12px 14px">
-      <div class="kpi-label" style="font-size:9px">Собів-сть PETG</div>
-      <div class="kpi-value" id="ovKpi_cost" style="font-size:22px;color:var(--warn)">—</div>
-      <div class="kpi-unit" style="font-size:9px">грн/кг без ПДВ</div>
-      <div id="ovKpi_costDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
+    <div class="kpi-card" style="--accent-bar:var(--bad)">
+      <div class="kpi-label">Собів-сть PETG · Бер '26</div>
+      <div class="kpi-value" style="color:var(--warn)">322.1</div>
+      <div class="kpi-unit">грн/кг без ПДВ</div>
+      <div class="kpi-delta delta-up">▲ +3.1% vs Лют (312 ₴)</div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-header">
-      <div><div class="card-title">Загальний обсяг виробництва (PETG + PLA)</div>
-      <div class="card-subtitle">кг/місяць · крива = поліноміальний тренд</div></div>
-      <div style="display:flex;gap:6px">
-        <span class="badge badge-blue">PETG</span>
-        <span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span>
-        <span class="badge" style="background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.3)">ВСЬОГО</span>
+
+  <div class="grid-31">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Загальний обсяг виробництва (PETG + PLA)</div><div class="card-subtitle">кг/місяць · пунктир = тренд</div></div>
+        <div style="display:flex;gap:6px"><span class="badge badge-blue">PETG</span><span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span><span class="badge" style="background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.3)">ВСЬОГО</span></div>
+      </div>
+      <div class="cw"><canvas id="prodMonthChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Доход vs Витрати</div><div class="card-subtitle">грн по місяцях</div></div></div>
+      <div class="cw"><canvas id="finOverviewChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card"><div class="card-header"><div><div class="card-title">% НФ по місяцях</div><div class="card-subtitle">Напівфабрикат</div></div><span class="badge badge-red">СІЧ: 30%!</span></div><div class="cw-sm"><canvas id="nfOvChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">% Відходів по місяцях</div><div class="card-subtitle">Брак від обсягу</div></div></div><div class="cw-sm"><canvas id="wasteOvChart"></canvas></div></div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Структура витрат</div><div class="card-subtitle">Лютий 2026</div></div></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;height:200px;padding:8px 0">
+        <div style="width:160px;height:160px;flex-shrink:0;position:relative"><canvas id="costsDonut"></canvas></div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:140px">
+          <div class="legend-item"><div class="legend-dot" style="background:#47b4ff"></div>Сировина<span style="margin-left:auto;padding-left:10px;color:var(--text)">71.4%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e8ff47"></div>Електроенергія<span style="margin-left:auto;padding-left:10px;color:var(--text)">9.0%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff6b47"></div>Адмін/Загал<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.3%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#b47bff"></div>Податки<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.0%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4fffb0"></div>ЗП оператори<span style="margin-left:auto;padding-left:10px;color:var(--text)">3.4%</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff9999"></div>Інше<span style="margin-left:auto;padding-left:10px;color:var(--text)">3.9%</span></div>
+        </div>
       </div>
     </div>
-    <div class="cw"><canvas id="prodMonthChart"></canvas></div>
-  </div>
-  <div style="display:none">
-    <canvas id="finOverviewChart"></canvas>
-    <canvas id="nfOvChart"></canvas>
-    <canvas id="wasteOvChart"></canvas>
-    <canvas id="costsDonut"></canvas>
   </div>
 </div>
 
 <!-- ══════════════ PRODUCTION ══════════════ -->
 <div id="tab-production" class="tab-content" data-tab-id="production">
   <div class="section-title">Динаміка виробництва</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
-    <div class="card" style="grid-row:span 2">
-      <div class="card-header" style="flex-wrap:wrap;gap:6px">
-        <div><div class="card-title" id="utilTitle">Завантаженість ліній · %</div><div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму</div></div>
-        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
-          <div id="utilMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap">
-            <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
-            <div style="width:50px;height:6px;border-radius:3px;background:linear-gradient(to right,#131720,#16a34a)"></div>
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
-          </div>
-        </div>
-      </div>
-      <div style="margin-bottom:4px"><span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">⟳ Завантаження норм...</span></div>
-      <div id="utilHeatmapWrap"></div>
-      <div style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted)">ℹ Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="card">
-        <div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div></div>
-        <div class="cw"><canvas id="petgChart"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div></div>
-        <div class="cw"><canvas id="plaChart"></canvas></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header" style="flex-wrap:wrap;gap:6px">
-        <div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ЛІНІЯ</span>
-          <select id="shiftLineFilter" onchange="renderShiftData()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
-            <option value="all">Всі лінії</option>
-          </select>
-        </div>
-      </div>
-      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:160px">
-        <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
+  <div class="card" style="margin-bottom:14px">
     <div class="card-header">
       <div><div class="card-title" id="hmTitle">Теплова карта: Лінія × Місяць</div><div class="card-subtitle" id="hmSubtitle">Реальний обсяг з даних · кг/місяць</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0 кг</span>
-        <div style="width:70px;height:7px;border-radius:3px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
+        <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">~12 800 кг</span>
-        <div id="hmMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap;margin-left:8px">
-          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
+        <div id="hmMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap;margin-left:8px">
+          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
         </div>
       </div>
     </div>
     <div id="heatmapWrap"></div>
-    <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);line-height:1.8">
+    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
       ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд</div></div></div><div class="cw"><canvas id="petgChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд</div></div></div><div class="cw"><canvas id="plaChart"></canvas></div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Завантаженість ліній</div><div class="card-subtitle">Загальний кг за весь період · всі лінії</div></div></div><div class="cw"><canvas id="lineChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div></div>
+      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:230px;gap:40px">
+        <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ UTILIZATION HEATMAP ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="card-title" id="utilTitle">Завантаженість ліній · %</div>
+        <div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму · 12 год × 2 зміни × днів у місяці × норма кг/год</div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
+        <div id="utilMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
+          <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#16a34a)"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">⟳ Завантаження норм...</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">Норми беруться з листа НОРМЫ · Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%</span>
+    </div>
+    <div id="utilHeatmapWrap"></div>
+    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
+      ℹ Розрахунок: (фактичний кг/місяць) ÷ (норма × 2 × дні_в_місяці) × 100%
     </div>
   </div>
 </div>
@@ -1231,8 +1236,6 @@ function applyFilterToAllCharts(){
       chart.update('none');
     } catch(e){ console.warn('[filter] chart '+id+':', e); }
   });
-  if(typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
-  if(typeof window._prodRebuildFn==='function') try{window._prodRebuildFn();}catch(e){}
 }
 
 function updateFilterBadge(){
@@ -1494,39 +1497,28 @@ function polyTrend(data, deg=2){
 }
 let opCI=null,costCI=null;
 const rendered={};
-function safeCreateChart(canvasId,config){
-  var canvas=document.getElementById(canvasId);
-  if(!canvas) return null;
-  var ex=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
-  if(ex) try{ex.destroy();}catch(e){}
-  try{return new Chart(canvas,config);}catch(e){console.warn('[safeCreateChart]',canvasId,e);return null;}
-}
 function switchTab(id,el){
+  // Ховаємо всі tab-content
   document.querySelectorAll('.tab-content').forEach(function(e){
     e.classList.remove('active');
-    if(typeof ACTIVE_TABS!=='undefined'&&typeof DASHBOARD_MODE!=='undefined'&&DASHBOARD_MODE!=='top'){
-      var tid=e.getAttribute('data-tab-id');
-      if(tid&&!ACTIVE_TABS.includes(tid)) e.style.display='none';
+    // В mid-режимі: ховаємо неактивні табки через display (ACTIVE_TABS може бути undefined якщо TOP)
+    if(typeof ACTIVE_TABS !== 'undefined' && DASHBOARD_MODE !== 'top'){
+      var tid = e.getAttribute('data-tab-id');
+      if(tid && ACTIVE_TABS.includes(tid)){
+        e.style.display = 'none'; // ховаємо всі активні, нижче покажемо обрану
+      }
     }
   });
   document.querySelectorAll('.tab').forEach(function(e){e.classList.remove('active');});
-  var target=document.getElementById('tab-'+id);
-  if(target){ target.style.display=''; target.classList.add('active'); }
-  el.classList.add('active');
-  history.replaceState(null,'','#'+id);
-  if(!rendered[id]){
-    rendered[id]=true;
-    initTab(id);
-    if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
-  } else {
-    requestAnimationFrame(function(){
-      document.querySelectorAll('#tab-'+id+' canvas').forEach(function(canvas){
-        var ch=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
-        if(ch) try{ch.resize();}catch(e){}
-      });
-      if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
-    });
+  var target = document.getElementById('tab-'+id);
+  if(target){
+    target.classList.add('active');
+    target.style.display = 'block'; // явно показуємо незалежно від попереднього display
   }
+  el.classList.add('active');
+  // Зберігаємо таб в hash БЕЗ scroll-jump
+  history.replaceState(null,'','#'+id);
+  if(!rendered[id]){rendered[id]=true;initTab(id);}
 }
 // ── Захист: ізольований запуск модулів ──
 function safeInit(id, fn){
@@ -1631,13 +1623,13 @@ window.addEventListener('DOMContentLoaded',()=>{
   }
   try {
     renderOvKpis();
-    var _fo=_getFilteredOv();
+    var _fo2=_getFilteredOv();
     try {
-      var _prodMonthChart=safeCreateChart('prodMonthChart',{data:{labels:_fo.labels,datasets:[
-        {type:'bar',label:'PETG',data:_fo.petg,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
-        {type:'bar',label:'PLA',data:_fo.pla,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-        {type:'line',label:'Тренд PETG',data:polyTrend(_fo.petg),borderColor:'rgba(37,99,235,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5},
-        {type:'line',label:'Тренд PLA',data:polyTrend(_fo.pla),borderColor:'rgba(180,148,0,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5}
+      var _prodMonthChart=safeCreateChart('prodMonthChart',{data:{labels:_fo2.labels,datasets:[
+        {type:'bar',label:'PETG',data:_fo2.petg,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
+        {type:'bar',label:'PLA',data:_fo2.pla,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
+        {type:'line',label:'Тренд PETG',data:polyTrend(_fo2.petg),borderColor:'rgba(37,99,235,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5},
+        {type:'line',label:'Тренд PLA',data:polyTrend(_fo2.pla),borderColor:'rgba(180,148,0,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5}
       ]},options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,filter:function(i){return !i.label.startsWith('Тренд');}}},
           tooltip:{callbacks:{label:function(ctx){if(ctx.dataset.label.startsWith('Тренд'))return null;var v=ctx.raw;if(!v&&v!==0)return null;return ctx.dataset.label+': '+(v/1000).toFixed(1)+' т / '+v.toLocaleString('uk')+' кг';}}}},
@@ -1745,7 +1737,7 @@ async function loadProductionCharts(){
     const petgVals=allMonths.map(ym=>petg[ym]?Math.round(petg[ym]):null);
     const plaVals=allMonths.map(ym=>pla[ym]?Math.round(pla[ym]):null);
 
-    var _petgTabChart=safeCreateChart('petgChart',{
+    var _petgTabChart=new Chart(document.getElementById('petgChart'),{
       data:{labels,datasets:[
         {type:'bar',label:'PETG кг',data:petgVals,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(petgVals),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
@@ -1753,7 +1745,7 @@ async function loadProductionCharts(){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
         scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}
     });
-    var _plaTabChart=safeCreateChart('plaChart',{
+    var _plaTabChart=new Chart(document.getElementById('plaChart'),{
       data:{labels,datasets:[
         {type:'bar',label:'PLA кг',data:plaVals,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(plaVals),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
@@ -1832,26 +1824,106 @@ async function loadShiftData(){
       }
       return {day,night};
     }
-    const s1=calcShifts(r1),s2=calcShifts(r2);
-    const dayKg=Math.round(s1.day+s2.day),nightKg=Math.round(s1.night+s2.night);
-    const total=dayKg+nightKg; if(total===0) throw new Error('no shift data');
-    const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
-    const fmt=v=>v.toLocaleString('uk');
-    wrap.innerHTML=`
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${dayPct}%</div>
-      </div>
-      <div style="width:1px;height:70px;background:var(--border)"></div>
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${nightPct}%</div>
-      </div>`;
+    // Збираємо дані по кожній лінії окремо
+    function calcShiftsByLine(rows){
+      if(!rows||rows.length<3) return {};
+      let ci_shift=-1,ci_weight=-1,ci_contrib=-1,ci_line=-1,dataStart=1;
+      for(let hi=0;hi<Math.min(3,rows.length);hi++){
+        const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
+        const s=hdr.findIndex(h=>h==='смена'||h==='зміна'||h.includes('зміна')||h.includes('смена'));
+        const w=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
+        const c=hdr.findIndex(h=>h==='вклад %'||h.includes('вклад %'));
+        const l=hdr.findIndex(h=>h==='лінія'||h==='линия'||h==='line');
+        if(s>=0){ci_shift=s;dataStart=hi+1;} if(w>=0) ci_weight=w;
+        if(c>=0) ci_contrib=c; if(l>=0) ci_line=l;
+      }
+      if(ci_shift<0) ci_shift=1; if(ci_weight<0) ci_weight=7;
+      if(ci_line<0) ci_line=4;
+      const isAnaliz=ci_contrib>=0;
+      const byLine={};
+      const seen=new Set();
+      let curDate=null,curShift=null;
+      for(let i=dataStart;i<rows.length;i++){
+        const row=rows[i];
+        const dRaw=row[0]; if(dRaw){const d=lParseDate(String(dRaw));if(d)curDate=d;}
+        const sRaw=String(row[ci_shift]||'').trim().toLowerCase(); if(sRaw) curShift=sRaw;
+        if(!curDate||!curShift) continue;
+        let lineRaw=String(row[ci_line]||'').toUpperCase().trim();
+        if(!lineRaw) continue;
+        const nm=lineRaw.match(/\d+/); if(!nm) continue;
+        const ln='ЛІНІЯ '+parseInt(nm[0]);
+        const key=curDate+'|'+curShift+'|'+ln;
+        if(seen.has(key)) continue; seen.add(key);
+        const w=parseFloat(String(row[ci_weight]||'').replace(',','.')); if(isNaN(w)||w<=0) continue;
+        let kg=w;
+        if(isAnaliz&&ci_contrib>=0){let c=parseFloat(String(row[ci_contrib]||'').replace(',','.'));if(!isNaN(c)&&c>0){if(c>1.5)c/=100;kg=w/c;}}
+        if(!byLine[ln]) byLine[ln]={day:0,night:0};
+        if(curShift.includes('ден')||curShift.includes('day')) byLine[ln].day+=kg;
+        else if(curShift.includes('ніч')||curShift.includes('ноч')||curShift.includes('night')) byLine[ln].night+=kg;
+      }
+      return byLine;
+    }
+    // Зберігаємо по лінії глобально
+    window._shiftByLine = window._shiftByLine || {};
+    const bl=calcShiftsByLine(r1);
+    const allLineNames=new Set();
+    Object.entries(bl).forEach(([ln,v])=>{
+      if(!window._shiftByLine[ln]) window._shiftByLine[ln]={day:0,night:0};
+      window._shiftByLine[ln].day+=v.day; window._shiftByLine[ln].night+=v.night;
+      allLineNames.add(ln);
+    });
+    // Заповнюємо select лінії
+    const sel=document.getElementById('shiftLineFilter');
+    if(sel && sel.options.length<=1){
+      const sorted=[...allLineNames].sort((a,b)=>{
+        const na=parseInt(a.match(/\d+/)||0),nb=parseInt(b.match(/\d+/)||0); return na-nb;
+      });
+      sorted.forEach(ln=>{
+        const opt=document.createElement('option'); opt.value=ln; opt.textContent=ln; sel.appendChild(opt);
+      });
+    }
+    renderShiftData();
   }catch(e){
-    if(wrap) wrap.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
+    const w2=document.getElementById('shiftWrap');
+    if(w2) w2.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
   }
+}
+function renderShiftData(){
+  const wrap=document.getElementById('shiftWrap'); if(!wrap) return;
+  const sel=document.getElementById('shiftLineFilter');
+  const selLine=sel?sel.value:'all';
+  const byLine=window._shiftByLine||{};
+  let dayKg=0,nightKg=0;
+  if(selLine==='all'){
+    Object.values(byLine).forEach(v=>{dayKg+=v.day;nightKg+=v.night;});
+  } else {
+    const v=byLine[selLine]||{day:0,night:0}; dayKg=v.day; nightKg=v.night;
+  }
+  dayKg=Math.round(dayKg); nightKg=Math.round(nightKg);
+  const total=dayKg+nightKg;
+  if(total===0){wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">Дані відсутні</div>';return;}
+  const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
+  const fmt=v=>v.toLocaleString('uk');
+  const barW=Math.round(dayKg/total*100);
+  wrap.innerHTML=`<div style="width:100%;padding:0 20px 16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ · ${dayPct}%</div>
+      </div>
+      <div style="display:flex;align-items:center"><div style="width:1px;height:60px;background:var(--border)"></div></div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ · ${nightPct}%</div>
+      </div>
+    </div>
+    <div style="height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)">
+      <div style="height:100%;width:${barW}%;background:var(--accent);transition:width .4s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">
+      <span>День ${dayPct}%</span><span>Ніч ${nightPct}%</span>
+    </div>
+  </div>`;
 }
 async function buildHeatmap(){
   // If generate.py didn't fill HM data, load from Google Sheets directly
@@ -2265,8 +2337,8 @@ async function buildHeatmapWeekly(monthIdx){
 }
 
 function initQuality(){
-  var _nfDetChart=safeCreateChart('nfDetailChart',{type:'line',data:{labels:filterLabels()||MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
-  var _wasteDetChart=safeCreateChart('wasteDetailChart',{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
+  var _nfDetChart=new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:filterLabels()||MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  var _wasteDetChart=new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
 }
 function initCosts(){
   (function(){
@@ -2274,7 +2346,7 @@ function initCosts(){
     const fi=FIN_INCOME.filter(v=>v!==null);
     const fe=FIN_EXPENSES.filter(v=>v!==null);
     const td=trendline(fi); const te=trendline(fe);
-    safeCreateChart('incExpChart',{data:{labels:fl,datasets:[
+    new Chart(document.getElementById('incExpChart'),{data:{labels:fl,datasets:[
       {type:'bar',label:'Доход',data:fi,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
       {type:'bar',label:'Витрати',data:fe,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3},
       {type:'line',label:'Тренд Доходу',data:td,borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},
@@ -2311,7 +2383,7 @@ function initCosts(){
         });
       });
     }};
-    safeCreateChart('costPerKgChart',{
+    new Chart(document.getElementById('costPerKgChart'),{
       plugins:[barLabelsPlugin],
       data:{labels:MS,datasets:[
         {type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
@@ -2360,7 +2432,7 @@ function setCostMonth(key,btn){
   tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;
   if(costCI) costCI.destroy();
   const BAR_COLORS=['#2563eb','#0ea5e9','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'];
-  costCI=safeCreateChart('costBreakChart',{
+  costCI=new Chart(document.getElementById('costBreakChart'),{
     type:'bar',
     data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:BAR_COLORS,borderWidth:0,borderRadius:3}]},
     options:{
@@ -2712,7 +2784,7 @@ function renderShiftView(key) {
 
   // Donut
   if (opShiftDonutCI) opShiftDonutCI.destroy();
-  opShiftDonutCI = safeCreateChart('opShiftDonut', {
+  opShiftDonutCI = new Chart(document.getElementById('opShiftDonut'), {
     type: 'doughnut',
     data: { labels: ['День','Ніч'], datasets: [{ data: [totalDay, totalNight], backgroundColor: ['#2563eb','#2563eb'], borderWidth: 0 }] },
     options: { responsive: false, cutout: '65%', plugins: { legend: { display: false } } }
@@ -2764,7 +2836,7 @@ function renderShiftView(key) {
 
   // Stacked bar chart
   if (opShiftCI) opShiftCI.destroy();
-  opShiftCI = safeCreateChart('opShiftChart', {
+  opShiftCI = new Chart(document.getElementById('opShiftChart'), {
     type: 'bar',
     data: {
       labels: data.map(d => d[0]),
@@ -2962,7 +3034,7 @@ function renderOpTotal(key) {
   });
 
   if (opCI) opCI.destroy();
-  opCI = safeCreateChart('opChart', {
+  opCI = new Chart(document.getElementById('opChart'), {
     type: 'bar',
     data: {
       labels: data.map(d => d[0]),
@@ -3262,7 +3334,7 @@ function lRenderResults(filtered, errors) {
 
 function initSales() {
   // Chart 1: Monthly sales stacked bar Опт + Роздріб
-  safeCreateChart('salesMonthChart', {
+  new Chart(document.getElementById('salesMonthChart'), {
     type: 'bar',
     data: {
       labels: SALES_LABELS,
@@ -3375,7 +3447,7 @@ function initSales() {
   })();
 
   // Chart 3: Top-10 products horizontal bar
-  safeCreateChart('topProductsChart', {
+  new Chart(document.getElementById('topProductsChart'), {
     type: 'bar',
     data:{
       labels: TOP_PRODUCTS_LABELS,
@@ -3405,7 +3477,7 @@ function initSales() {
   const allPriceLabels=[...new Set([...PETG_PRICE_LABELS,...PLA_PRICE_LABELS])];
   const petgAligned = allPriceLabels.map(l=>{ const i=PETG_PRICE_LABELS.indexOf(l); return i>=0?PETG_AVG_PRICE[i]:null; });
   const plaAligned  = allPriceLabels.map(l=>{ const i=PLA_PRICE_LABELS.indexOf(l);  return i>=0?PLA_AVG_PRICE[i]:null; });
-  safeCreateChart('avgPriceChart', {
+  new Chart(document.getElementById('avgPriceChart'), {
     data:{
       labels: allPriceLabels,
       datasets:[
@@ -3918,7 +3990,7 @@ async function buildUtilHeatmap(){
     }
     return 151; // абсолютний fallback ~151 кг/зміну
   }
-  // activeSince: перший місяць роботи → null до нього
+  // activeSince: перший місяць роботи → null до нього (не впливає на середні)
   const lineActiveSince = {};
   lines.forEach(ln => { lineActiveSince[ln] = HM_DATA[ln].findIndex(v => v > 0); });
 
@@ -3927,13 +3999,15 @@ async function buildUtilHeatmap(){
     const lineNorm = getLineNorm(ln);
     const since = lineActiveSince[ln];
     utilData[ln] = HM_DATA[ln].map((kg, i) => {
-      if(since < 0 || i < since) return null;
+      if(since < 0 || i < since) return null; // ще не запущена
       const maxKg = lineNorm * 2 * colDays[i];
       if(!maxKg) return 0;
       return Math.min(Math.round(kg / maxKg * 100), 999);
     });
   });
+  // Середнє тільки по активних (не null) місяцях
   function activeAvg(vals){ const a=vals.filter(v=>v!==null); return a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null; }
+  // Середнє по колонці — виключаємо лінії з null
   function colAvg(lineArr,i){ const a=lineArr.map(ln=>utilData[ln][i]).filter(v=>v!==null); return a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null; }
 
   // Цвет по проценту (зелёный градиент)
@@ -3949,8 +4023,11 @@ async function buildUtilHeatmap(){
   function textColor(pct){ return '#fff'; }
   // КПІ-рендер: ≥80% — золотий фон-смужка + зірочка
   function utilCell(pct, title, extraStyle){
+    if(pct === null){
+      return `<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18)${extraStyle||''}" title="${title}">–</div>`;
+    }
     const bg = utilColor(pct);
-    const label = pct ? pct+'%' : '—';
+    const label = pct ? pct+'%' : '0%';
     const kpi = pct >= 80;
     const extra = extraStyle || '';
     if(kpi){
@@ -3987,48 +4064,58 @@ async function buildUtilHeatmap(){
     if(loc !== prevLoc){
       if(prevLoc !== null){
         // Итого по предыдущей локации
-        html += `<div class="hmap-label" style="color:#0ea5e9;font-size:11px;padding-left:4px">∑ ${prevLoc}</div>`;
+        html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
         const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
         for(let i=0;i<cols;i++){
-          const avg = locLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/locLines.length;
-          html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${Math.round(avg)}%</div>`;
+          const ca=colAvg(locLines,i);
+          html += ca!==null ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${ca}%</div>`
+            : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
         }
-        const overallAvg = locLines.reduce((s,l)=>s+utilData[l].reduce((a,b)=>a+b,0)/cols,0)/locLines.length;
-        html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${Math.round(overallAvg)}%</div>`;
+        const las=locLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+        const oa=las.length?Math.round(las.reduce((a,b)=>a+b,0)/las.length):null;
+        html += oa!==null ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${oa}%</div>`
+          : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
       }
       html += `<div style="grid-column:1/-1;padding:4px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:4px 0">${loc}</div>`;
       prevLoc = loc;
     }
     const vals = utilData[ln];
-    const avg = Math.round(vals.reduce((a,b)=>a+b,0)/cols);
+    const avg = activeAvg(vals);
     html += `<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
     vals.forEach((pct,i) => {
-      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct}%`, '');
+      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct!==null?pct+'%':'не запущена'}`, '');
     });
-    html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700');
+    if(avg===null){ html+=`<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18);font-weight:700">–</div>`; }
+    else { html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700'); }
   });
 
   // Итого по последней локации
   if(prevLoc){
-    html += `<div class="hmap-label" style="color:#0ea5e9;font-size:11px;padding-left:4px">∑ ${prevLoc}</div>`;
-    const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+    html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
+    const locLines2 = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
     for(let i=0;i<cols;i++){
-      const avg = locLines.length ? locLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/locLines.length : 0;
-      html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${Math.round(avg)}%</div>`;
+      const ca=colAvg(locLines2,i);
+      html += ca!==null ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${ca}%</div>`
+        : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
     }
-    const overallAvg = locLines.length ? locLines.reduce((s,l)=>s+utilData[l].reduce((a,b)=>a+b,0)/cols,0)/locLines.length : 0;
-    html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${Math.round(overallAvg)}%</div>`;
+    const las2=locLines2.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+    const oa2=las2.length?Math.round(las2.reduce((a,b)=>a+b,0)/las2.length):null;
+    html += oa2!==null ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${oa2}%</div>`
+      : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
   }
 
   // ИТОГО по всем
   html += `<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
-  html += `<div class="hmap-label" style="color:#fff;font-size:13px;font-weight:700">ВСЬОГО</div>`;
+  html += `<div class="hmap-label" style="color:#fff;font-size:11px;font-weight:700">ВСЬОГО</div>`;
   for(let i=0;i<cols;i++){
-    const avg = sortedLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/sortedLines.length;
-    html += `<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(avg)}%</div>`;
+    const ca=colAvg(sortedLines,i);
+    html += ca!==null
+      ? `<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${ca}%</div>`
+      : `<div class="hmap-cell" style="background:#1e2535;color:rgba(255,255,255,.3);font-size:11px;border-top:1px solid rgba(255,255,255,.15)">–</div>`;
   }
-  const grandAvg = sortedLines.reduce((s,l)=>s+utilData[l].reduce((a,b)=>a+b,0)/cols,0)/sortedLines.length;
-  html += `<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(grandAvg)}%</div>`;
+  const allAvgs=sortedLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+  const grandAvg=allAvgs.length?Math.round(allAvgs.reduce((a,b)=>a+b,0)/allAvgs.length):0;
+  html += `<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${grandAvg}%</div>`;
   html += '</div>';
 
   wrap.innerHTML = html;
