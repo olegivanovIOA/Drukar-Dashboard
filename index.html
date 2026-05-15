@@ -25,7 +25,7 @@
   .tab:hover{color:var(--text);border-color:var(--border)}
   .tab.active{color:var(--accent);border-color:var(--accent);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px;font-weight:600}
   .main{padding:22px 28px;max-width:1700px;margin:0 auto}
-  .tab-content{display:none}.tab-content.active{display:block}
+  .tab-content{display:block!important;position:absolute;visibility:hidden;opacity:0;pointer-events:none;height:0;overflow:hidden;}.tab-content.active{position:static!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:auto!important;overflow:visible!important;}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
   .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s;box-shadow:var(--shadow)}
   .kpi-card:hover{border-color:var(--accent2)}
@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 05:58 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 10:03 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -285,131 +285,126 @@
 
 <!-- ══════════════ OVERVIEW ══════════════ -->
 <div id="tab-overview" class="tab-content active" data-tab-id="overview">
-  <div class="kpi-row">
-    <div class="kpi-card" style="--accent-bar:var(--accent)">
-      <div class="kpi-label">Всього продукції · Кві '26</div>
-      <div class="kpi-value">50 912</div>
-      <div class="kpi-unit">кг (PETG 45 213 + PLA 5 699)</div>
-      <div class="kpi-delta delta-up">▲ +11.0% vs Бер '26 (45 876 кг)</div>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px">
+    <div class="kpi-card" style="--accent-bar:var(--accent);padding:12px 14px">
+      <div class="kpi-label" id="ovKpi_totalLabel" style="font-size:9px">Виробництво · міс.</div>
+      <div class="kpi-value" id="ovKpi_total" style="font-size:22px">—</div>
+      <div class="kpi-unit" id="ovKpi_totalSub" style="font-size:9px">кг</div>
+      <div id="ovKpi_totalDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--accent2)">
-      <div class="kpi-label">PETG · Кві '26</div>
-      <div class="kpi-value">45 213</div>
-      <div class="kpi-unit">кілограм</div>
-      <div class="kpi-delta delta-up">▲ +23.3% vs Бер '26</div>
+    <div class="kpi-card" style="--accent-bar:var(--accent2);padding:12px 14px">
+      <div class="kpi-label" style="font-size:9px">PETG · міс.</div>
+      <div class="kpi-value" id="ovKpi_petg" style="font-size:22px">—</div>
+      <div class="kpi-unit" style="font-size:9px">кілограм</div>
+      <div id="ovKpi_petgDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
     </div>
-    <div class="kpi-card kpi-alert" style="--accent-bar:var(--bad)">
-      <div class="kpi-label">НФ PLA — Аномалія Бер '26</div>
-      <div class="kpi-value" style="color:var(--bad)">7.16%</div>
-      <div class="kpi-unit">від обсягу виробництва</div>
-      <div class="kpi-delta delta-down">▼ норма &lt; 4%</div>
+    <div class="kpi-card" style="--accent-bar:#c8b400;padding:12px 14px">
+      <div class="kpi-label" style="font-size:9px">PLA · міс.</div>
+      <div class="kpi-value" id="ovKpi_pla" style="font-size:22px">—</div>
+      <div class="kpi-unit" style="font-size:9px">кілограм</div>
+      <div id="ovKpi_plaDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--good)">
-      <div class="kpi-label">Прибуток · Бер '26</div>
-      <div class="kpi-value" style="color:var(--good)">196</div>
-      <div class="kpi-unit">тис. грн</div>
-      <div class="kpi-delta delta-up">▲ Лют: -285 тис.</div>
+    <div class="kpi-card" style="--accent-bar:var(--good);padding:12px 14px">
+      <div class="kpi-label" style="font-size:9px">Дохід · міс.</div>
+      <div class="kpi-value" id="ovKpi_income" style="font-size:22px;color:var(--good)">—</div>
+      <div class="kpi-unit" style="font-size:9px">грн</div>
+      <div id="ovKpi_incomeDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
     </div>
-    <div class="kpi-card" style="--accent-bar:var(--bad)">
-      <div class="kpi-label">Собів-сть PETG · Бер '26</div>
-      <div class="kpi-value" style="color:var(--warn)">322.1</div>
-      <div class="kpi-unit">грн/кг без ПДВ</div>
-      <div class="kpi-delta delta-up">▲ +3.1% vs Лют (312 ₴)</div>
+    <div class="kpi-card" style="--accent-bar:var(--good);padding:12px 14px">
+      <div class="kpi-label" style="font-size:9px">Прибуток · міс.</div>
+      <div class="kpi-value" id="ovKpi_profit" style="font-size:22px">—</div>
+      <div class="kpi-unit" style="font-size:9px">тис. грн</div>
+      <div id="ovKpi_profitDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
     </div>
-  </div>
-
-  <div class="grid-31">
-    <div class="card">
-      <div class="card-header">
-        <div><div class="card-title">Загальний обсяг виробництва (PETG + PLA)</div><div class="card-subtitle">кг/місяць · пунктир = тренд</div></div>
-        <div style="display:flex;gap:6px"><span class="badge badge-blue">PETG</span><span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span><span class="badge" style="background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.3)">ВСЬОГО</span></div>
-      </div>
-      <div class="cw"><canvas id="prodMonthChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div><div class="card-title">Доход vs Витрати</div><div class="card-subtitle">грн по місяцях</div></div></div>
-      <div class="cw"><canvas id="finOverviewChart"></canvas></div>
+    <div class="kpi-card" style="--accent-bar:var(--warn);padding:12px 14px">
+      <div class="kpi-label" style="font-size:9px">Собів-сть PETG</div>
+      <div class="kpi-value" id="ovKpi_cost" style="font-size:22px;color:var(--warn)">—</div>
+      <div class="kpi-unit" style="font-size:9px">грн/кг без ПДВ</div>
+      <div id="ovKpi_costDelta" class="kpi-delta" style="font-size:10px;margin-top:4px"></div>
     </div>
   </div>
-
-  <div class="grid-3">
-    <div class="card"><div class="card-header"><div><div class="card-title">% НФ по місяцях</div><div class="card-subtitle">Напівфабрикат</div></div><span class="badge badge-red">СІЧ: 30%!</span></div><div class="cw-sm"><canvas id="nfOvChart"></canvas></div></div>
-    <div class="card"><div class="card-header"><div><div class="card-title">% Відходів по місяцях</div><div class="card-subtitle">Брак від обсягу</div></div></div><div class="cw-sm"><canvas id="wasteOvChart"></canvas></div></div>
-    <div class="card">
-      <div class="card-header"><div><div class="card-title">Структура витрат</div><div class="card-subtitle">Лютий 2026</div></div></div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:20px;height:200px;padding:8px 0">
-        <div style="width:160px;height:160px;flex-shrink:0;position:relative"><canvas id="costsDonut"></canvas></div>
-        <div style="display:flex;flex-direction:column;gap:6px;min-width:140px">
-          <div class="legend-item"><div class="legend-dot" style="background:#47b4ff"></div>Сировина<span style="margin-left:auto;padding-left:10px;color:var(--text)">71.4%</span></div>
-          <div class="legend-item"><div class="legend-dot" style="background:#e8ff47"></div>Електроенергія<span style="margin-left:auto;padding-left:10px;color:var(--text)">9.0%</span></div>
-          <div class="legend-item"><div class="legend-dot" style="background:#ff6b47"></div>Адмін/Загал<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.3%</span></div>
-          <div class="legend-item"><div class="legend-dot" style="background:#b47bff"></div>Податки<span style="margin-left:auto;padding-left:10px;color:var(--text)">6.0%</span></div>
-          <div class="legend-item"><div class="legend-dot" style="background:#4fffb0"></div>ЗП оператори<span style="margin-left:auto;padding-left:10px;color:var(--text)">3.4%</span></div>
-          <div class="legend-item"><div class="legend-dot" style="background:#ff9999"></div>Інше<span style="margin-left:auto;padding-left:10px;color:var(--text)">3.9%</span></div>
-        </div>
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Загальний обсяг виробництва (PETG + PLA)</div>
+      <div class="card-subtitle">кг/місяць · крива = поліноміальний тренд</div></div>
+      <div style="display:flex;gap:6px">
+        <span class="badge badge-blue">PETG</span>
+        <span class="badge badge-yellow" style="color:#c8b400;border-color:rgba(200,180,0,.4)">PLA</span>
+        <span class="badge" style="background:rgba(37,99,235,.1);color:var(--accent);border:1px solid rgba(37,99,235,.3)">ВСЬОГО</span>
       </div>
     </div>
+    <div class="cw"><canvas id="prodMonthChart"></canvas></div>
+  </div>
+  <div style="display:none">
+    <canvas id="finOverviewChart"></canvas>
+    <canvas id="nfOvChart"></canvas>
+    <canvas id="wasteOvChart"></canvas>
+    <canvas id="costsDonut"></canvas>
   </div>
 </div>
 
 <!-- ══════════════ PRODUCTION ══════════════ -->
 <div id="tab-production" class="tab-content" data-tab-id="production">
   <div class="section-title">Динаміка виробництва</div>
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-header">
-      <div><div class="card-title" id="hmTitle">Теплова карта: Лінія × Місяць</div><div class="card-subtitle" id="hmSubtitle">Реальний обсяг з даних · кг/місяць</div></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0 кг</span>
-        <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">~12 800 кг</span>
-        <div id="hmMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap;margin-left:8px">
-          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
+    <div class="card" style="grid-row:span 2">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
+        <div><div class="card-title" id="utilTitle">Завантаженість ліній · %</div><div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму</div></div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
+          <div id="utilMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
+            <div style="width:50px;height:6px;border-radius:3px;background:linear-gradient(to right,#131720,#16a34a)"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
+          </div>
         </div>
       </div>
+      <div style="margin-bottom:4px"><span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">⟳ Завантаження норм...</span></div>
+      <div id="utilHeatmapWrap"></div>
+      <div style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted)">ℹ Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%</div>
     </div>
-    <div id="heatmapWrap"></div>
-    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
-      ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div></div>
+        <div class="cw"><canvas id="petgChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div></div>
+        <div class="cw"><canvas id="plaChart"></canvas></div>
+      </div>
     </div>
-  </div>
-  <div class="grid-2">
-    <div class="card"><div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд</div></div></div><div class="cw"><canvas id="petgChart"></canvas></div></div>
-    <div class="card"><div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд</div></div></div><div class="cw"><canvas id="plaChart"></canvas></div></div>
-  </div>
-  <div class="grid-2">
-    <div class="card"><div class="card-header"><div><div class="card-title">Завантаженість ліній</div><div class="card-subtitle">Загальний кг за весь період · всі лінії</div></div></div><div class="cw"><canvas id="lineChart"></canvas></div></div>
-    <div class="card"><div class="card-header"><div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div></div>
-      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:230px;gap:40px">
+    <div class="card">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
+        <div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ЛІНІЯ</span>
+          <select id="shiftLineFilter" onchange="renderShiftData()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
+            <option value="all">Всі лінії</option>
+          </select>
+        </div>
+      </div>
+      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:160px">
         <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
       </div>
     </div>
   </div>
-
-  <!-- ══ UTILIZATION HEATMAP ══ -->
-  <div class="card" style="margin-top:14px">
-    <div class="card-header" style="flex-wrap:wrap;gap:8px">
-      <div>
-        <div class="card-title" id="utilTitle">Завантаженість ліній · %</div>
-        <div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму · 12 год × 2 зміни × днів у місяці × норма кг/год</div>
-      </div>
-      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
-        <div id="utilMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
-          <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#16a34a)"></div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title" id="hmTitle">Теплова карта: Лінія × Місяць</div><div class="card-subtitle" id="hmSubtitle">Реальний обсяг з даних · кг/місяць</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0 кг</span>
+        <div style="width:70px;height:7px;border-radius:3px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">~12 800 кг</span>
+        <div id="hmMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap;margin-left:8px">
+          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
         </div>
       </div>
     </div>
-    <div style="margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">⟳ Завантаження норм...</span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">Норми беруться з листа НОРМЫ · Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%</span>
-    </div>
-    <div id="utilHeatmapWrap"></div>
-    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
-      ℹ Розрахунок: (фактичний кг/місяць) ÷ (норма × 2 × дні_в_місяці) × 100%
+    <div id="heatmapWrap"></div>
+    <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);line-height:1.8">
+      ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
     </div>
   </div>
 </div>
@@ -436,7 +431,7 @@
 <tr><td>Лютий 2026</td><td style="color:var(--good)">1.84%</td><td style="color:var(--good)">1.25%</td><td style="color:var(--good)">1.61%</td><td style="color:var(--good)">1.36%</td><td style="color:var(--good)">1.80%</td><td style="color:var(--good)">1.28%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
 <tr><td>Березень 2026</td><td style="color:var(--good)">3.32%</td><td style="color:var(--good)">1.76%</td><td style="color:var(--good)">4.60%</td><td style="color:var(--good)">1.90%</td><td style="color:var(--good)">3.57%</td><td style="color:var(--good)">1.79%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
 <tr><td>Квітень 2026</td><td style="color:var(--good)">1.96%</td><td style="color:var(--good)">1.28%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.89%</td><td style="color:var(--good)">1.29%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
-<tr><td>Травень 2026*</td><td style="color:var(--good)">1.07%</td><td style="color:var(--good)">1.01%</td><td style="color:var(--good)">1.55%</td><td style="color:var(--warn)">2.69%</td><td style="color:var(--good)">1.10%</td><td style="color:var(--good)">1.14%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
+<tr><td>Травень 2026*</td><td style="color:var(--good)">1.05%</td><td style="color:var(--good)">0.98%</td><td style="color:var(--good)">1.49%</td><td style="color:var(--warn)">2.64%</td><td style="color:var(--good)">1.08%</td><td style="color:var(--good)">1.11%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
 </tbody></table>
   </div>
 </div>
@@ -1243,6 +1238,8 @@ function applyFilterToAllCharts(){
       chart.update('none');
     } catch(e){ console.warn('[filter] chart '+id+':', e); }
   });
+  if(typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
+  if(typeof window._prodRebuildFn==='function') try{window._prodRebuildFn();}catch(e){}
 }
 
 function updateFilterBadge(){
@@ -1408,18 +1405,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
-const PETG_ALL=[21127.6,22878.6,18742.8,25556.2,36682.7,45213.1,20857.1,null,null,null,null,null,null,null];
-const PLA_ALL=[667.0,3483.5,5319.7,6678.7,9193.1,5698.6,1730.2,null,null,null,null,null,null,null];
-const TOTAL_ALL=[21794.6,26362.1,24062.5,32234.9,45875.8,50911.7,22587.3,null,null,null,null,null,null,null];
-const NF_PCT=[4.74,3.25,29.47,1.8,3.57,1.89,1.1,null,null,null,null,null,null,null];
-const NF_PETG=[4.82,2.98,19.89,1.84,3.32,1.96,1.07,null,null,null,null,null,null,null];
-const NF_PLA=[1.95,5.0,63.24,1.61,4.6,1.35,1.55,null,null,null,null,null,null,null];
-const W_PETG=[1.39,1.92,2.52,1.25,1.76,1.28,1.01,null,null,null,null,null,null,null];
-const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,2.69,null,null,null,null,null,null,null];
+const PETG_ALL=[21127.6,22878.6,18742.8,25556.2,36682.7,45213.1,21896.5,null,null,null,null,null,null,null];
+const PLA_ALL=[667.0,3483.5,5319.7,6678.7,9193.1,5698.6,1810.0,null,null,null,null,null,null,null];
+const TOTAL_ALL=[21794.6,26362.1,24062.5,32234.9,45875.8,50911.7,23706.5,null,null,null,null,null,null,null];
+const NF_PCT=[4.74,3.25,29.47,1.8,3.57,1.89,1.08,null,null,null,null,null,null,null];
+const NF_PETG=[4.82,2.98,19.89,1.84,3.32,1.96,1.05,null,null,null,null,null,null,null];
+const NF_PLA=[1.95,5.0,63.24,1.61,4.6,1.35,1.49,null,null,null,null,null,null,null];
+const W_PETG=[1.39,1.92,2.52,1.25,1.76,1.28,0.98,null,null,null,null,null,null,null];
+const W_PLA=[1.09,14.41,3.02,1.36,1.9,1.35,2.64,null,null,null,null,null,null,null];
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
-const FIN_INCOME=[5489189,5489189,7849699,10243355,15823153,19655450,8162110,null,null,null,null,null,null,null];
+const FIN_INCOME=[5489189,5489189,7849699,10243355,15823153,19655450,8164690,null,null,null,null,null,null,null];
 const FIN_EXPENSES=[5504774,null,8713784,10215885,15695358,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
@@ -1430,16 +1427,16 @@ const OKR_PEOPLE=[{"name": "Вадим", "realized_pct": 81.2, "score": 0.0958, 
 // ── SALES DATA (from _AllData_$ sheet) ──
 const SALES_LABELS=["Вер 24","Жов 24","Лис 24","Гру 24","Січ 25","Лют 25","Бер 25","Кві 25","Тра 25","Чер 25","Лип 25","Сер 25","Жов 25","Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26"];
 const SALES_MONTHS=["2024-09","2024-10","2024-11","2024-12","2025-01","2025-02","2025-03","2025-04","2025-05","2025-06","2025-07","2025-08","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05"];
-const DONUT_BY_MONTH={"2024-09":[1540083,0],"2024-10":[1248013,0],"2024-11":[1989021,0],"2024-12":[3554407,0],"2025-01":[3624511,0],"2025-02":[3850713,0],"2025-03":[2680760,0],"2025-04":[3628948,0],"2025-05":[9557,0],"2025-06":[1447961,0],"2025-07":[0,0],"2025-08":[304018,0],"2025-10":[631831,0],"2025-11":[1959890,856992],"2025-12":[5336309,152880],"2026-01":[5010632,2839067],"2026-02":[7840158,2403197],"2026-03":[9234918,6588235],"2026-04":[13047011,6608439],"2026-05":[5525372,2636738]};
+const DONUT_BY_MONTH={"2024-09":[1540083,0],"2024-10":[1248013,0],"2024-11":[1989021,0],"2024-12":[3554407,0],"2025-01":[3624511,0],"2025-02":[3850713,0],"2025-03":[2680760,0],"2025-04":[3628948,0],"2025-05":[9557,0],"2025-06":[1447961,0],"2025-07":[0,0],"2025-08":[304018,0],"2025-10":[631831,0],"2025-11":[1959890,856992],"2025-12":[5336309,152880],"2026-01":[5010632,2839067],"2026-02":[7840158,2403197],"2026-03":[9234918,6588235],"2026-04":[13047011,6608439],"2026-05":[5525372,2639318]};
 const SALES_OPT=[1540083,1248013,1989021,3554407,3624511,3850713,2680760,3628948,9557,1447961,0,304018,631831,1959890,5336309,5010632,7840158,9234918,13047011,5525372];
-const SALES_RET=[0,0,0,0,0,0,0,0,0,0,0,0,0,856992,152880,2839067,2403197,6588235,6608439,2636738];
+const SALES_RET=[0,0,0,0,0,0,0,0,0,0,0,0,0,856992,152880,2839067,2403197,6588235,6608439,2639318];
 const SALES_OPT1_KG=[4.442,3.6,5.803,9.483,10.611,11.302,7.546,8.366,8.537,6.854,3.517,0.892,4.643,4.755,9.116,7.86,13.823,13.838,25.257,12.483];
 const SALES_OPT2_KG=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.357,10.791,8.448,10.251,14.269,11.934,3.195];
-const SALES_RET_KG=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.811,0.504,8.538,7.161,17.058,16.998,6.336];
+const SALES_RET_KG=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.811,0.504,8.538,7.161,17.058,16.998,6.342];
 const TOP_PRODUCTS_LABELS=["PETG 3.0","PETG 2.5 (чорний)","PETG 3.0 (чорний)","PLA 3.0","PETG 2.5 кг (чорний)","PLA 2.5","PETG 2.5","PLA 3,0 кг (чорний)","PETG 3.0 (червоний)","PETG НФ"];
-const TOP_PRODUCTS_DATA=[29341450,24337216,16343800,11039138,7259125,3056410,1540399,1072400,256879,245904];
+const TOP_PRODUCTS_DATA=[29344030,24337216,16343800,11039138,7259125,3056410,1540399,1072400,256879,245904];
 const PETG_PRICE_LABELS=["Вер 24","Жов 24","Лис 24","Гру 24","Січ 25","Лют 25","Бер 25","Кві 25","Тра 25","Чер 25","Лип 25","Сер 25","Жов 25","Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26"];
-const PETG_AVG_PRICE=[346.67,346.67,346.67,345.44,329.33,329.33,329.33,429.08,1.37,281.35,0.0,424.9,315.92,325.12,263.29,320.97,339.22,354.12,363.92,370.77];
+const PETG_AVG_PRICE=[346.67,346.67,346.67,345.44,329.33,329.33,329.33,429.08,1.37,281.35,0.0,424.9,315.92,325.12,263.29,320.97,339.22,354.12,363.92,370.79];
 const PLA_PRICE_LABELS=["Лис 24","Гру 24","Січ 25","Лют 25","Бер 25","Кві 25","Тра 25","Чер 25","Лип 25","Сер 25","Жов 25","Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26"];
 const PLA_AVG_PRICE=[0.0,466.67,386.33,386.33,386.33,441.36,0.0,0.0,0.0,0.0,0.0,233.23,296.4,296.4,285.65,335.69,352.0];
 const COSTS={
@@ -1451,10 +1448,10 @@ const COSTS={
 const OP_ALL=[["Щербакова Олена",10223.1],["Макалюк Вікторія",9466.3],["Макалюк Володимир",9400.6],["Ременчук Юлія",8304.3],["Бараш Костянтин",8103.8],["Пивовар Олександр",4661.2],["Гарбар Денис",3326.1],["Бондарчук Дмитро",3278.5],["Пінчук Олександр",3226.0],["Нужда Олексій",2502.9],["Криволапчук Олександр",1192.2],["Хімич Богдан",1183.7],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Степанчук Владислав",1054.1],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6],["Борисов Дмитро",372.5]];
 const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Макалюк Володимир",2448.5],["Бондарчук Дмитро",2066.1],["Щербакова Олена",1613.7],["Ременчук Юлія",1548.2],["Бараш Костянтин",1287.6],["Степанчук Владислав",1054.1],["Борисов Дмитро",103.4]],"2025-12":[["Ременчук Юлія",2641.3],["Макалюк Володимир",2398.3],["Бараш Костянтин",2281.3],["Щербакова Олена",2171.2],["Пінчук Олександр",1476.7],["Макалюк Вікторія",1412.8],["Бондарчук Дмитро",1212.4],["Пивовар Олександр",838.1],["Борисов Дмитро",169.5]],"2026-01":[["Макалюк Вікторія",2468.8],["Щербакова Олена",2337.1],["Макалюк Володимир",1901.9],["Ременчук Юлія",1524.8],["Бараш Костянтин",1477.4],["Пивовар Олександр",1297.3],["Гарбар Денис",577.8],["Пінчук Олександр",522.5],["Нужда Олексій",322.3]],"2026-02":[["Щербакова Олена",2384.7],["Бараш Костянтин",2077.3],["Макалюк Вікторія",1859.0],["Макалюк Володимир",1541.6],["Гарбар Денис",1518.9],["Пивовар Олександр",1517.9],["Ременчук Юлія",1516.7],["Нужда Олексій",1368.7],["Пінчук Олександр",1226.8],["Хімич Богдан",314.8],["Борисов Дмитро",99.7]],"2026-03":[["Щербакова Олена",1716.4],["Гарбар Денис",1229.4],["Криволапчук Олександр",1192.2],["Макалюк Вікторія",1114.1],["Макалюк Володимир",1110.2],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Ременчук Юлія",1073.3],["Пивовар Олександр",1007.9],["Бараш Костянтин",980.2],["Хімич Богдан",868.9],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Нужда Олексій",811.9],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6]]};
 const HM_LABELS=["Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26"];
-const HM_DATA={"ЛІНІЯ 1":[7494,8937,8108,8058,7956,7463,3935],"ЛІНІЯ 2":[5591,5592,1344,2499,4976,5508,2618],"ЛІНІЯ 3":[5111,3642,161,3936,5118,5434,1890],"ЛІНІЯ 4":[3598,3171,3976,4180,5086,5021,755],"ЛІНІЯ 5":[0,5019,4748,6938,6645,7745,2703],"ЛІНІЯ 6":[0,0,5726,6624,6664,7377,3278],"ЛІНІЯ 7":[0,0,0,0,3339,5836,2635],"ЛІНІЯ 8":[0,0,0,0,6092,5941,1465],"ЛІНІЯ 9":[0,0,0,0,0,587,3283],"ЛІНІЯ 10":[0,0,0,0,0,0,24]};
+const HM_DATA={"ЛІНІЯ 1":[7494,8937,8108,8058,7956,7463,4106],"ЛІНІЯ 2":[5591,5592,1344,2499,4976,5508,2698],"ЛІНІЯ 3":[5111,3642,161,3936,5118,5434,1988],"ЛІНІЯ 4":[3598,3171,3976,4180,5086,5021,847],"ЛІНІЯ 5":[0,5019,4748,6938,6645,7745,2847],"ЛІНІЯ 6":[0,0,5726,6624,6664,7377,3432],"ЛІНІЯ 7":[0,0,0,0,3339,5836,2756],"ЛІНІЯ 8":[0,0,0,0,6092,5941,1590],"ЛІНІЯ 9":[0,0,0,0,0,587,3419],"ЛІНІЯ 10":[0,0,0,0,0,0,24]};
 const HM_NORMS={"ЛІНІЯ 1":{"PETG 2.5":151.0,"PETG 3.0":154.0},"ЛІНІЯ 2":{"PLA 3.0":97.0,"PETG 3.0":128.0,"PLA 2.5":87.0},"ЛІНІЯ 3":{"PETG 2.5":123.2,"PETG 3.0":107.0,"PETG 3.0 RED":123.2,"PLA 3.0":115.0},"ЛІНІЯ 4":{"PLA 3.0":145.0,"PETG 3.0":98.0,"PLA 2.5":90.2},"ЛІНІЯ 5":{"PETG 3.0":144.0},"ЛІНІЯ 6":{"PETG 3.0":141.0}};
 const SKU_SALES_OPT={"PETG 2.5кг":[3660.0,9112.5,7860.0,7040.0,7495.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[990.0,6957.0,3357.0,10431.0,11361.0,31740.0,15678.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,1480.0,7475.0,null,null,null,null,null,null,null,null,null],"PLA 3кг":[915.0,3480.0,5091.0,5091.0,1491.0,5451.0,null,null,null,null,null,null,null,null]};
-const SKU_SALES_RET={"PETG 2.5кг":[null,null,null,null,3006.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[2811.0,504.0,8538.0,7161.0,14052.0,16998.0,6336.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"PLA 3кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null]};
+const SKU_SALES_RET={"PETG 2.5кг":[null,null,null,null,3006.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[2811.0,504.0,8538.0,7161.0,14052.0,16998.0,6342.0,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"PLA 3кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null]};
 const SKU_LIST=["PETG 2.5кг","PETG 3кг","PLA 2.5кг","PLA 3кг"]; // {line: {vid: norm_kg_per_shift}}
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
@@ -1504,28 +1501,39 @@ function polyTrend(data, deg=2){
 }
 let opCI=null,costCI=null;
 const rendered={};
+function safeCreateChart(canvasId,config){
+  var canvas=document.getElementById(canvasId);
+  if(!canvas) return null;
+  var ex=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
+  if(ex) try{ex.destroy();}catch(e){}
+  try{return new Chart(canvas,config);}catch(e){console.warn('[safeCreateChart]',canvasId,e);return null;}
+}
 function switchTab(id,el){
-  // Ховаємо всі tab-content
   document.querySelectorAll('.tab-content').forEach(function(e){
     e.classList.remove('active');
-    // В mid-режимі: ховаємо неактивні табки через display (ACTIVE_TABS може бути undefined якщо TOP)
-    if(typeof ACTIVE_TABS !== 'undefined' && DASHBOARD_MODE !== 'top'){
-      var tid = e.getAttribute('data-tab-id');
-      if(tid && ACTIVE_TABS.includes(tid)){
-        e.style.display = 'none'; // ховаємо всі активні, нижче покажемо обрану
-      }
+    if(typeof ACTIVE_TABS!=='undefined'&&typeof DASHBOARD_MODE!=='undefined'&&DASHBOARD_MODE!=='top'){
+      var tid=e.getAttribute('data-tab-id');
+      if(tid&&!ACTIVE_TABS.includes(tid)) e.style.display='none';
     }
   });
   document.querySelectorAll('.tab').forEach(function(e){e.classList.remove('active');});
-  var target = document.getElementById('tab-'+id);
-  if(target){
-    target.classList.add('active');
-    target.style.display = 'block'; // явно показуємо незалежно від попереднього display
-  }
+  var target=document.getElementById('tab-'+id);
+  if(target){ target.style.display=''; target.classList.add('active'); }
   el.classList.add('active');
-  // Зберігаємо таб в hash БЕЗ scroll-jump
   history.replaceState(null,'','#'+id);
-  if(!rendered[id]){rendered[id]=true;initTab(id);}
+  if(!rendered[id]){
+    rendered[id]=true;
+    initTab(id);
+    if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
+  } else {
+    requestAnimationFrame(function(){
+      document.querySelectorAll('#tab-'+id+' canvas').forEach(function(canvas){
+        var ch=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
+        if(ch) try{ch.resize();}catch(e){}
+      });
+      if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
+    });
+  }
 }
 // ── Захист: ізольований запуск модулів ──
 function safeInit(id, fn){
@@ -1584,93 +1592,70 @@ window.addEventListener('DOMContentLoaded',()=>{
       if(btn){switchTab(hash,btn);}
     }
   } catch(e){ console.warn('[hash-restore]', e); }
-  // Overview charts — з підтримкою глобального фільтра
-  function _getFilteredOverview(){
-    var idxs=getFilteredIndices();
-    return {
-      labels: idxs.map(function(i){return MS[i];}),
-      petg:   idxs.map(function(i){return PETG_ALL[i];}),
-      pla:    idxs.map(function(i){return PLA_ALL[i];}),
-      tot:    idxs.map(function(i){return TOTAL_ALL[i];}),
-      nf:     idxs.map(function(i){return NF_PCT[i];}),
-      waste:  idxs.map(function(i){return WASTE_PCT[i];}),
-      wPetg:  idxs.map(function(i){return W_PETG[i];}),
-      wPla:   idxs.map(function(i){return W_PLA[i];}),
-    };
+  // Overview — динамічні KPI + prodMonthChart з polyTrend
+  function _ovLastNonNull(arr){
+    if(!arr) return null;
+    for(var i=arr.length-1;i>=0;i--){ if(arr[i]!==null&&arr[i]!==undefined&&+arr[i]!==0) return {val:arr[i],idx:i}; }
+    return null;
+  }
+  function _ovDelta(cur,prev,unit,inv){
+    if(cur===null||prev===null||prev===0) return {html:'',cls:''};
+    var diff=cur-prev; var pct=Math.round(Math.abs(diff)/Math.abs(prev)*100);
+    var up=diff>0; var good=inv?!up:up;
+    var ad=Math.abs(diff);
+    var ds=ad>=100000?(ad/1000).toFixed(0)+'k':ad>=1000?(ad/1000).toFixed(1)+'k':Math.round(ad).toLocaleString('uk');
+    return {html:(up?'▲ ':'▼ ')+(diff>0?'+':'-')+ds+(unit||'')+' ('+pct+'% vs попер.)',cls:good?'delta-up':'delta-down'};
+  }
+  function renderOvKpis(){
+    var rT=_ovLastNonNull(TOTAL_ALL),rP=_ovLastNonNull(PETG_ALL),rL=_ovLastNonNull(PLA_ALL);
+    var rI=_ovLastNonNull(FIN_INCOME),rPr=_ovLastNonNull(FIN_PROFIT),rC=_ovLastNonNull(CPKG_PETG);
+    function prev(arr,r){if(!r||r.idx<=0)return null;for(var i=r.idx-1;i>=0;i--){if(arr[i]!==null&&arr[i]!==undefined&&+arr[i]!==0)return arr[i];}return null;}
+    function set(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+    function setH(id,v){var e=document.getElementById(id);if(e)e.innerHTML=v;}
+    function setCls(id,c){var e=document.getElementById(id);if(e)e.className='kpi-delta '+c;}
+    var lbl=rT?MS[rT.idx]:'—';
+    var pctPrev=rT&&prev(TOTAL_ALL,rT)?Math.round(rT.val/prev(TOTAL_ALL,rT)*100):null;
+    set('ovKpi_totalLabel','Виробництво · '+lbl);
+    set('ovKpi_total',rT?Math.round(rT.val).toLocaleString('uk'):'—');
+    set('ovKpi_totalSub','кг'+(pctPrev!==null?' · '+pctPrev+'% від '+MS[rT.idx-1]:''));
+    var d=_ovDelta(rT&&rT.val,prev(TOTAL_ALL,rT),' кг');setH('ovKpi_totalDelta',d.html);setCls('ovKpi_totalDelta',d.cls);
+    set('ovKpi_petg',rP?Math.round(rP.val).toLocaleString('uk'):'—');
+    d=_ovDelta(rP&&rP.val,prev(PETG_ALL,rP),' кг');setH('ovKpi_petgDelta',d.html);setCls('ovKpi_petgDelta',d.cls);
+    set('ovKpi_pla',rL?Math.round(rL.val).toLocaleString('uk'):'—');
+    d=_ovDelta(rL&&rL.val,prev(PLA_ALL,rL),' кг');setH('ovKpi_plaDelta',d.html);setCls('ovKpi_plaDelta',d.cls);
+    set('ovKpi_income',rI?Math.round(rI.val/1000).toLocaleString('uk')+' тис.':'—');
+    d=_ovDelta(rI&&rI.val,prev(FIN_INCOME,rI),'');setH('ovKpi_incomeDelta',d.html);setCls('ovKpi_incomeDelta',d.cls);
+    var pe=document.getElementById('ovKpi_profit');
+    if(pe&&rPr){pe.textContent=Math.round(rPr.val/1000).toLocaleString('uk')+' тис.';pe.style.color=rPr.val>=0?'var(--good)':'var(--bad)';}else if(pe)pe.textContent='—';
+    d=_ovDelta(rPr&&rPr.val,prev(FIN_PROFIT,rPr),'');setH('ovKpi_profitDelta',d.html);setCls('ovKpi_profitDelta',d.cls);
+    set('ovKpi_cost',rC?rC.val.toLocaleString('uk')+' ₴':'—');
+    d=_ovDelta(rC&&rC.val,prev(CPKG_PETG,rC),' ₴',true);setH('ovKpi_costDelta',d.html);setCls('ovKpi_costDelta',d.cls);
+  }
+  function _getFilteredOv(){
+    var idxs=typeof getFilteredIndices==='function'?getFilteredIndices():[];
+    if(!idxs.length) idxs=TOTAL_ALL.map(function(_,i){return i;});
+    return {labels:idxs.map(function(i){return MS[i];}),petg:idxs.map(function(i){return PETG_ALL[i];}),pla:idxs.map(function(i){return PLA_ALL[i];})};
   }
   try {
-  var _fo=_getFilteredOverview();
-  const _MS=_fo.labels;
-  const _PETG=_fo.petg;
-  const _PLA=_fo.pla;
-  const _TOT=_fo.tot;
-  const _NF=_fo.nf;
-  const _WASTE=_fo.waste;
-  const _W_PETG=_fo.wPetg;
-  const _W_PLA=_fo.wPla;
-  try { var _prodMonthChart=new Chart(document.getElementById('prodMonthChart'),{data:{labels:_MS,datasets:[
-    {type:'bar',label:'PETG',data:_PETG,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
-    {type:'bar',label:'PLA',data:_PLA,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-    {type:'line',label:'Тренд PETG',data:trendline(_PETG),borderColor:'rgba(37,99,235,.75)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]},
-    {type:'line',label:'Тренд PLA', data:trendline(_PLA), borderColor:'rgba(180,148,0,.75)', borderWidth:2,pointRadius:0,fill:false,tension:0.4,borderDash:[0]}
-  ]},options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'top',labels:{boxWidth:12,padding:12,
-          filter:i=>i.label!=='Тренд PETG'&&i.label!=='Тренд PLA'}},
-        tooltip:{callbacks:{label:ctx=>{
-          if(ctx.dataset.label.startsWith('Тренд'))return null;
-          const v=ctx.raw;if(!v&&v!==0)return null;
-          const t=(v/1000).toFixed(1);
-          const k=v.toLocaleString('uk');
-          return (ctx.dataset.label||'')+': '+t+' \u0442 / '+k+' \u043a\u0433';
-        }}}
-      },
-      scales:{x:GR,y:{...GR,stacked:false,beginAtZero:true,
-        max:(()=>{const v=[..._PETG,..._PLA].filter(x=>x!==null);
-          return v.length?Math.ceil(Math.max(...v)*1.15/1000)*1000:50000;})(),
-        ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+' \u0442':v+' \u043a\u0433'}
-      }}
-    }});
-  } catch(e){ console.warn('[chart:prodMonthChart]', e); }
-  if(typeof _prodMonthChart!=='undefined'&&_prodMonthChart) registerChartForFilter('prodMonthChart',_prodMonthChart,function(){
-    var idxs=getFilteredIndices();if(!idxs.length)return{labels:[],datasets:[{data:[]},{data:[]},{data:[]},{data:[]}]};
-    var lb=idxs.map(function(i){return MS[i];}); var pg=idxs.map(function(i){return PETG_ALL[i];}); var pl=idxs.map(function(i){return PLA_ALL[i];});
-    return{labels:lb,datasets:[{data:pg},{data:pl},{data:trendline(pg)},{data:trendline(pl)}]};
-  });
-  try { (function(){
-    // Показуємо всі місяці де є доход; витрати — null якщо відсутні (Chart.js пропустить стовпець)
-    const finIdx=FIN_INCOME.map((v,i)=>i).filter(i=>FIN_INCOME[i]!==null);
-    const finLabels=finIdx.map(i=>MS[i]);
-    const finInc=finIdx.map(i=>FIN_INCOME[i]);
-    const finExp=finIdx.map(i=>FIN_EXPENSES[i]); // може бути null для деяких місяців
-    new Chart(document.getElementById('finOverviewChart'),{type:'bar',data:{labels:finLabels,datasets:[
-      {label:'Доход',data:finInc,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
-      {label:'Витрати',data:finExp,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3,skipNull:true}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}},tooltip:{callbacks:{label:ctx=>{if(ctx.raw===null)return null;return ctx.dataset.label+': '+(ctx.raw/1e6).toFixed(2)+'M грн';}}}},scales:{x:GR,y:{...GR,ticks:{...GR.ticks,callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
-  })(); } catch(e){ console.warn('[chart:finOverviewChart]', e); }
-  try { var _nfOvChart=new Chart(document.getElementById('nfOvChart'),{type:'line',data:{labels:_MS,datasets:[
-    {label:'НФ %',data:_NF,borderColor:'#ff6b47',backgroundColor:'rgba(255,107,71,.1)',tension:.3,fill:true,pointBackgroundColor:_NF.map(v=>v&&v>10?'#ff5555':'#ff6b47'),pointRadius:4},
-    {label:'Ціль 5%',data:_MS.map(()=>5),borderColor:'rgba(22,163,74,0.6)',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Ціль 5%'?null:c.dataset.label+': '+c.raw+'%'}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:15,ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
-  } catch(e){ console.warn('[chart:nfOvChart]', e); }
-  if(typeof _nfOvChart!=='undefined'&&_nfOvChart) registerChartForFilter('nfOvChart',_nfOvChart,function(){
-    var idxs=getFilteredIndices();if(!idxs.length)return{labels:[],datasets:[{data:[]},{data:[]}]};
-    var lb=idxs.map(function(i){return MS[i];}); var nf=idxs.map(function(i){return NF_PCT[i];});
-    return{labels:lb,datasets:[{data:nf},{data:lb.map(function(){return 5;})}]};
-  });
-  try { var _wasteOvChart=new Chart(document.getElementById('wasteOvChart'),{type:'line',data:{labels:_MS,datasets:[
-    {label:'Відходи %',data:_WASTE,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',tension:.3,fill:true,pointBackgroundColor:'#2563eb',pointRadius:4},
-    {label:'Ціль 2.5%',data:_MS.map(()=>2.5),borderColor:'rgba(22,163,74,0.6)',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Ціль 2.5%'?null:c.dataset.label+': '+c.raw+'%'}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:15,ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
-  } catch(e){ console.warn('[chart:wasteOvChart]', e); }
-  if(typeof _wasteOvChart!=='undefined'&&_wasteOvChart) registerChartForFilter('wasteOvChart',_wasteOvChart,function(){
-    var idxs=getFilteredIndices();if(!idxs.length)return{labels:[],datasets:[{data:[]},{data:[]}]};
-    var lb=idxs.map(function(i){return MS[i];}); var w=idxs.map(function(i){return WASTE_PCT[i];});
-    return{labels:lb,datasets:[{data:w},{data:lb.map(function(){return 2.5;})}]};
-  });
-  try { new Chart(document.getElementById('costsDonut'),{type:'doughnut',data:{labels:['Сировина','Електроенергія','Адмін','Податки','ЗП','Інше'],datasets:[{data:[71.4,9.0,6.3,6.0,3.4,3.9],backgroundColor:['#2563eb','#2563eb','#ff6b47','#b47bff','#16a34a','#ff9999'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'60%',plugins:{legend:{display:false}}}});
-  } catch(e){ console.warn('[chart:costsDonut]', e); }
+    renderOvKpis();
+    var _fo=_getFilteredOv();
+    try {
+      var _prodMonthChart=safeCreateChart('prodMonthChart',{data:{labels:_fo.labels,datasets:[
+        {type:'bar',label:'PETG',data:_fo.petg,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
+        {type:'bar',label:'PLA',data:_fo.pla,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
+        {type:'line',label:'Тренд PETG',data:polyTrend(_fo.petg),borderColor:'rgba(37,99,235,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5},
+        {type:'line',label:'Тренд PLA',data:polyTrend(_fo.pla),borderColor:'rgba(180,148,0,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5}
+      ]},options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,filter:function(i){return !i.label.startsWith('Тренд');}}},
+          tooltip:{callbacks:{label:function(ctx){if(ctx.dataset.label.startsWith('Тренд'))return null;var v=ctx.raw;if(!v&&v!==0)return null;return ctx.dataset.label+': '+(v/1000).toFixed(1)+' т / '+v.toLocaleString('uk')+' кг';}}}},
+        scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+' т':v+' кг';}}}}}});
+      if(typeof registerChartForFilter==='function'&&_prodMonthChart){
+        registerChartForFilter('prodMonthChart',_prodMonthChart,function(){
+          var fo=_getFilteredOv(); renderOvKpis();
+          return{labels:fo.labels,datasets:[{data:fo.petg},{data:fo.pla},{data:polyTrend(fo.petg)},{data:polyTrend(fo.pla)}]};
+        });
+      }
+    } catch(e){ console.warn('[prodMonthChart]',e); }
   } catch(e){ console.error('[overview-init]', e); }
 });
 
@@ -1767,7 +1752,7 @@ async function loadProductionCharts(){
     const petgVals=allMonths.map(ym=>petg[ym]?Math.round(petg[ym]):null);
     const plaVals=allMonths.map(ym=>pla[ym]?Math.round(pla[ym]):null);
 
-    var _petgTabChart=new Chart(document.getElementById('petgChart'),{
+    var _petgTabChart=safeCreateChart('petgChart',{
       data:{labels,datasets:[
         {type:'bar',label:'PETG кг',data:petgVals,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(petgVals),borderColor:'rgba(71,180,255,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
@@ -1775,7 +1760,7 @@ async function loadProductionCharts(){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
         scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}
     });
-    var _plaTabChart=new Chart(document.getElementById('plaChart'),{
+    var _plaTabChart=safeCreateChart('plaChart',{
       data:{labels,datasets:[
         {type:'bar',label:'PLA кг',data:plaVals,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
         {type:'line',label:'Тренд',data:trendline(plaVals),borderColor:'rgba(200,180,0,.45)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true}
@@ -2287,8 +2272,8 @@ async function buildHeatmapWeekly(monthIdx){
 }
 
 function initQuality(){
-  var _nfDetChart=new Chart(document.getElementById('nfDetailChart'),{type:'line',data:{labels:filterLabels()||MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
-  var _wasteDetChart=new Chart(document.getElementById('wasteDetailChart'),{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
+  var _nfDetChart=safeCreateChart('nfDetailChart',{type:'line',data:{labels:filterLabels()||MS,datasets:[{label:'PETG НФ%',data:NF_PETG,borderColor:'#2563eb',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA НФ%',data:NF_PLA,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...NF_PCT,...NF_PETG,...NF_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.3/5)*5:40;})(),ticks:{...GR.ticks,callback:v=>v+'%'}}}}});
+  var _wasteDetChart=safeCreateChart('wasteDetailChart',{type:'line',data:{labels:MS,datasets:[{label:'PETG Брак%',data:W_PETG,borderColor:'#ff6b47',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true},{label:'PLA Брак%',data:W_PLA,borderColor:'#b47bff',backgroundColor:'transparent',tension:.3,pointRadius:5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{x:GR,y:{...GR,beginAtZero:true,max:(()=>{const v=[...W_PETG,...W_PLA].filter(x=>x!==null);return v.length?Math.max(Math.ceil(Math.max(...v)*1.4),3):10;})(),ticks:{...GR.ticks,callback:v=>v.toFixed(1)+'%'}}}}});
 }
 function initCosts(){
   (function(){
@@ -2296,7 +2281,7 @@ function initCosts(){
     const fi=FIN_INCOME.filter(v=>v!==null);
     const fe=FIN_EXPENSES.filter(v=>v!==null);
     const td=trendline(fi); const te=trendline(fe);
-    new Chart(document.getElementById('incExpChart'),{data:{labels:fl,datasets:[
+    safeCreateChart('incExpChart',{data:{labels:fl,datasets:[
       {type:'bar',label:'Доход',data:fi,backgroundColor:'rgba(79,255,176,.5)',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
       {type:'bar',label:'Витрати',data:fe,backgroundColor:'rgba(255,107,71,.5)',borderColor:'#ff6b47',borderWidth:1,borderRadius:3},
       {type:'line',label:'Тренд Доходу',data:td,borderColor:'rgba(79,255,176,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0},
@@ -2333,7 +2318,7 @@ function initCosts(){
         });
       });
     }};
-    new Chart(document.getElementById('costPerKgChart'),{
+    safeCreateChart('costPerKgChart',{
       plugins:[barLabelsPlugin],
       data:{labels:MS,datasets:[
         {type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
@@ -2382,7 +2367,7 @@ function setCostMonth(key,btn){
   tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;
   if(costCI) costCI.destroy();
   const BAR_COLORS=['#2563eb','#0ea5e9','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'];
-  costCI=new Chart(document.getElementById('costBreakChart'),{
+  costCI=safeCreateChart('costBreakChart',{
     type:'bar',
     data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:BAR_COLORS,borderWidth:0,borderRadius:3}]},
     options:{
@@ -2734,7 +2719,7 @@ function renderShiftView(key) {
 
   // Donut
   if (opShiftDonutCI) opShiftDonutCI.destroy();
-  opShiftDonutCI = new Chart(document.getElementById('opShiftDonut'), {
+  opShiftDonutCI = safeCreateChart('opShiftDonut', {
     type: 'doughnut',
     data: { labels: ['День','Ніч'], datasets: [{ data: [totalDay, totalNight], backgroundColor: ['#2563eb','#2563eb'], borderWidth: 0 }] },
     options: { responsive: false, cutout: '65%', plugins: { legend: { display: false } } }
@@ -2786,7 +2771,7 @@ function renderShiftView(key) {
 
   // Stacked bar chart
   if (opShiftCI) opShiftCI.destroy();
-  opShiftCI = new Chart(document.getElementById('opShiftChart'), {
+  opShiftCI = safeCreateChart('opShiftChart', {
     type: 'bar',
     data: {
       labels: data.map(d => d[0]),
@@ -2984,7 +2969,7 @@ function renderOpTotal(key) {
   });
 
   if (opCI) opCI.destroy();
-  opCI = new Chart(document.getElementById('opChart'), {
+  opCI = safeCreateChart('opChart', {
     type: 'bar',
     data: {
       labels: data.map(d => d[0]),
@@ -3284,7 +3269,7 @@ function lRenderResults(filtered, errors) {
 
 function initSales() {
   // Chart 1: Monthly sales stacked bar Опт + Роздріб
-  new Chart(document.getElementById('salesMonthChart'), {
+  safeCreateChart('salesMonthChart', {
     type: 'bar',
     data: {
       labels: SALES_LABELS,
@@ -3397,7 +3382,7 @@ function initSales() {
   })();
 
   // Chart 3: Top-10 products horizontal bar
-  new Chart(document.getElementById('topProductsChart'), {
+  safeCreateChart('topProductsChart', {
     type: 'bar',
     data:{
       labels: TOP_PRODUCTS_LABELS,
@@ -3427,7 +3412,7 @@ function initSales() {
   const allPriceLabels=[...new Set([...PETG_PRICE_LABELS,...PLA_PRICE_LABELS])];
   const petgAligned = allPriceLabels.map(l=>{ const i=PETG_PRICE_LABELS.indexOf(l); return i>=0?PETG_AVG_PRICE[i]:null; });
   const plaAligned  = allPriceLabels.map(l=>{ const i=PLA_PRICE_LABELS.indexOf(l);  return i>=0?PLA_AVG_PRICE[i]:null; });
-  new Chart(document.getElementById('avgPriceChart'), {
+  safeCreateChart('avgPriceChart', {
     data:{
       labels: allPriceLabels,
       datasets:[
@@ -3940,15 +3925,23 @@ async function buildUtilHeatmap(){
     }
     return 151; // абсолютний fallback ~151 кг/зміну
   }
+  // activeSince: перший місяць роботи → null до нього
+  const lineActiveSince = {};
+  lines.forEach(ln => { lineActiveSince[ln] = HM_DATA[ln].findIndex(v => v > 0); });
+
   const utilData = {};
   lines.forEach(ln => {
     const lineNorm = getLineNorm(ln);
+    const since = lineActiveSince[ln];
     utilData[ln] = HM_DATA[ln].map((kg, i) => {
+      if(since < 0 || i < since) return null;
       const maxKg = lineNorm * 2 * colDays[i];
       if(!maxKg) return 0;
       return Math.min(Math.round(kg / maxKg * 100), 999);
     });
   });
+  function activeAvg(vals){ const a=vals.filter(v=>v!==null); return a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null; }
+  function colAvg(lineArr,i){ const a=lineArr.map(ln=>utilData[ln][i]).filter(v=>v!==null); return a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null; }
 
   // Цвет по проценту (зелёный градиент)
   function utilColor(pct){
@@ -4172,22 +4165,24 @@ async function buildUtilHeatmapWeekly(monthIdx){
     if(!Object.keys(merged).length) throw new Error('No data');
 
     // Convert to %
-    function wkUtilColor(pct){
-      if(pct===null||!pct) return '#0d1117';
+    function utilColor(pct){
+      if(!pct) return '#0d1117';
       if(pct<20) return '#1a2a1a'; if(pct<40) return '#1a3d1a';
       if(pct<60) return '#1a5c1a'; if(pct<80) return '#1a7a1a';
       if(pct<100) return '#15803d'; return '#16a34a';
     }
-    function wkCell(pct, title, extraStyle){
-      if(pct===null){
-        return `<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18)${extraStyle||''}" title="${title}">–</div>`;
-      }
-      const bg=wkUtilColor(pct); const label=pct?pct+'%':'0%';
-      const kpi=pct>=80; const extra=extraStyle||'';
+    function textColor(pct){ return '#fff'; }
+    function utilCell(pct, title, extraStyle){
+      const bg = utilColor(pct);
+      const label = pct ? pct+'%' : '—';
+      const kpi = pct >= 80;
+      const extra = extraStyle || '';
       if(kpi){
-        return `<div class="hmap-cell" style="background:${bg};color:#fff;outline:2px solid #f59e0b;outline-offset:-2px;box-shadow:inset 0 0 0 1px rgba(251,191,36,.35);font-weight:700;position:relative${extra}" title="${title}">` +
+        return `<div class="hmap-cell" style="background:${bg};color:#fff;outline:2px solid #f59e0b;outline-offset:-2px;box-shadow:inset 0 0 0 1px rgba(251,191,36,.35),0 0 8px rgba(251,191,36,.25);font-weight:700;position:relative${extra}" title="${title}">` +
           `<span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:2px 2px 0 0"></span>` +
-          label+`<span style="position:absolute;bottom:2px;right:3px;font-size:8px;color:#fde68a;line-height:1">✦</span></div>`;
+          `${label}` +
+          `<span style="position:absolute;bottom:2px;right:3px;font-size:8px;color:#fde68a;line-height:1">✦</span>` +
+          `</div>`;
       }
       return `<div class="hmap-cell" style="background:${bg};color:#fff${extra}" title="${title}">${label}</div>`;
     }
@@ -4196,103 +4191,37 @@ async function buildUtilHeatmapWeekly(monthIdx){
     const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10']; const isLoc2=ln=>LOC2.includes(ln);
     const wLabels=weeks.map(w=>w.label); const wcols=weeks.length;
 
-    // Для кожної лінії обчислюємо % по тижнях і визначаємо activeSince
-    // Лінія вважається "запущеною" в цьому місяці якщо є хоч якийсь kg
-    // Якщо merged[ln] відсутній або всі нулі — лінія не запущена в цьому місяці
-    function getLineNormW(ln){
-      const lv=HM_NORMS&&HM_NORMS[ln]?Object.values(HM_NORMS[ln]).filter(v=>v>0):[];
-      if(lv.length) return lv.reduce((a,b)=>a+b,0)/lv.length;
-      const av=HM_NORMS&&Object.keys(HM_NORMS).length?Object.values(HM_NORMS).flatMap(v=>Object.values(v)).filter(v=>v>0):[];
-      return av.length?av.reduce((a,b)=>a+b,0)/av.length:151;
-    }
-    // Визначаємо чи лінія працювала в цьому місяці взагалі
-    // і з якого тижня (перший тиждень де kg > 0)
-    const linePct={}; // ln → [pct|null, ...]
-    sortedLines.forEach(ln=>{
-      const kgArr=merged[ln]||new Array(wcols).fill(0);
-      const lineN=getLineNormW(ln);
-      const totalKg=kgArr.reduce((a,b)=>a+b,0);
-      // Якщо нема даних зовсім — перевіряємо HM_DATA чи лінія вже запущена
-      // activeSince за місячними даними
-      const hmSince=HM_DATA[ln]?HM_DATA[ln].findIndex(v=>v>0):-1;
-      const monthYmIdx=HM_LABELS.findIndex((_,i)=>i===monthIdx);
-      // Якщо hmSince > monthIdx → лінія ще не запущена в цьому місяці
-      const notYetLaunched = hmSince>monthIdx || (hmSince<0 && totalKg===0);
-      if(notYetLaunched){
-        linePct[ln]=new Array(wcols).fill(null);
-        return;
-      }
-      // Перший тиждень з даними
-      const firstWk=kgArr.findIndex(v=>v>0);
-      linePct[ln]=kgArr.map((kg,i)=>{
-        if(firstWk>=0 && i<firstWk && kg===0) return null; // до запуску
-        const maxKg=lineN*2*weeks[i].days;
-        return maxKg?Math.min(Math.round(kg/maxKg*100),999):0;
-      });
-    });
-
-    // activeAvg: середнє тільки по не-null
-    function wkActiveAvg(arr){
-      const a=arr.filter(v=>v!==null);
-      return a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null;
-    }
-    // colAvg: по колонці (тижню) серед ліній — без null
-    function wkColAvg(lineArr,i){
-      const a=lineArr.map(ln=>linePct[ln][i]).filter(v=>v!==null);
-      return a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length):null;
-    }
-
     let html=`<div class="hmap-grid" style="grid-template-columns:120px repeat(${wcols},1fr) 80px;min-width:${100+wcols*120}px">`;
-    html+=`<div class="hmap-label" style="font-weight:700;font-size:10px;color:var(--accent)">ЛІНІЯ</div>`;
+    html+=`<div class="hmap-label" style="font-weight:700;color:var(--accent)">ЛІНІЯ</div>`;
     wLabels.forEach(l=>{html+=`<div class="hmap-label" style="justify-content:center;font-size:10px">${l}</div>`;});
-    html+=`<div class="hmap-label" style="justify-content:center;font-weight:600;font-size:10px;color:var(--accent)">СЕРЕДНЄ</div>`;
-    let prevLoc=null; let prevLocLines=[];
-    function renderWkLocRow(locLines){
-      for(let i=0;i<wcols;i++){
-        const ca=wkColAvg(locLines,i);
-        html+=ca!==null
-          ?`<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.85">${ca}%</div>`
-          :`<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
-      }
-      const las=locLines.map(l=>wkActiveAvg(linePct[l])).filter(v=>v!==null);
-      const ga=las.length?Math.round(las.reduce((a,b)=>a+b,0)/las.length):null;
-      html+=ga!==null
-        ?`<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${ga}%</div>`
-        :`<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
-    }
+    html+=`<div class="hmap-label" style="justify-content:center;font-weight:600;color:var(--accent)">СЕРЕДНЄ</div>`;
+    let prevLoc=null;
     sortedLines.forEach(ln=>{
       const loc=isLoc2(ln)?'ЛОК.2':'ЛОК.1';
       if(loc!==prevLoc){
-        if(prevLoc!==null){
-          html+=`<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
-          renderWkLocRow(prevLocLines);
-        }
-        html+=`<div style="grid-column:1/-1;padding:3px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:3px 0">${loc}</div>`;
-        prevLoc=loc; prevLocLines=[];
+        html+=`<div style="grid-column:1/-1;padding:4px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:4px 0">${loc}</div>`;
+        prevLoc=loc;
       }
-      prevLocLines.push(ln);
-      const pArr=linePct[ln];
-      const avg=wkActiveAvg(pArr);
-      html+=`<div class="hmap-label" style="padding-left:8px;font-size:10px">${ln}</div>`;
-      pArr.forEach((pct,i)=>{ html+=wkCell(pct,`${ln} · ${wLabels[i]}: ${pct!==null?pct+'%':'не запущена'}`,''); });
-      if(avg===null){ html+=`<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18);font-weight:700">–</div>`; }
-      else { html+=wkCell(avg,`${ln} · середнє: ${avg}%`,';font-weight:700'); }
+      const kgArr=merged[ln]||new Array(wcols).fill(0);
+      const _lineVals=HM_NORMS&&HM_NORMS[ln]?Object.values(HM_NORMS[ln]).filter(v=>v>0):[];
+      const _allNorms=HM_NORMS&&Object.keys(HM_NORMS).length?Object.values(HM_NORMS).flatMap(v=>Object.values(v)).filter(v=>v>0):[];
+      const lineN=_lineVals.length?_lineVals.reduce((a,b)=>a+b,0)/_lineVals.length:(_allNorms.length?_allNorms.reduce((a,b)=>a+b,0)/_allNorms.length:151);
+      const pctArr=kgArr.map((kg,i)=>{const maxKg=lineN*2*weeks[i].days;return maxKg?Math.min(Math.round(kg/maxKg*100),999):0;});
+      const avg=Math.round(pctArr.reduce((a,b)=>a+b,0)/wcols);
+      html+=`<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
+      pctArr.forEach((pct,i)=>{
+        html+=utilCell(pct, `${ln} · ${wLabels[i]}: ${pct}%`, '');
+      });
+      html+=utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700');
     });
-    if(prevLoc){
-      html+=`<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
-      renderWkLocRow(prevLocLines);
-    }
     html+=`<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
-    html+=`<div class="hmap-label" style="color:#fff;font-size:11px;font-weight:700">ВСЬОГО</div>`;
+    html+=`<div class="hmap-label" style="color:#fff;font-size:13px;font-weight:700">ВСЬОГО</div>`;
     for(let i=0;i<wcols;i++){
-      const ca=wkColAvg(sortedLines,i);
-      html+=ca!==null
-        ?`<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${ca}%</div>`
-        :`<div class="hmap-cell" style="background:#1e2535;color:rgba(255,255,255,.3);font-size:11px;border-top:1px solid rgba(255,255,255,.15)">–</div>`;
+      const avg=sortedLines.reduce((s,l)=>s+(()=>{const kg=merged[l]?.[i]||0;const ln2=HM_NORMS&&HM_NORMS[l]?Object.values(HM_NORMS[l]).filter(v=>v>0).reduce((a,b,_,ar)=>a+b/ar.length,0)||norm:norm;const max=ln2*2*weeks[i].days;return max?Math.min(Math.round(kg/max*100),999):0;})(),0)/sortedLines.length;
+      html+=`<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(avg)}%</div>`;
     }
-    const allAvgs=sortedLines.map(l=>wkActiveAvg(linePct[l])).filter(v=>v!==null);
-    const grandA=allAvgs.length?Math.round(allAvgs.reduce((a,b)=>a+b,0)/allAvgs.length):0;
-    html+=`<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${grandA}%</div>`;
+    const ga=sortedLines.reduce((s,l)=>{const kgA=merged[l]||[];const pa=kgA.map((kg,i)=>{const max=norm*2*weeks[i].days;return max?Math.min(Math.round(kg/max*100),999):0;});return s+pa.reduce((a,b)=>a+b,0)/wcols;},0)/sortedLines.length;
+    html+=`<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(ga)}%</div>`;
     html+='</div>';
     wrap.innerHTML=html;
   } catch(e){
