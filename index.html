@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 05:35 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 05:42 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -355,63 +355,89 @@
 <!-- ══════════════ PRODUCTION ══════════════ -->
 <div id="tab-production" class="tab-content" data-tab-id="production">
   <div class="section-title">Динаміка виробництва</div>
-  <div class="card" style="margin-bottom:14px">
+
+  <!-- ── Верхній ряд: Завантаженість % зліва (span 2), PETG/PLA і День/Ніч справа ── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
+
+    <!-- ЛІВО: Завантаженість % — займає обидва рядки -->
+    <div class="card" style="grid-row:span 2">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
+        <div>
+          <div class="card-title" id="utilTitle">Завантаженість ліній · %</div>
+          <div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму</div>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
+          <div id="utilMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
+            <div style="width:50px;height:6px;border-radius:3px;background:linear-gradient(to right,#131720,#16a34a)"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:4px">
+        <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">⟳ Завантаження норм...</span>
+      </div>
+      <div id="utilHeatmapWrap"></div>
+      <div style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted)">
+        ℹ Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%
+      </div>
+    </div>
+
+    <!-- ПРАВО ЗВЕРХУ: PETG + PLA -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div></div>
+        <div class="cw"><canvas id="petgChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · крива = тренд</div></div></div>
+        <div class="cw"><canvas id="plaChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ПРАВО ЗНИЗУ: День vs Ніч -->
+    <div class="card">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
+        <div>
+          <div class="card-title">День vs Ніч</div>
+          <div class="card-subtitle">Загальний обсяг по змінах</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ЛІНІЯ</span>
+          <select id="shiftLineFilter" onchange="renderShiftData()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
+            <option value="all">Всі лінії</option>
+          </select>
+        </div>
+      </div>
+      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:160px">
+        <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Нижній ряд: Теплова карта кг ── -->
+  <div class="card">
     <div class="card-header">
       <div><div class="card-title" id="hmTitle">Теплова карта: Лінія × Місяць</div><div class="card-subtitle" id="hmSubtitle">Реальний обсяг з даних · кг/місяць</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0 кг</span>
-        <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
+        <div style="width:70px;height:7px;border-radius:3px;background:linear-gradient(to right,#131720,#47b4ff)"></div>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">~12 800 кг</span>
-        <div id="hmMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap;margin-left:8px">
-          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
+        <div id="hmMonthBtns" style="display:flex;gap:3px;flex-wrap:wrap;margin-left:8px">
+          <button class="month-btn active" onclick="onHmMonthChange('',this)" style="font-size:9px;padding:2px 7px">ВСІ</button>
         </div>
       </div>
     </div>
     <div id="heatmapWrap"></div>
-    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
+    <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);line-height:1.8">
       ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
     </div>
   </div>
-  <div class="grid-2">
-    <div class="card"><div class="card-header"><div><div class="card-title">PETG — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд</div></div></div><div class="cw"><canvas id="petgChart"></canvas></div></div>
-    <div class="card"><div class="card-header"><div><div class="card-title">PLA — обсяг по місяцях</div><div class="card-subtitle">кг · пунктир = тренд</div></div></div><div class="cw"><canvas id="plaChart"></canvas></div></div>
-  </div>
-  <div class="grid-2">
-    <div class="card"><div class="card-header"><div><div class="card-title">Завантаженість ліній</div><div class="card-subtitle">Загальний кг за весь період · всі лінії</div></div></div><div class="cw"><canvas id="lineChart"></canvas></div></div>
-    <div class="card"><div class="card-header"><div><div class="card-title">День vs Ніч</div><div class="card-subtitle">Загальний обсяг по змінах</div></div></div>
-      <div id="shiftWrap" style="display:flex;align-items:center;justify-content:center;height:230px;gap:40px">
-        <div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⟳ завантаження...</div>
-      </div>
-    </div>
-  </div>
 
-  <!-- ══ UTILIZATION HEATMAP ══ -->
-  <div class="card" style="margin-top:14px">
-    <div class="card-header" style="flex-wrap:wrap;gap:8px">
-      <div>
-        <div class="card-title" id="utilTitle">Завантаженість ліній · %</div>
-        <div class="card-subtitle" id="utilSubtitle">% від теоретичного максимуму · 12 год × 2 зміни × днів у місяці × норма кг/год</div>
-      </div>
-      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1">
-        <div id="utilMonthBtns" style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="month-btn active" onclick="onUtilMonthChange('',this)" style="font-size:9px;padding:3px 8px">ВСІ</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">0%</span>
-          <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(to right,#131720,#16a34a)"></div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
-        </div>
-      </div>
-    </div>
-    <div style="margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">⟳ Завантаження норм...</span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">Норми беруться з листа НОРМЫ · Розрахунок: факт кг ÷ (норма × 2 × днів) × 100%</span>
-    </div>
-    <div id="utilHeatmapWrap"></div>
-    <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9">
-      ℹ Розрахунок: (фактичний кг/місяць) ÷ (норма × 2 × дні_в_місяці) × 100%
-    </div>
-  </div>
 </div>
 
 <!-- ══════════════ QUALITY ══════════════ -->
@@ -3940,45 +3966,38 @@ async function buildUtilHeatmap(){
     }
     return 151; // абсолютний fallback ~151 кг/зміну
   }
-  // Для кожної лінії знаходимо перший місяць з даними (activeSince index)
-  // Місяці ДО activeSince вважаються "не запущена" → null (не враховується в середніх)
-  const lineActiveSince = {}; // ln → перший індекс з kg > 0
+  // ── activeSince: перший місяць роботи лінії ──────────────────
+  // Місяці ДО нього → null (виключаються з усіх середніх і підсумків)
+  const lineActiveSince = {};
   lines.forEach(ln => {
-    let first = -1;
-    for(let i=0;i<HM_DATA[ln].length;i++){
-      if(HM_DATA[ln][i] > 0){ first=i; break; }
-    }
-    lineActiveSince[ln] = first; // -1 = жодних даних
+    lineActiveSince[ln] = HM_DATA[ln].findIndex(v => v > 0);
   });
 
-  const utilData = {}; // значення у %, null = "ще не запущена"
+  const utilData = {};
   lines.forEach(ln => {
     const lineNorm = getLineNorm(ln);
-    const since = lineActiveSince[ln];
+    const since = lineActiveSince[ln]; // -1 = жодних даних
     utilData[ln] = HM_DATA[ln].map((kg, i) => {
-      if(since < 0 || i < since) return null; // лінія ще не запущена
+      if(since < 0 || i < since) return null; // ще не запущена
       const maxKg = lineNorm * 2 * colDays[i];
       if(!maxKg) return 0;
       return Math.min(Math.round(kg / maxKg * 100), 999);
     });
   });
 
-  // Середнє тільки по активних місяцях (не null)
+  // Середнє тільки по не-null місяцях
   function activeAvg(vals){
-    const active = vals.filter(v => v !== null);
-    if(!active.length) return null;
-    return Math.round(active.reduce((a,b)=>a+b,0) / active.length);
+    const a = vals.filter(v => v !== null);
+    return a.length ? Math.round(a.reduce((s,v)=>s+v,0)/a.length) : null;
   }
-  // Середнє по колонці (місяцю) для набору ліній — виключаємо null
-  function colAvg(lineArr, colIdx){
-    const active = lineArr.map(ln=>utilData[ln][colIdx]).filter(v=>v!==null);
-    if(!active.length) return null;
-    return Math.round(active.reduce((a,b)=>a+b,0)/active.length);
+  // Середнє по колонці серед ліній — виключаємо null
+  function colAvg(lineArr, i){
+    const a = lineArr.map(ln=>utilData[ln][i]).filter(v=>v!==null);
+    return a.length ? Math.round(a.reduce((s,v)=>s+v,0)/a.length) : null;
   }
 
-  // Цвет по проценту (зелёный градиент)
   function utilColor(pct){
-    if(!pct) return '#0d1117';
+    if(pct===null||!pct) return '#0d1117';
     if(pct < 20) return '#1a2a1a';
     if(pct < 40) return '#1a3d1a';
     if(pct < 60) return '#1a5c1a';
@@ -3986,22 +4005,18 @@ async function buildUtilHeatmap(){
     if(pct < 100) return '#15803d';
     return '#16a34a';
   }
-  function textColor(pct){ return '#fff'; }
-  // КПІ-рендер: ≥80% — золотий фон-смужка + зірочка
   function utilCell(pct, title, extraStyle){
     if(pct === null){
-      // Лінія ще не запущена — порожня чорна клітинка без %
-      return `<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.15)${extraStyle||''}" title="${title}">–</div>`;
+      return `<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18)${extraStyle||''}" title="${title}">–</div>`;
     }
     const bg = utilColor(pct);
-    const label = pct ? pct+'%' : '—';
+    const label = pct ? pct+'%' : '0%';
     const kpi = pct >= 80;
     const extra = extraStyle || '';
     if(kpi){
-      // Яскравий gold overlay + товстий outline + зірка
-      return `<div class="hmap-cell" style="background:${bg};color:#fff;outline:2px solid #f59e0b;outline-offset:-2px;box-shadow:inset 0 0 0 1px rgba(251,191,36,.35),0 0 8px rgba(251,191,36,.25);font-weight:700;position:relative${extra}" title="${title}">` +
+      return `<div class="hmap-cell" style="background:${bg};color:#fff;outline:2px solid #f59e0b;outline-offset:-2px;box-shadow:inset 0 0 0 1px rgba(251,191,36,.35);font-weight:700;position:relative${extra}" title="${title}">` +
         `<span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:2px 2px 0 0"></span>` +
-        `${label}` +
+        label +
         `<span style="position:absolute;bottom:2px;right:3px;font-size:8px;color:#fde68a;line-height:1">✦</span>` +
         `</div>`;
     }
@@ -4010,88 +4025,76 @@ async function buildUtilHeatmap(){
 
   function lineNum(ln){ const m=ln.match(/\d+/); return m?parseInt(m[0]):999; }
   const sortedLines = [...lines].sort((a,b)=>lineNum(a)-lineNum(b));
-
-  // Определяем локации (те же что в HM_DATA — по наличию данных)
-  const LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
   const LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
   const isLoc2 = ln => LOC2.includes(ln);
 
-  const totalCols = cols + 2; // лейбл + данные + итого
   let html = `<div class="hmap-grid" style="grid-template-columns:120px repeat(${cols},1fr) 80px;min-width:${100+cols*80}px">`;
 
   // Header
-  html += `<div class="hmap-label" style="font-weight:700;color:var(--accent)">ЛІНІЯ</div>`;
-  HM_LABELS.forEach(l => { html += `<div class="hmap-label" style="justify-content:center;font-weight:600">${l}</div>`; });
-  html += `<div class="hmap-label" style="justify-content:center;font-weight:600;color:var(--accent)">СЕРЕДНЄ</div>`;
+  html += `<div class="hmap-label" style="font-weight:700;font-size:10px;color:var(--accent)">ЛІНІЯ</div>`;
+  HM_LABELS.forEach(l => { html += `<div class="hmap-label" style="justify-content:center;font-weight:600;font-size:10px">${l}</div>`; });
+  html += `<div class="hmap-label" style="justify-content:center;font-weight:600;font-size:10px;color:var(--accent)">СЕРЕДНЄ</div>`;
 
-  // Рендеринг по локациям
+  // Допоміжна функція рядку локації-підсумку
+  function renderLocSummary(locLines, locColor){
+    for(let i=0;i<cols;i++){
+      const ca = colAvg(locLines, i);
+      html += ca!==null
+        ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:${locColor};font-size:9px;opacity:.85">${ca}%</div>`
+        : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
+    }
+    const ga = activeAvg(locLines.flatMap(l=>utilData[l].filter(v=>v!==null)));
+    // Краще: avg of line avgs
+    const lineAvgs = locLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+    const ga2 = lineAvgs.length ? Math.round(lineAvgs.reduce((a,b)=>a+b,0)/lineAvgs.length) : null;
+    html += ga2!==null
+      ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:${locColor};font-size:9px;font-weight:700">${ga2}%</div>`
+      : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
+  }
+
   let prevLoc = null;
+  let prevLocLines = [];
   sortedLines.forEach(ln => {
     const loc = isLoc2(ln) ? 'ЛОК.2' : 'ЛОК.1';
     if(loc !== prevLoc){
       if(prevLoc !== null){
-        // Итого по предыдущей локации — тільки активні місяці/лінії
         html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
-        const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
-        for(let i=0;i<cols;i++){
-          const ca = colAvg(locLines, i);
-          if(ca === null){
-            html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.3);font-size:9px">–</div>`;
-          } else {
-            html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${ca}%</div>`;
-          }
-        }
-        // Загальне середнє по локації — avg of line avgs (тільки активні)
-        const locAvgs = locLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
-        const overallAvg = locAvgs.length ? Math.round(locAvgs.reduce((a,b)=>a+b,0)/locAvgs.length) : null;
-        html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${overallAvg!==null?overallAvg+'%':'–'}</div>`;
+        renderLocSummary(prevLocLines, '#0ea5e9');
       }
-      html += `<div style="grid-column:1/-1;padding:4px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:4px 0">${loc}</div>`;
+      html += `<div style="grid-column:1/-1;padding:3px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:3px 0">${loc}</div>`;
       prevLoc = loc;
+      prevLocLines = [];
     }
-    const vals = utilData[ln];
-    const avg = activeAvg(vals);
-    const avgLabel = avg !== null ? avg+'%' : '–';
-    html += `<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
-    vals.forEach((pct,i) => {
-      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct !== null ? pct+'%' : 'не запущена'}`, '');
+    prevLocLines.push(ln);
+    // Середнє рядку — тільки активні місяці
+    const avg = activeAvg(utilData[ln]);
+    html += `<div class="hmap-label" style="padding-left:8px;font-size:10px">${ln}</div>`;
+    utilData[ln].forEach((pct,i) => {
+      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct!==null?pct+'%':'не запущена'}`, '');
     });
-    // Клітинка СЕРЕДНЄ для рядку
-    if(avg === null){
-      html += `<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.15);font-weight:700">–</div>`;
+    if(avg===null){
+      html += `<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18);font-weight:700">–</div>`;
     } else {
-      html += utilCell(avg, `${ln} · середнє: ${avgLabel}`, ';font-weight:700');
+      html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700');
     }
   });
-
-  // Итого по последней локации — тільки активні
+  // Підсумок останньої локації
   if(prevLoc){
     html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
-    const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
-    for(let i=0;i<cols;i++){
-      const ca = colAvg(locLines, i);
-      if(ca === null){
-        html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.3);font-size:9px">–</div>`;
-      } else {
-        html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${ca}%</div>`;
-      }
-    }
-    const locAvgs2 = locLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
-    const overallAvg2 = locAvgs2.length ? Math.round(locAvgs2.reduce((a,b)=>a+b,0)/locAvgs2.length) : null;
-    html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${overallAvg2!==null?overallAvg2+'%':'–'}</div>`;
+    renderLocSummary(prevLocLines, '#0ea5e9');
   }
 
-  // ИТОГО по всем
+  // ВСЬОГО — тільки активні лінії/місяці
   html += `<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
   html += `<div class="hmap-label" style="color:#fff;font-size:11px;font-weight:700">ВСЬОГО</div>`;
   for(let i=0;i<cols;i++){
     const ca = colAvg(sortedLines, i);
-    const lbl = ca !== null ? ca+'%' : '–';
-    html += `<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${lbl}</div>`;
+    html += ca!==null
+      ? `<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${ca}%</div>`
+      : `<div class="hmap-cell" style="background:#1e2535;color:rgba(255,255,255,.3);font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">–</div>`;
   }
-  // Загальне середнє — avg of line avgs (активних)
-  const lineAvgs = sortedLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
-  const grandAvg = lineAvgs.length ? Math.round(lineAvgs.reduce((a,b)=>a+b,0)/lineAvgs.length) : 0;
+  const allLineAvgs = sortedLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+  const grandAvg = allLineAvgs.length ? Math.round(allLineAvgs.reduce((a,b)=>a+b,0)/allLineAvgs.length) : 0;
   html += `<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${grandAvg}%</div>`;
   html += '</div>';
 
