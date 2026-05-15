@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 10:37 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 10:55 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1839,26 +1839,92 @@ async function loadShiftData(){
       }
       return {day,night};
     }
-    const s1=calcShifts(r1),s2=calcShifts(r2);
-    const dayKg=Math.round(s1.day+s2.day),nightKg=Math.round(s1.night+s2.night);
-    const total=dayKg+nightKg; if(total===0) throw new Error('no shift data');
-    const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
-    const fmt=v=>v.toLocaleString('uk');
-    wrap.innerHTML=`
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${dayPct}%</div>
-      </div>
-      <div style="width:1px;height:70px;background:var(--border)"></div>
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${nightPct}%</div>
-      </div>`;
+    // Збираємо дані по кожній лінії для select-фільтра
+    function calcShiftsByLine(rows){
+      if(!rows||rows.length<3) return {};
+      let ci_s=1,ci_w=7,ci_c=-1,ci_l=4,ds=1;
+      for(let hi=0;hi<Math.min(3,rows.length);hi++){
+        const h=rows[hi].map(c=>String(c||'').toLowerCase().trim());
+        const si=h.findIndex(c=>c==='смена'||c==='зміна'||c.includes('зміна')||c.includes('смена'));
+        const wi=h.findIndex(c=>c.includes('вес кг')||c.includes('вага кг'));
+        const ci=h.findIndex(c=>c==='вклад %'||c.includes('вклад %'));
+        const li=h.findIndex(c=>c==='лінія'||c==='линия');
+        if(si>=0){ci_s=si;ds=hi+1;} if(wi>=0)ci_w=wi; if(ci>=0)ci_c=ci; if(li>=0)ci_l=li;
+      }
+      const byLine={}, seen=new Set();
+      let curD=null,curS=null;
+      const isA=ci_c>=0;
+      for(let i=ds;i<rows.length;i++){
+        const row=rows[i];
+        const dr=row[0]; if(dr){const d=lParseDate(String(dr));if(d)curD=d;}
+        const sr=String(row[ci_s]||'').trim().toLowerCase(); if(sr)curS=sr;
+        if(!curD||!curS) continue;
+        const lr=String(row[ci_l]||'').toUpperCase().trim(); if(!lr) continue;
+        const nm=lr.match(/\d+/); if(!nm) continue;
+        const ln='ЛІНІЯ '+parseInt(nm[0]);
+        const key=curD+'|'+curS+'|'+ln;
+        if(seen.has(key)) continue; seen.add(key);
+        const w=parseFloat(String(row[ci_w]||'').replace(',','.')); if(isNaN(w)||w<=0) continue;
+        let kg=w;
+        if(isA&&ci_c>=0){const c=parseFloat(String(row[ci_c]||'').replace(',','.'));if(!isNaN(c)&&c>0)kg=w/(c>1.5?c/100:c);}
+        if(!byLine[ln])byLine[ln]={day:0,night:0};
+        if(curS.includes('ден')||curS.includes('day'))byLine[ln].day+=kg;
+        else if(curS.includes('ніч')||curS.includes('ноч')||curS.includes('night'))byLine[ln].night+=kg;
+      }
+      return byLine;
+    }
+    window._shiftByLine={};
+    const bl=calcShiftsByLine(r1);
+    const lineNames=new Set();
+    Object.entries(bl).forEach(([ln,v])=>{
+      if(!window._shiftByLine[ln])window._shiftByLine[ln]={day:0,night:0};
+      window._shiftByLine[ln].day+=v.day; window._shiftByLine[ln].night+=v.night;
+      lineNames.add(ln);
+    });
+    const sel=document.getElementById('shiftLineFilter');
+    if(sel&&sel.options.length<=1){
+      [...lineNames].sort((a,b)=>parseInt(a.match(/\d+/)||0)-parseInt(b.match(/\d+/)||0))
+        .forEach(ln=>{const o=document.createElement('option');o.value=ln;o.textContent=ln;sel.appendChild(o);});
+    }
+    renderShiftData();
   }catch(e){
-    if(wrap) wrap.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
+    const ew=document.getElementById('shiftWrap');
+    if(ew)ew.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
   }
+}
+function renderShiftData(){
+  const wrap=document.getElementById('shiftWrap'); if(!wrap) return;
+  const sel=document.getElementById('shiftLineFilter');
+  const line=sel?sel.value:'all';
+  const bl=window._shiftByLine||{};
+  let d=0,n=0;
+  if(line==='all'){Object.values(bl).forEach(v=>{d+=v.day;n+=v.night;});}
+  else{const v=bl[line]||{day:0,night:0};d=v.day;n=v.night;}
+  d=Math.round(d); n=Math.round(n);
+  const tot=d+n;
+  if(tot===0){wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">Дані відсутні</div>';return;}
+  const dp=(d/tot*100).toFixed(1),np=(n/tot*100).toFixed(1);
+  const fmt=v=>v.toLocaleString('uk');
+  const bw=Math.round(d/tot*100);
+  wrap.innerHTML=`<div style="width:100%;padding:0 20px 16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent);line-height:1">${fmt(d)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ · ${dp}%</div>
+      </div>
+      <div style="display:flex;align-items:center"><div style="width:1px;height:60px;background:var(--border)"></div></div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent2);line-height:1">${fmt(n)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ · ${np}%</div>
+      </div>
+    </div>
+    <div style="height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)">
+      <div style="height:100%;width:${bw}%;background:var(--accent);transition:width .4s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">
+      <span>День ${dp}%</span><span>Ніч ${np}%</span>
+    </div>
+  </div>`;
 }
 async function buildHeatmap(){
   // If generate.py didn't fill HM data, load from Google Sheets directly
@@ -4029,13 +4095,16 @@ async function buildUtilHeatmap(){
 
   // ИТОГО по всем
   html += `<div style="grid-column:1/-1;height:1px;background:rgba(255,255,255,.1);margin:3px 0"></div>`;
-  html += `<div class="hmap-label" style="color:#fff;font-size:13px;font-weight:700">ВСЬОГО</div>`;
+  html += `<div class="hmap-label" style="color:#fff;font-size:11px;font-weight:700">ВСЬОГО</div>`;
   for(let i=0;i<cols;i++){
-    const avg = sortedLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/sortedLines.length;
-    html += `<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(avg)}%</div>`;
+    const ca=colAvg(sortedLines,i);
+    html += ca!==null
+      ? `<div class="hmap-cell" style="background:#1e2535;color:#fff;font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${ca}%</div>`
+      : `<div class="hmap-cell" style="background:#1e2535;color:rgba(255,255,255,.3);font-size:11px;border-top:1px solid rgba(255,255,255,.15)">–</div>`;
   }
-  const grandAvg = sortedLines.reduce((s,l)=>s+utilData[l].reduce((a,b)=>a+b,0)/cols,0)/sortedLines.length;
-  html += `<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:12px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${Math.round(grandAvg)}%</div>`;
+  const allAvgs=sortedLines.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+  const grandAvg=allAvgs.length?Math.round(allAvgs.reduce((a,b)=>a+b,0)/allAvgs.length):0;
+  html += `<div class="hmap-cell" style="background:#1e2535;color:var(--good);font-size:11px;font-weight:700;border-top:1px solid rgba(255,255,255,.15)">${grandAvg}%</div>`;
   html += '</div>';
 
   wrap.innerHTML = html;
