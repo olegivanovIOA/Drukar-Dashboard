@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 12:09 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 15.05.2026 12:16 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1889,7 +1889,7 @@ async function loadShiftData(){
     renderShiftData();
   }catch(e){
     const ew=document.getElementById('shiftWrap');
-    if(ew)ew.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
+    if(ew)ew.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:IBM Plex Mono,monospace">⚠ '+e.message+'</div>';
   }
 }
 function renderShiftData(){
@@ -1902,7 +1902,7 @@ function renderShiftData(){
   else{const v=bl[line]||{day:0,night:0};d=v.day;n=v.night;}
   d=Math.round(d); n=Math.round(n);
   const tot=d+n;
-  if(tot===0){wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">Дані відсутні</div>';return;}
+  if(tot===0){wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:IBM Plex Mono,monospace">Дані відсутні</div>';return;}
   const dp=(d/tot*100).toFixed(1),np=(n/tot*100).toFixed(1);
   const fmt=v=>v.toLocaleString('uk');
   const bw=Math.round(d/tot*100);
