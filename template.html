@@ -4052,38 +4052,50 @@ async function buildUtilHeatmap(){
     const loc = isLoc2(ln) ? 'ЛОК.2' : 'ЛОК.1';
     if(loc !== prevLoc){
       if(prevLoc !== null){
-        // Итого по предыдущей локации
-        html += `<div class="hmap-label" style="color:#0ea5e9;font-size:11px;padding-left:4px">∑ ${prevLoc}</div>`;
-        const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+        // ∑ Локація — тільки активні лінії/місяці
+        const locLinesPrev = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+        html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
         for(let i=0;i<cols;i++){
-          const avg = locLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/locLines.length;
-          html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${Math.round(avg)}%</div>`;
+          const ca=colAvg(locLinesPrev,i);
+          html += ca!==null
+            ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${ca}%</div>`
+            : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
         }
-        const overallAvg = locLines.reduce((s,l)=>s+utilData[l].reduce((a,b)=>a+b,0)/cols,0)/locLines.length;
-        html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${Math.round(overallAvg)}%</div>`;
+        const las=locLinesPrev.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+        const oa=las.length?Math.round(las.reduce((a,b)=>a+b,0)/las.length):null;
+        html += oa!==null
+          ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${oa}%</div>`
+          : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
       }
       html += `<div style="grid-column:1/-1;padding:4px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:4px 0">${loc}</div>`;
       prevLoc = loc;
     }
+    // Рядок лінії — середнє тільки по активних місяцях
     const vals = utilData[ln];
-    const avg = Math.round(vals.reduce((a,b)=>a+b,0)/cols);
+    const avg = activeAvg(vals);
     html += `<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
     vals.forEach((pct,i) => {
-      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct}%`, '');
+      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct!==null?pct+'%':'не запущена'}`, '');
     });
-    html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700');
+    if(avg===null){ html+=`<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18);font-weight:700">–</div>`; }
+    else { html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700'); }
   });
 
-  // Итого по последней локации
+  // ∑ Остання локація
   if(prevLoc){
-    html += `<div class="hmap-label" style="color:#0ea5e9;font-size:11px;padding-left:4px">∑ ${prevLoc}</div>`;
-    const locLines = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+    const locLinesLast = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+    html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
     for(let i=0;i<cols;i++){
-      const avg = locLines.length ? locLines.reduce((s,l)=>s+(utilData[l][i]||0),0)/locLines.length : 0;
-      html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${Math.round(avg)}%</div>`;
+      const ca=colAvg(locLinesLast,i);
+      html += ca!==null
+        ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;opacity:.8">${ca}%</div>`
+        : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
     }
-    const overallAvg = locLines.length ? locLines.reduce((s,l)=>s+utilData[l].reduce((a,b)=>a+b,0)/cols,0)/locLines.length : 0;
-    html += `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${Math.round(overallAvg)}%</div>`;
+    const las2=locLinesLast.map(l=>activeAvg(utilData[l])).filter(v=>v!==null);
+    const oa2=las2.length?Math.round(las2.reduce((a,b)=>a+b,0)/las2.length):null;
+    html += oa2!==null
+      ? `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:#0ea5e9;font-size:9px;font-weight:700">${oa2}%</div>`
+      : `<div class="hmap-cell" style="background:rgba(255,255,255,.03);color:rgba(14,165,233,.25);font-size:9px">–</div>`;
   }
 
   // ИТОГО по всем
