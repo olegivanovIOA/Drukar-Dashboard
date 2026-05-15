@@ -1636,16 +1636,16 @@ window.addEventListener('DOMContentLoaded',()=>{
       var _prodMonthChart=safeCreateChart('prodMonthChart',{data:{labels:_fo.labels,datasets:[
         {type:'bar',label:'PETG',data:_fo.petg,backgroundColor:'rgba(71,180,255,.75)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
         {type:'bar',label:'PLA',data:_fo.pla,backgroundColor:'rgba(200,180,0,.7)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-        {type:'line',label:'Тренд PETG',data:polyTrend(_fo.petg),borderColor:'rgba(37,99,235,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5},
-        {type:'line',label:'Тренд PLA',data:polyTrend(_fo.pla),borderColor:'rgba(180,148,0,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5}
+        {type:'line',label:'Тренд PETG',data:polyTrend(_fo.petg).map(function(v){return v===null||v===undefined||isNaN(v)?null:v;}),borderColor:'rgba(37,99,235,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5,spanGaps:true},
+        {type:'line',label:'Тренд PLA',data:polyTrend(_fo.pla).map(function(v){return v===null||v===undefined||isNaN(v)?null:v;}),borderColor:'rgba(180,148,0,.75)',borderWidth:2.5,pointRadius:0,fill:false,tension:0.5,spanGaps:true}
       ]},options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,filter:function(i){return !i.label.startsWith('Тренд');}}},
+        plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12,filter:function(i){return i.label&&!i.label.startsWith('Тренд');}}},
           tooltip:{callbacks:{label:function(ctx){if(ctx.dataset.label.startsWith('Тренд'))return null;var v=ctx.raw;if(!v&&v!==0)return null;return ctx.dataset.label+': '+(v/1000).toFixed(1)+' т / '+v.toLocaleString('uk')+' кг';}}}},
         scales:{x:GR,y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+' т':v+' кг';}}}}}});
       if(typeof registerChartForFilter==='function'&&_prodMonthChart){
         registerChartForFilter('prodMonthChart',_prodMonthChart,function(){
           var fo=_getFilteredOv(); renderOvKpis();
-          return{labels:fo.labels,datasets:[{data:fo.petg},{data:fo.pla},{data:polyTrend(fo.petg)},{data:polyTrend(fo.pla)}]};
+          var tp=polyTrend(fo.petg).map(function(v){return v==null||isNaN(v)?null:v;});var tl=polyTrend(fo.pla).map(function(v){return v==null||isNaN(v)?null:v;});return{labels:fo.labels,datasets:[{data:fo.petg},{data:fo.pla},{data:tp},{data:tl}]};
         });
       }
     } catch(e){ console.warn('[prodMonthChart]',e); }
