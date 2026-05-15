@@ -1832,104 +1832,26 @@ async function loadShiftData(){
       }
       return {day,night};
     }
-    // Збираємо по лінії окремо для фільтра
-    function calcShiftsByLine(rows){
-      if(!rows||rows.length<3) return {};
-      let ci_shift=-1,ci_weight=-1,ci_contrib=-1,ci_line=-1,dataStart=1;
-      for(let hi=0;hi<Math.min(3,rows.length);hi++){
-        const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
-        const s=hdr.findIndex(h=>h==='смена'||h==='зміна'||h.includes('зміна')||h.includes('смена'));
-        const w=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
-        const c=hdr.findIndex(h=>h==='вклад %'||h.includes('вклад %'));
-        const l=hdr.findIndex(h=>h==='лінія'||h==='линия'||h==='line');
-        if(s>=0){ci_shift=s;dataStart=hi+1;} if(w>=0) ci_weight=w;
-        if(c>=0) ci_contrib=c; if(l>=0) ci_line=l;
-      }
-      if(ci_shift<0) ci_shift=1; if(ci_weight<0) ci_weight=7; if(ci_line<0) ci_line=4;
-      const isAnaliz=ci_contrib>=0;
-      const byLine={};
-      const seen=new Set();
-      let curDate=null,curShift=null;
-      for(let i=dataStart;i<rows.length;i++){
-        const row=rows[i];
-        const dRaw=row[0]; if(dRaw){const d=lParseDate(String(dRaw));if(d)curDate=d;}
-        const sRaw=String(row[ci_shift]||'').trim().toLowerCase(); if(sRaw) curShift=sRaw;
-        if(!curDate||!curShift) continue;
-        let lineRaw=String(row[ci_line]||'').toUpperCase().trim();
-        if(!lineRaw) continue;
-        const nm=lineRaw.match(/\d+/); if(!nm) continue;
-        const ln='ЛІНІЯ '+parseInt(nm[0]);
-        const key=curDate+'|'+curShift+'|'+ln;
-        if(seen.has(key)) continue; seen.add(key);
-        const wv=parseFloat(String(row[ci_weight]||'').replace(',','.')); if(isNaN(wv)||wv<=0) continue;
-        let kg=wv;
-        if(isAnaliz&&ci_contrib>=0){let c=parseFloat(String(row[ci_contrib]||'').replace(',','.'));if(!isNaN(c)&&c>0){if(c>1.5)c/=100;kg=wv/c;}}
-        if(!byLine[ln]) byLine[ln]={day:0,night:0};
-        if(curShift.includes('ден')||curShift.includes('day')) byLine[ln].day+=kg;
-        else if(curShift.includes('ніч')||curShift.includes('ноч')||curShift.includes('night')) byLine[ln].night+=kg;
-      }
-      return byLine;
-    }
-    window._shiftByLine = {};
-    const bl=calcShiftsByLine(r1);
-    const allLineNames=new Set();
-    Object.entries(bl).forEach(([ln,v])=>{
-      if(!window._shiftByLine[ln]) window._shiftByLine[ln]={day:0,night:0};
-      window._shiftByLine[ln].day+=v.day; window._shiftByLine[ln].night+=v.night;
-      allLineNames.add(ln);
-    });
-    // Заповнюємо select лінії
-    const sel=document.getElementById('shiftLineFilter');
-    if(sel && sel.options.length<=1){
-      const sorted=[...allLineNames].sort((a,b)=>{
-        const na=parseInt(a.match(/\d+/)||0),nb=parseInt(b.match(/\d+/)||0); return na-nb;
-      });
-      sorted.forEach(ln=>{
-        const opt=document.createElement('option'); opt.value=ln; opt.textContent=ln; sel.appendChild(opt);
-      });
-    }
-    renderShiftData();
+    const s1=calcShifts(r1),s2=calcShifts(r2);
+    const dayKg=Math.round(s1.day+s2.day),nightKg=Math.round(s1.night+s2.night);
+    const total=dayKg+nightKg; if(total===0) throw new Error('no shift data');
+    const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
+    const fmt=v=>v.toLocaleString('uk');
+    wrap.innerHTML=`
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${dayPct}%</div>
+      </div>
+      <div style="width:1px;height:70px;background:var(--border)"></div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:4px">${nightPct}%</div>
+      </div>`;
   }catch(e){
-    const w2=document.getElementById('shiftWrap');
-    if(w2) w2.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
+    if(wrap) wrap.innerHTML=`<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">⚠ ${e.message}</div>`;
   }
-}
-function renderShiftData(){
-  const wrap=document.getElementById('shiftWrap'); if(!wrap) return;
-  const sel=document.getElementById('shiftLineFilter');
-  const selLine=sel?sel.value:'all';
-  const byLine=window._shiftByLine||{};
-  let dayKg=0,nightKg=0;
-  if(selLine==='all'){
-    Object.values(byLine).forEach(v=>{dayKg+=v.day;nightKg+=v.night;});
-  } else {
-    const v=byLine[selLine]||{day:0,night:0}; dayKg=v.day; nightKg=v.night;
-  }
-  dayKg=Math.round(dayKg); nightKg=Math.round(nightKg);
-  const total=dayKg+nightKg;
-  if(total===0){wrap.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">Дані відсутні</div>';return;}
-  const dayPct=(dayKg/total*100).toFixed(1),nightPct=(nightKg/total*100).toFixed(1);
-  const fmt=v=>v.toLocaleString('uk');
-  const barW=Math.round(dayKg/total*100);
-  wrap.innerHTML=`<div style="width:100%;padding:0 20px 16px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent);line-height:1">${fmt(dayKg)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · ДЕНЬ · ${dayPct}%</div>
-      </div>
-      <div style="display:flex;align-items:center"><div style="width:1px;height:60px;background:var(--border)"></div></div>
-      <div style="text-align:center">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent2);line-height:1">${fmt(nightKg)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">КГ · НІЧ · ${nightPct}%</div>
-      </div>
-    </div>
-    <div style="height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)">
-      <div style="height:100%;width:${barW}%;background:var(--accent);transition:width .4s"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">
-      <span>День ${dayPct}%</span><span>Ніч ${nightPct}%</span>
-    </div>
-  </div>`;
 }
 async function buildHeatmap(){
   // If generate.py didn't fill HM data, load from Google Sheets directly
