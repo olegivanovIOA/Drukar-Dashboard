@@ -201,6 +201,9 @@
   /* ── TAB ERROR BANNER ── */
   .tab-err-banner{background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--bad);display:flex;align-items:center;gap:10px}
   .tab-err-banner strong{font-size:11px}
+
+.tab-content{display:block!important;position:absolute;visibility:hidden;opacity:0;pointer-events:none;height:0;overflow:hidden;}
+.tab-content.active{position:static!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:auto!important;overflow:visible!important;}
 </style>
 </head>
 <body>
@@ -1250,14 +1253,19 @@ function updateFilterBadge(){
 // ── TAB VISIBILITY (mid-режим) ────────────────────────────────────
 function applyTabVisibility(){
   if(DASHBOARD_MODE!=='top'){
+    // Ховаємо кнопки і контент недоступних табок
     document.querySelectorAll('.tab[data-tab-id]').forEach(function(btn){
       var tid=btn.getAttribute('data-tab-id');
-      if(!ACTIVE_TABS.includes(tid)) btn.style.display='none';
+      btn.style.display=ACTIVE_TABS.includes(tid)?'':'none';
     });
     document.querySelectorAll('.tab-content[data-tab-id]').forEach(function(div){
       var tid=div.getAttribute('data-tab-id');
-      if(!ACTIVE_TABS.includes(tid)){div.style.display='none';div.classList.remove('active');}
+      if(!ACTIVE_TABS.includes(tid)){
+        div.style.display='none'; // повністю прибираємо з flow
+        div.classList.remove('active');
+      }
     });
+    // Активуємо першу табку
     if(ACTIVE_TABS.length){
       var first=ACTIVE_TABS[0];
       document.querySelectorAll('.tab[data-tab-id]').forEach(function(b){
@@ -1266,11 +1274,9 @@ function applyTabVisibility(){
       document.querySelectorAll('.tab-content[data-tab-id]').forEach(function(d){
         var tid=d.getAttribute('data-tab-id');
         if(ACTIVE_TABS.includes(tid)){
-          var isFirst = tid===first;
-          d.classList.toggle('active', isFirst);
-          d.style.display = isFirst ? 'block' : 'none';
+          d.style.display='';
+          d.classList.toggle('active',tid===first);
         }
-        // Неактивні для mid вже приховані вище
       });
     }
   }
@@ -1500,40 +1506,35 @@ function safeCreateChart(canvasId, config){
   try{ return new Chart(canvas, config); }catch(e){ console.warn('[safeCreateChart] '+canvasId, e); return null; }
 }
 function switchTab(id,el){
-  // Ховаємо всі tab-content
   document.querySelectorAll('.tab-content').forEach(function(e){
     e.classList.remove('active');
-    // В mid-режимі: ховаємо неактивні табки через display (ACTIVE_TABS може бути undefined якщо TOP)
-    if(typeof ACTIVE_TABS !== 'undefined' && DASHBOARD_MODE !== 'top'){
-      var tid = e.getAttribute('data-tab-id');
-      if(tid && ACTIVE_TABS.includes(tid)){
-        e.style.display = 'none'; // ховаємо всі активні, нижче покажемо обрану
-      }
+    // mid-режим: повністю прибираємо з DOM flow для non-active
+    if(typeof ACTIVE_TABS!=='undefined'&&DASHBOARD_MODE!=='top'){
+      var tid=e.getAttribute('data-tab-id');
+      if(tid&&!ACTIVE_TABS.includes(tid)) e.style.display='none';
     }
   });
   document.querySelectorAll('.tab').forEach(function(e){e.classList.remove('active');});
-  var target = document.getElementById('tab-'+id);
+  var target=document.getElementById('tab-'+id);
   if(target){
+    target.style.display='';   // скидаємо inline display якщо був
     target.classList.add('active');
-    target.style.display = 'block'; // явно показуємо незалежно від попереднього display
   }
   el.classList.add('active');
-  // Зберігаємо таб в hash БЕЗ scroll-jump
   history.replaceState(null,'','#'+id);
   if(!rendered[id]){
     rendered[id]=true;
     initTab(id);
     if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
   } else {
-    // Табка вже ініціалізована — чекаємо 2 rAF щоб браузер оновив layout після display:block
+    // Табка вже ініціалізована і canvas НІКОЛИ не мав display:none (завдяки CSS)
+    // Просто робимо resize щоб chart знав поточний розмір контейнера
     requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        document.querySelectorAll('#tab-'+id+' canvas').forEach(function(canvas){
-          var ch = typeof Chart!=='undefined'&&Chart.getChart ? Chart.getChart(canvas) : null;
-          if(ch){ try{ ch.resize(); ch.update('none'); }catch(e){} }
-        });
-        if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
+      document.querySelectorAll('#tab-'+id+' canvas').forEach(function(canvas){
+        var ch=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
+        if(ch) try{ch.resize();}catch(e){}
       });
+      if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
     });
   }
 }
