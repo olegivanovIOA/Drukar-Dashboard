@@ -4979,7 +4979,6 @@ function _dtBuildFilterBtns() {
   // Локації
   var locWrap = document.getElementById('dtLocBtns');
   if(locWrap) {
-    // Очищаємо крім "ВСІ"
     var allBtn = document.getElementById('dtLocAll');
     locWrap.innerHTML = '';
     if(allBtn) locWrap.appendChild(allBtn);
@@ -4991,35 +4990,50 @@ function _dtBuildFilterBtns() {
       b.className = 'topn-btn';
       b.style.fontSize = '10px';
       b.textContent = loc.name;
+      b.setAttribute('data-locid', lid);
       b.onclick = function(){ dtSetLoc(lid, this); };
       if(locWrap) locWrap.appendChild(b);
     });
   }
-  // Лінії
+  _dtRebuildLineBtns('all');
+}
+
+function _dtRebuildLineBtns(locFilter) {
   var lineWrap = document.getElementById('dtLineBtns');
-  if(lineWrap) {
-    var allBtnL = document.getElementById('dtLineAll');
-    lineWrap.innerHTML = '';
-    if(allBtnL) lineWrap.appendChild(allBtnL);
-    var lines = [...new Set(window._dtRawRows.map(r => r.line))].sort(function(a,b){
-      var na=parseInt((a.match(/\d+/)||[0])[0]), nb=parseInt((b.match(/\d+/)||[0])[0]);
-      return na-nb;
-    });
-    lines.forEach(function(ln) {
-      var b = document.createElement('button');
-      b.className = 'topn-btn';
-      b.style.fontSize = '10px';
-      b.textContent = ln;
-      b.onclick = function(){ dtSetLine(ln, this); };
-      if(lineWrap) lineWrap.appendChild(b);
-    });
-  }
+  if(!lineWrap) return;
+  var allBtnL = document.getElementById('dtLineAll');
+  lineWrap.innerHTML = '';
+  if(allBtnL) lineWrap.appendChild(allBtnL);
+
+  // Показуємо тільки лінії що належать вибраній локації
+  var sourceRows = locFilter === 'all'
+    ? window._dtRawRows
+    : window._dtRawRows.filter(function(r){ return r.loc === locFilter; });
+
+  var lines = [...new Set(sourceRows.map(r => r.line))].sort(function(a,b){
+    var na=parseInt((a.match(/\d+/)||[0])[0]), nb=parseInt((b.match(/\d+/)||[0])[0]);
+    return na-nb;
+  });
+  lines.forEach(function(ln) {
+    var b = document.createElement('button');
+    b.className = 'topn-btn';
+    b.style.fontSize = '10px';
+    b.textContent = ln;
+    b.onclick = function(){ dtSetLine(ln, this); };
+    lineWrap.appendChild(b);
+  });
 }
 
 function dtSetLoc(val, btn) {
-  window._dtFilterLoc = val;
+  window._dtFilterLoc  = val;
+  window._dtFilterLine = 'all'; // скидаємо вибір лінії при зміні локації
   document.querySelectorAll('#dtLocBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
+  // Перебудовуємо кнопки ліній під нову локацію
+  _dtRebuildLineBtns(val);
+  // Активуємо "ВСІ" в лініях
+  var allL = document.getElementById('dtLineAll');
+  if(allL) allL.classList.add('active');
   renderDowntime();
 }
 
@@ -5074,6 +5088,7 @@ function renderDowntime() {
   // ── Badge ──
   var totalH = rows.reduce(function(s,r){return s+r.downtime;}, 0);
   var badge = document.getElementById('dtFilterBadge');
+  // theoreticalHours рахується нижче — поки показуємо без %
   if(badge) badge.textContent = rows.length + ' подій · ' + totalH.toFixed(1) + ' год. простою';
   var totalBadge = document.getElementById('dtTotalBadge');
   if(totalBadge) totalBadge.textContent = '∑ ' + totalH.toFixed(1) + ' год.';
@@ -5105,6 +5120,62 @@ function renderDowntime() {
     return sortBy === 'events' ? b[1].events - a[1].events : b[1].hours - a[1].hours;
   });
 
+  // ── Розрахунок теоретичного фонду часу ──
+  // Фонд = 12г × 2 зміни × кількість_унікальних_днів × кількість_активних_ліній
+  var uniqueDates = [...new Set(rows.map(function(r){ return r.date; }))];
+  // Кількість ліній у вибраній локації (або всіх)
+  var activeLines = [...new Set(rows.map(function(r){ return r.line; }))].length;
+  // Якщо фільтр по лінії — 1 лінія
+  if(window._dtFilterLine !== 'all') activeLines = 1;
+  // Якщо немає даних про унікальні дні — беремо з filterState
+  var nDays = uniqueDates.length;
+  if(nDays === 0) {
+    // fallback: дні місяця або рік
+    if(filterState.month !== 'all' && filterState.year !== 'all') {
+      nDays = new Date(filterState.year, filterState.month, 0).getDate();
+    } else {
+      nDays = 30; // грубий дефолт
+    }
+  }
+  // Але унікальні дати з простоїв — це не всі робочі дні!
+  // Правильніше: беремо всі дні з _dtRawRows (включно з нормальними = 12г)
+  // Для цього треба всі дані, а не тільки відфільтровані простої.
+  // Тому рахуємо: всі унікальні дати з _dtRawRows в межах глобального фільтра
+  var allDatesInPeriod = [...new Set((window._dtRawRows||[])
+    .filter(function(r){
+      var yy=parseInt(r.date.slice(0,4)), mm=parseInt(r.date.slice(5,7));
+      var yOk = filterState.year==='all'  || yy===filterState.year;
+      var mOk = filterState.month==='all' || mm===filterState.month;
+      var lOk = window._dtFilterLoc==='all' || r.loc===window._dtFilterLoc;
+      return yOk && mOk && lOk;
+    })
+    .map(function(r){ return r.date; })
+  )];
+  // Кількість унікальних ліній у вибраній локації
+  var allLinesInLoc = [...new Set((window._dtRawRows||[])
+    .filter(function(r){
+      return window._dtFilterLoc==='all' || r.loc===window._dtFilterLoc;
+    })
+    .map(function(r){ return r.line; })
+  )];
+  var nLines = window._dtFilterLine !== 'all' ? 1 : allLinesInLoc.length;
+  // Але унікальних дат в простоях < реальних робочих днів.
+  // Краще: якщо вибраний конкретний місяць — використовуємо кількість днів місяця
+  if(filterState.month !== 'all' && filterState.year !== 'all') {
+    nDays = new Date(filterState.year, filterState.month, 0).getDate();
+  } else if(filterState.year !== 'all') {
+    nDays = 365;
+  } else {
+    nDays = allDatesInPeriod.length || 30;
+  }
+  var theoreticalHours = 12 * 2 * nDays * nLines; // 12г × 2 зміни × днів × ліній
+  var theoreticalHoursPerLine = 12 * 2 * nDays;   // на одну лінію (для графіку причин)
+
+  // Оновлюємо badge з % від фонду
+  var totalPct = theoreticalHours > 0 ? (totalH / theoreticalHours * 100).toFixed(1) : '—';
+  if(badge) badge.textContent = rows.length + ' подій · ' + totalH.toFixed(1) + ' год. · ' + totalPct + '% фонду (' + nDays + 'д × ' + nLines + ' лін)';
+  if(totalBadge) totalBadge.textContent = '∑ ' + totalH.toFixed(1) + 'г / ' + totalPct + '%';
+
   // ── Графік по причинах ──
   // Корпоративна палітра Drukar: синьо-жовта (UA)
   var COLORS = [
@@ -5133,21 +5204,35 @@ function renderDowntime() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: function(ctx) {
-          var key = ctx.label;
-          var entry = reasonMap[key];
-          if(!entry) return ctx.formattedValue + ' год.';
-          var parts = [ctx.formattedValue + ' год. / ' + entry.events + ' подій'];
-          locs.forEach(function(l) {
-            var ld = entry.byLoc[l.id];
-            if(ld) parts.push(l.name + ': ' + ld.hours.toFixed(1) + ' год. (' + ld.events + ' пд.)');
-          });
-          return parts;
-        }}}
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: function(ctx) {
+            var key = ctx.label;
+            var entry = reasonMap[key];
+            if(!entry) return ctx.formattedValue + ' год.';
+            var pct = theoreticalHours > 0 ? (entry.hours / theoreticalHours * 100).toFixed(1) : '—';
+            var parts = [
+              ctx.formattedValue + ' год.  (' + pct + '% від фонду)  · ' + entry.events + ' подій'
+            ];
+            locs.forEach(function(l) {
+              var ld = entry.byLoc[l.id];
+              if(ld) {
+                var lp = theoreticalHoursPerLine > 0 ? (ld.hours/theoreticalHoursPerLine*100).toFixed(1) : '—';
+                parts.push(l.name + ': ' + ld.hours.toFixed(1) + ' год. (' + lp + '%) · ' + ld.events + ' под.');
+              }
+            });
+            return parts;
+          }
+        }}
       },
       scales: {
-        x: { ...GR, beginAtZero: true, ticks: { ...GR.ticks, callback: function(v){ return v+'г'; } } },
+        x: { ...GR, beginAtZero: true,
+          ticks: { ...GR.ticks, callback: function(v){
+            var pct = theoreticalHours > 0 ? ' (' + (v/theoreticalHours*100).toFixed(0) + '%)' : '';
+            return v + ' год.' + pct;
+          }}
+        },
         y: { ...GR, ticks: { ...GR.ticks, font: { size: 10 } } }
       }
     }
@@ -5180,9 +5265,9 @@ function renderDowntime() {
       plugins:{ legend:{ position:'top', labels:{ boxWidth:12 } } },
       scales:{
         x: GR,
-        y:      { ...GR, beginAtZero:true, ticks:{ ...GR.ticks, callback:function(v){return v+'г';} } },
+        y:      { ...GR, beginAtZero:true, ticks:{ ...GR.ticks, callback:function(v){return v+' год.';} } },
         yRight: { ...GR, beginAtZero:true, position:'right', grid:{display:false},
-                  ticks:{ ...GR.ticks, callback:function(v){return v+' пд';} } }
+                  ticks:{ ...GR.ticks, callback:function(v){return v+' под.';} } }
       }
     }
   });
