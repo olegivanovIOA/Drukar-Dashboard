@@ -407,6 +407,83 @@
       ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
     </div>
   </div>
+
+  <!-- ══ ПРОСТОЇ ══ -->
+  <div class="section-title" style="margin-top:20px">Простої ліній</div>
+
+  <!-- Фільтри простоїв -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">ЛОКАЦІЯ:</span>
+    <div id="dtLocBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="topn-btn active" id="dtLocAll" onclick="dtSetLoc('all',this)" style="font-size:10px">ВСІ</button>
+    </div>
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">ЛІНІЯ:</span>
+    <div id="dtLineBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="topn-btn active" id="dtLineAll" onclick="dtSetLine('all',this)" style="font-size:10px">ВСІ</button>
+    </div>
+    <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)" id="dtFilterBadge">⟳ завантаження...</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <!-- Графік по причинах -->
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Простої по причинах</div><div class="card-subtitle">Години простою · сортування ↓</div></div></div>
+      <div class="cw-lg" style="position:relative"><canvas id="dtReasonChart"></canvas></div>
+    </div>
+    <!-- Графік по лініях -->
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Простої по лініях</div><div class="card-subtitle">Год. простою + кількість подій</div></div></div>
+      <div class="cw-lg" style="position:relative"><canvas id="dtLineChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Зведена таблиця по причинах -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="card-title">Зведена таблиця по причинах</div>
+        <div class="card-subtitle" id="dtSummarySubtitle">Агреговані підсумки · з урахуванням фільтрів</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">СОРТУВАННЯ:</span>
+        <button class="month-btn active" id="dtSortHours" onclick="dtSetSort('hours',this)" style="font-size:10px">Год. ↓</button>
+        <button class="month-btn" id="dtSortEvents" onclick="dtSetSort('events',this)" style="font-size:10px">Подій ↓</button>
+        <div id="dtTotalBadge" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);margin-left:8px"></div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="dtSummaryTable">
+        <thead>
+          <tr id="dtSummaryHead">
+            <!-- заповнюється динамічно: Причина | Лок1 год | Лок2 год | ... | Всього год | Подій -->
+          </tr>
+        </thead>
+        <tbody id="dtSummaryBody">
+          <tr><td colspan="4" style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace">⟳ завантаження...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Деталі — згортається -->
+  <div class="card">
+    <div class="card-header" style="cursor:pointer" onclick="dtToggleDetails(this)">
+      <div><div class="card-title">Деталі (всі записи)</div><div class="card-subtitle" id="dtTableSubtitle">розгорнути ▾</div></div>
+      <span id="dtDetailsArrow" style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--muted)">▾</span>
+    </div>
+    <div id="dtDetailsWrap" style="display:none;overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Дата</th><th>Локація</th><th>Лінія</th><th style="text-align:right">Факт год.</th>
+          <th style="text-align:right">Простій год.</th><th>Причина</th><th>Коментар</th>
+        </tr></thead>
+        <tbody id="dtTableBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace">⟳ завантаження даних...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════ QUALITY ══════════════ -->
@@ -1233,6 +1310,9 @@ function applyFilterToAllCharts(){
   });
   if(typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
   if(typeof window._prodRebuildFn==='function') try{window._prodRebuildFn();}catch(e){}
+  if(typeof buildUtilHeatmap==='function') try{buildUtilHeatmap();}catch(e){}
+  if(typeof buildHeatmap==='function') try{buildHeatmap();}catch(e){}
+  if(typeof renderDowntime==='function') try{renderDowntime();}catch(e){}
 }
 
 function updateFilterBadge(){
@@ -1670,6 +1750,7 @@ function initProduction(){
   })();
   buildHeatmap();
   loadShiftData();
+  loadDowntimeData();
 }
 async function loadProductionCharts(){
   const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
@@ -3944,7 +4025,6 @@ async function buildUtilHeatmap(){
     return new Date(y, m, 0).getDate();
   }
 
-  const cols = HM_LABELS.length;
   const UA_REV = {'Січ':'01','Лют':'02','Бер':'03','Кві':'04','Тра':'05','Чер':'06',
                    'Лип':'07','Сер':'08','Вер':'09','Жов':'10','Лис':'11','Гру':'12'};
   function labelToYm(lbl){
@@ -3953,7 +4033,25 @@ async function buildUtilHeatmap(){
     const mo = UA_REV[p[0]]; const yr = '20'+p[1];
     return mo ? yr+'-'+mo : null;
   }
-  const colYms = HM_LABELS.map(labelToYm);
+  // Фільтруємо місяці по глобальному filterState (рік/місяць)
+  const allColYms = HM_LABELS.map(labelToYm);
+  const filteredIdxs = allColYms.map((ym,i)=>({ym,i})).filter(({ym})=>{
+    if(!ym) return true;
+    const [y,m] = ym.split('-').map(Number);
+    const yOk = !filterState || filterState.year==='all' || y===filterState.year;
+    const mOk = !filterState || filterState.month==='all' || m===filterState.month;
+    return yOk && mOk;
+  });
+  const filteredHmLabels = filteredIdxs.map(({i})=>HM_LABELS[i]);
+  const filteredHmData = {};
+  Object.keys(HM_DATA).forEach(ln=>{
+    filteredHmData[ln] = filteredIdxs.map(({i})=>HM_DATA[ln][i]||0);
+  });
+  const cols = filteredHmLabels.length;
+  const colYms = filteredIdxs.map(({ym})=>ym);
+  // Підміняємо локальні змінні для решти функції
+  const _HM_LABELS = filteredHmLabels;
+  const _HM_DATA = filteredHmData;
   // Для поточного місяця — тільки до вчорашнього дня
   const _today = new Date();
   const _curYm = _today.getFullYear()+'-'+String(_today.getMonth()+1).padStart(2,'0');
@@ -3986,13 +4084,13 @@ async function buildUtilHeatmap(){
   }
   // activeSince: перший місяць роботи → null до нього
   const lineActiveSince = {};
-  lines.forEach(ln => { lineActiveSince[ln] = HM_DATA[ln].findIndex(v => v > 0); });
+  lines.forEach(ln => { lineActiveSince[ln] = _HM_DATA[ln].findIndex(v => v > 0); });
 
   const utilData = {};
   lines.forEach(ln => {
     const lineNorm = getLineNorm(ln);
     const since = lineActiveSince[ln];
-    utilData[ln] = HM_DATA[ln].map((kg, i) => {
+    utilData[ln] = _HM_DATA[ln].map((kg, i) => {
       if(since < 0 || i < since) return null;
       const maxKg = lineNorm * 2 * colDays[i];
       if(!maxKg) return 0;
@@ -4033,7 +4131,7 @@ async function buildUtilHeatmap(){
   function lineNum(ln){ const m=ln.match(/\d+/); return m?parseInt(m[0]):999; }
   const sortedLines = [...lines].sort((a,b)=>lineNum(a)-lineNum(b));
 
-  // Определяем локации (те же что в HM_DATA — по наличию данных)
+  // Определяем локации (те же что в _HM_DATA — по наличию данных)
   const LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
   const LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
   const isLoc2 = ln => LOC2.includes(ln);
@@ -4043,7 +4141,7 @@ async function buildUtilHeatmap(){
 
   // Header
   html += `<div class="hmap-label" style="font-weight:700;color:var(--accent)">ЛІНІЯ</div>`;
-  HM_LABELS.forEach(l => { html += `<div class="hmap-label" style="justify-content:center;font-weight:600">${l}</div>`; });
+  _HM_LABELS.forEach(l => { html += `<div class="hmap-label" style="justify-content:center;font-weight:600">${l}</div>`; });
   html += `<div class="hmap-label" style="justify-content:center;font-weight:600;color:var(--accent)">СЕРЕДНЄ</div>`;
 
   // Рендеринг по локациям
@@ -4075,7 +4173,7 @@ async function buildUtilHeatmap(){
     const avg = activeAvg(vals);
     html += `<div class="hmap-label" style="padding-left:8px">${ln}</div>`;
     vals.forEach((pct,i) => {
-      html += utilCell(pct, `${ln} · ${HM_LABELS[i]}: ${pct!==null?pct+'%':'не запущена'}`, '');
+      html += utilCell(pct, `${ln} · ${_HM_LABELS[i]}: ${pct!==null?pct+'%':'не запущена'}`, '');
     });
     if(avg===null){ html+=`<div class="hmap-cell" style="background:#0d1117;color:rgba(255,255,255,.18);font-weight:700">–</div>`; }
     else { html += utilCell(avg, `${ln} · середнє: ${avg}%`, ';font-weight:700'); }
@@ -4117,7 +4215,7 @@ async function buildUtilHeatmap(){
   // Populate month buttons
   const btnWrap = document.getElementById('utilMonthBtns');
   if(btnWrap && btnWrap.children.length <= 1){
-    HM_LABELS.forEach((lbl,i) => {
+    _HM_LABELS.forEach((lbl,i) => {
       const btn = document.createElement('button');
       btn.className = 'month-btn';
       btn.style.cssText = 'font-size:9px;padding:3px 8px';
@@ -4696,5 +4794,386 @@ function _fcRender() {
   window.switchTab=function(id,btn){_orig(id,btn);if(id==='product')render();};
   if(location.hash.replace('#','')===('product'))render();
 })();
+
+// ══════════════════════════════════════════════════════════════════
+// ПРОСТОЇ ЛІНІЙ — завантаження та рендер
+// Щоб додати Локацію 3: додайте об'єкт у масив DOWNTIME_LOCATIONS
+// ══════════════════════════════════════════════════════════════════
+var DOWNTIME_LOCATIONS = [
+  { id: 1, name: 'Локація 1', sheetId: '1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4', sheetName: 'Журнал.Локация1' },
+  { id: 2, name: 'Локація 2', sheetId: '1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI', sheetName: 'Журнал.Локация2' },
+  // { id: 3, name: 'Локація 3', sheetId: 'SHEET_ID_3', sheetName: 'Журнал.Локация3' },
+];
+
+// Сирі дані (всі локації, не фільтровані)
+window._dtRawRows = [];
+// Стан фільтрів
+window._dtFilterLoc  = 'all';
+window._dtFilterLine = 'all';
+
+async function loadDowntimeData() {
+  window._dtRawRows = [];
+  var badge = document.getElementById('dtFilterBadge');
+  if(badge) badge.textContent = '⟳ завантаження...';
+
+  for (var loc of DOWNTIME_LOCATIONS) {
+    try {
+      var url = 'https://docs.google.com/spreadsheets/d/' + loc.sheetId +
+                '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(loc.sheetName);
+      var r = await fetch(url);
+      if(!r.ok) continue;
+      var txt = await r.text();
+      if(txt.includes('<html')) continue;
+      var rows = lParseCSV(txt);
+      // Заголовки: рядок 0 і рядок 1 (merged headers)
+      // Дані з рядка 2 (0-based index 2)
+      // Структура: A=Дата(0), B=Місяць(1), C=Число(2), D=Ефектив%(3), E=Зміна(4),
+      //            F=24/7(5), G=Лінія(6), H=Вид(7), ... P=ЧасиРоботи(15),
+      //            Q=Причина(16), R=ПростійГод(17), S=Коментар(18)
+      // Індекси 0-based: часи=15, причина=16, простій=17, коментар=18
+      var CI_DATE    = 0;
+      var CI_LINE    = 6;
+      var CI_HOURS   = 15;
+      var CI_REASON  = 16;
+      var CI_DOWNTIME= 17;
+      var CI_COMMENT = 18;
+
+      var curDate = null;
+      for (var i = 2; i < rows.length; i++) {
+        var row = rows[i];
+        if(!row || row.length < 16) continue;
+
+        // Forward-fill дати
+        var dRaw = String(row[CI_DATE] || '').trim();
+        if(dRaw && dRaw !== '' && dRaw.toLowerCase() !== 'nan') {
+          var dp = lParseDate(dRaw);
+          if(dp) curDate = dp;
+        }
+        if(!curDate) continue;
+
+        // Фільтр: год/місяць з глобального filterState
+        var yy = parseInt(curDate.slice(0,4));
+        var mm = parseInt(curDate.slice(5,7));
+        if(filterState.year !== 'all' && yy !== filterState.year) continue;
+        if(filterState.month !== 'all' && mm !== filterState.month) continue;
+
+        // Перевіряємо col Q (часи роботи лінії)
+        var hoursRaw = String(row[CI_HOURS] || '').trim().replace(',','.');
+        if(!hoursRaw || hoursRaw === '' || hoursRaw.toLowerCase() === 'nan') continue;
+        var hours = parseFloat(hoursRaw);
+        if(isNaN(hours) || hours === 0 || hours === 12) continue;
+
+        var line   = String(row[CI_LINE] || '').trim().toUpperCase();
+        var reason = String(row[CI_REASON]  || '').trim();
+        var dtHours= parseFloat(String(row[CI_DOWNTIME] || '').replace(',','.')) || (12 - hours);
+        if(dtHours <= 0) dtHours = 12 - hours;
+        var comment= String(row[CI_COMMENT] || '').trim();
+
+        if(!line || !reason || reason === '' || reason.toLowerCase() === 'nan') continue;
+
+        window._dtRawRows.push({
+          date: curDate,
+          loc: loc.id,
+          locName: loc.name,
+          line: line,
+          hours: hours,
+          downtime: Math.max(0, dtHours),
+          reason: reason,
+          comment: comment === 'nan' ? '' : comment
+        });
+      }
+    } catch(e) {
+      console.warn('[Downtime] loc', loc.id, e);
+    }
+  }
+
+  // Будуємо кнопки локацій і ліній
+  _dtBuildFilterBtns();
+  renderDowntime();
+}
+
+function _dtBuildFilterBtns() {
+  // Локації
+  var locWrap = document.getElementById('dtLocBtns');
+  if(locWrap) {
+    // Очищаємо крім "ВСІ"
+    var allBtn = document.getElementById('dtLocAll');
+    locWrap.innerHTML = '';
+    if(allBtn) locWrap.appendChild(allBtn);
+    var locs = [...new Set(window._dtRawRows.map(r => r.loc))].sort();
+    locs.forEach(function(lid) {
+      var loc = DOWNTIME_LOCATIONS.find(l => l.id === lid);
+      if(!loc) return;
+      var b = document.createElement('button');
+      b.className = 'topn-btn';
+      b.style.fontSize = '10px';
+      b.textContent = loc.name;
+      b.onclick = function(){ dtSetLoc(lid, this); };
+      if(locWrap) locWrap.appendChild(b);
+    });
+  }
+  // Лінії
+  var lineWrap = document.getElementById('dtLineBtns');
+  if(lineWrap) {
+    var allBtnL = document.getElementById('dtLineAll');
+    lineWrap.innerHTML = '';
+    if(allBtnL) lineWrap.appendChild(allBtnL);
+    var lines = [...new Set(window._dtRawRows.map(r => r.line))].sort(function(a,b){
+      var na=parseInt((a.match(/\d+/)||[0])[0]), nb=parseInt((b.match(/\d+/)||[0])[0]);
+      return na-nb;
+    });
+    lines.forEach(function(ln) {
+      var b = document.createElement('button');
+      b.className = 'topn-btn';
+      b.style.fontSize = '10px';
+      b.textContent = ln;
+      b.onclick = function(){ dtSetLine(ln, this); };
+      if(lineWrap) lineWrap.appendChild(b);
+    });
+  }
+}
+
+function dtSetLoc(val, btn) {
+  window._dtFilterLoc = val;
+  document.querySelectorAll('#dtLocBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  renderDowntime();
+}
+
+function dtSetLine(val, btn) {
+  window._dtFilterLine = val;
+  document.querySelectorAll('#dtLineBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  renderDowntime();
+}
+
+function _dtGetFiltered() {
+  return (window._dtRawRows || []).filter(function(r) {
+    // Глобальний фільтр рік/місяць
+    var yy = parseInt(r.date.slice(0,4));
+    var mm = parseInt(r.date.slice(5,7));
+    if(filterState.year  !== 'all' && yy !== filterState.year)  return false;
+    if(filterState.month !== 'all' && mm !== filterState.month) return false;
+    // Локальні фільтри
+    if(window._dtFilterLoc  !== 'all' && r.loc  !== window._dtFilterLoc)  return false;
+    if(window._dtFilterLine !== 'all' && r.line !== window._dtFilterLine) return false;
+    return true;
+  });
+}
+
+// ── стан сортування зведеної ──
+window._dtSortBy = 'hours'; // 'hours' | 'events'
+
+function dtSetSort(val, btn) {
+  window._dtSortBy = val;
+  document.querySelectorAll('#dtSortHours,#dtSortEvents').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  renderDowntime();
+}
+
+function dtToggleDetails(hdr) {
+  var wrap = document.getElementById('dtDetailsWrap');
+  var arrow = document.getElementById('dtDetailsArrow');
+  var sub = document.getElementById('dtTableSubtitle');
+  if(!wrap) return;
+  var open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'block';
+  if(arrow) arrow.textContent = open ? '▾' : '▴';
+  if(sub) sub.textContent = open ? 'розгорнути ▾' : 'згорнути ▴';
+}
+
+function renderDowntime() {
+  var rows = _dtGetFiltered();
+  var locs = DOWNTIME_LOCATIONS.filter(function(l) {
+    return window._dtFilterLoc === 'all' || l.id === window._dtFilterLoc;
+  });
+
+  // ── Badge ──
+  var totalH = rows.reduce(function(s,r){return s+r.downtime;}, 0);
+  var badge = document.getElementById('dtFilterBadge');
+  if(badge) badge.textContent = rows.length + ' подій · ' + totalH.toFixed(1) + ' год. простою';
+  var totalBadge = document.getElementById('dtTotalBadge');
+  if(totalBadge) totalBadge.textContent = '∑ ' + totalH.toFixed(1) + ' год.';
+  var sub = document.getElementById('dtSummarySubtitle');
+  var UA = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+            '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+  if(sub) {
+    var yStr = filterState.year  === 'all' ? 'Всі роки'   : String(filterState.year);
+    var mStr = filterState.month === 'all' ? 'Всі місяці' : UA[String(filterState.month).padStart(2,'0')];
+    sub.textContent = yStr + ' · ' + mStr + ' · ' + rows.length + ' записів';
+  }
+
+  // ── Агрегація по причинах × локаціях ──
+  // reasonMap[reasonKey] = { total_hours, total_events, byLoc: {locId: {hours,events}} }
+  var reasonMap = {};
+  rows.forEach(function(r) {
+    var nm = r.reason.match(/^\d+\.\s*(.+)/);
+    var key = nm ? nm[1].trim() : r.reason;
+    if(!reasonMap[key]) reasonMap[key] = { hours: 0, events: 0, byLoc: {} };
+    reasonMap[key].hours  += r.downtime;
+    reasonMap[key].events += 1;
+    if(!reasonMap[key].byLoc[r.loc]) reasonMap[key].byLoc[r.loc] = { hours: 0, events: 0 };
+    reasonMap[key].byLoc[r.loc].hours  += r.downtime;
+    reasonMap[key].byLoc[r.loc].events += 1;
+  });
+
+  var sortBy = window._dtSortBy || 'hours';
+  var reasonEntries = Object.entries(reasonMap).sort(function(a,b){
+    return sortBy === 'events' ? b[1].events - a[1].events : b[1].hours - a[1].hours;
+  });
+
+  // ── Графік по причинах ──
+  var COLORS = ['#e05252','#ffc857','#47b4ff','#52e0a0','#b47fff','#ff8c42','#52b0e0','#e0d252','#a0e052','#ff6b9d'];
+  safeCreateChart('dtReasonChart', {
+    type: 'bar',
+    data: {
+      labels: reasonEntries.map(function(e){ return e[0]; }),
+      datasets: [{
+        label: 'Год. простою',
+        data: reasonEntries.map(function(e){ return parseFloat(e[1].hours.toFixed(1)); }),
+        backgroundColor: reasonEntries.map(function(_,i){ return COLORS[i%COLORS.length]+'cc'; }),
+        borderColor:     reasonEntries.map(function(_,i){ return COLORS[i%COLORS.length]; }),
+        borderWidth: 1, borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) {
+          var key = ctx.label;
+          var entry = reasonMap[key];
+          if(!entry) return ctx.formattedValue + ' год.';
+          var parts = [ctx.formattedValue + ' год. / ' + entry.events + ' подій'];
+          locs.forEach(function(l) {
+            var ld = entry.byLoc[l.id];
+            if(ld) parts.push(l.name + ': ' + ld.hours.toFixed(1) + ' год. (' + ld.events + ' пд.)');
+          });
+          return parts;
+        }}}
+      },
+      scales: {
+        x: { ...GR, beginAtZero: true, ticks: { ...GR.ticks, callback: function(v){ return v+'г'; } } },
+        y: { ...GR, ticks: { ...GR.ticks, font: { size: 10 } } }
+      }
+    }
+  });
+
+  // ── Графік по лініях ──
+  var lineMap = {};
+  rows.forEach(function(r) {
+    if(!lineMap[r.line]) lineMap[r.line] = { hours: 0, events: 0 };
+    lineMap[r.line].hours  += r.downtime;
+    lineMap[r.line].events += 1;
+  });
+  var lineEntries = Object.entries(lineMap).sort(function(a,b){
+    var na=parseInt((a[0].match(/\d+/)||[0])[0]), nb=parseInt((b[0].match(/\d+/)||[0])[0]);
+    return na-nb;
+  });
+  safeCreateChart('dtLineChart', {
+    type: 'bar',
+    data: {
+      labels: lineEntries.map(function(e){ return e[0]; }),
+      datasets: [
+        { label: 'Год. простою', data: lineEntries.map(function(e){ return parseFloat(e[1].hours.toFixed(1)); }),
+          backgroundColor: 'rgba(224,82,82,.75)', borderColor:'#e05252', borderWidth:1, borderRadius:4 },
+        { label: 'Подій', data: lineEntries.map(function(e){ return e[1].events; }),
+          backgroundColor: 'rgba(71,180,255,.55)', borderColor:'#47b4ff', borderWidth:1, borderRadius:4, yAxisID:'yRight' }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ boxWidth:12 } } },
+      scales:{
+        x: GR,
+        y:      { ...GR, beginAtZero:true, ticks:{ ...GR.ticks, callback:function(v){return v+'г';} } },
+        yRight: { ...GR, beginAtZero:true, position:'right', grid:{display:false},
+                  ticks:{ ...GR.ticks, callback:function(v){return v+' пд';} } }
+      }
+    }
+  });
+
+  // ── Зведена таблиця ──
+  var thead = document.getElementById('dtSummaryHead');
+  var tbody = document.getElementById('dtSummaryBody');
+  if(thead && tbody) {
+    // Будуємо заголовок: Причина | [Лок1 год | Лок2 год | ...] | Всього год | Подій
+    var thCols = '<th>Причина</th>';
+    if(locs.length > 1) locs.forEach(function(l){ thCols += '<th style="text-align:right">' + l.name + ' год.</th>'; });
+    thCols += '<th style="text-align:right">Всього год.</th><th style="text-align:right">Подій</th>';
+    thead.innerHTML = thCols;
+
+    if(!reasonEntries.length) {
+      var colCount = (locs.length > 1 ? locs.length : 0) + 3;
+      tbody.innerHTML = '<tr><td colspan="' + colCount + '" style="text-align:center;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">Немає даних</td></tr>';
+    } else {
+      tbody.innerHTML = reasonEntries.map(function(e, idx) {
+        var key = e[0], agg = e[1];
+        var maxH = reasonEntries[0][1].hours || 1;
+        var barW = Math.round(agg.hours / maxH * 100);
+        // Колір рядка — чергуємо злегка
+        var bg = idx % 2 === 0 ? '' : 'style="background:var(--surface2)"';
+        var hourColor = agg.hours >= 8 ? 'var(--bad)' : (agg.hours >= 3 ? 'var(--warn)' : 'var(--text)');
+
+        // Стовпці по локаціях (якщо більше однієї видимої)
+        var locCols = '';
+        if(locs.length > 1) {
+          locs.forEach(function(l) {
+            var ld = agg.byLoc[l.id];
+            locCols += '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--muted)">' +
+              (ld ? ld.hours.toFixed(1) : '—') + '</td>';
+          });
+        }
+
+        return '<tr ' + bg + '>' +
+          '<td>' +
+            '<div style="font-size:12px">' + key + '</div>' +
+            '<div style="height:3px;background:var(--border);border-radius:2px;margin-top:4px"><div style="height:3px;width:' + barW + '%;background:' + hourColor + ';border-radius:2px"></div></div>' +
+          '</td>' +
+          locCols +
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:' + hourColor + '">' + agg.hours.toFixed(1) + '</td>' +
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--muted)">' + agg.events + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  }
+
+  // ── Таблиця деталей (якщо розгорнута) ──
+  var detailsOpen = document.getElementById('dtDetailsWrap') &&
+                    document.getElementById('dtDetailsWrap').style.display !== 'none';
+  if(detailsOpen) _renderDtDetails(rows);
+}
+
+function _renderDtDetails(rows) {
+  var tbody = document.getElementById('dtTableBody');
+  if(!tbody) return;
+  if(!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">Немає даних для обраних фільтрів</td></tr>';
+    return;
+  }
+  var sorted = rows.slice().sort(function(a,b){ return b.date.localeCompare(a.date); });
+  tbody.innerHTML = sorted.map(function(r) {
+    var nm = r.reason.match(/^\d+\.\s*(.+)/);
+    var reasonShort = nm ? nm[1].trim() : r.reason;
+    var dtColor = r.downtime >= 4 ? 'var(--bad)' : (r.downtime >= 2 ? 'var(--warn)' : 'var(--text)');
+    return '<tr>' +
+      '<td style="font-family:\'IBM Plex Mono\',monospace;font-size:10px">' + r.date + '</td>' +
+      '<td>' + r.locName + '</td>' +
+      '<td style="font-family:\'IBM Plex Mono\',monospace">' + r.line + '</td>' +
+      '<td style="text-align:right">' + r.hours + '</td>' +
+      '<td style="text-align:right;color:' + dtColor + ';font-weight:600">' + r.downtime.toFixed(1) + '</td>' +
+      '<td>' + reasonShort + '</td>' +
+      '<td style="color:var(--muted);font-size:11px">' + (r.comment||'') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Перевантажуємо dtToggleDetails щоб рендерити деталі при розгортанні
+var _dtOrigToggle = window.dtToggleDetails;
+window.dtToggleDetails = function(hdr) {
+  _dtOrigToggle(hdr);
+  var open = document.getElementById('dtDetailsWrap') &&
+             document.getElementById('dtDetailsWrap').style.display !== 'none';
+  if(open) _renderDtDetails(_dtGetFiltered());
+};
 
 </script>
