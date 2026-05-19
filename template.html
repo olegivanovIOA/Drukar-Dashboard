@@ -4821,27 +4821,41 @@ async function loadDowntimeData() {
       var url = 'https://docs.google.com/spreadsheets/d/' + loc.sheetId +
                 '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(loc.sheetName);
       var r = await fetch(url);
-      if(!r.ok) continue;
+      if(!r.ok){ console.warn('[DT] loc'+loc.id+' fetch error '+r.status); continue; }
       var txt = await r.text();
-      if(txt.includes('<html')) continue;
+      if(txt.includes('<html')){ console.warn('[DT] loc'+loc.id+' got HTML (access denied?)'); continue; }
       var rows = lParseCSV(txt);
-      // Заголовки: рядок 0 і рядок 1 (merged headers)
-      // Дані з рядка 2 (0-based index 2)
-      // Структура: A=Дата(0), B=Місяць(1), C=Число(2), D=Ефектив%(3), E=Зміна(4),
-      //            F=24/7(5), G=Лінія(6), H=Вид(7), ... P=ЧасиРоботи(15),
-      //            Q=Причина(16), R=ПростійГод(17), S=Коментар(18)
-      // Індекси 0-based: часи=15, причина=16, простій=17, коментар=18
-      var CI_DATE    = 0;
-      var CI_LINE    = 6;
-      var CI_HOURS   = 15;
-      var CI_REASON  = 16;
-      var CI_DOWNTIME= 17;
-      var CI_COMMENT = 18;
+      console.log('[DT] loc'+loc.id+' rows='+rows.length+' cols='+((rows[0]||[]).length));
+
+      // Структура журналу (0-based, після парсингу CSV):
+      // 0=Дата, 1=Місяць, 2=Число, 3=Еф%, 4=Зміна, 5=24/7, 6=Лінія, 7=Вид,
+      // 8=Кіл-ть, 9=Вага кг, 10=НФ кг, 11=Відхід кг, 12=Запаковано, 13=Автовага,
+      // 14=Упаковщик, 15=ЧасиРоботи, 16=Причина1, 17=Простій, 18=Коментар
+      // Але gviz CSV може мати merged-header рядки — шукаємо колонки динамічно
+      var CI_DATE=0, CI_LINE=6, CI_HOURS=15, CI_REASON=16, CI_DOWNTIME=17, CI_COMMENT=18;
+      var dataStart = 2; // пропускаємо 2 рядки заголовків
+
+      // Динамічний пошук колонок по заголовках (рядки 0 і 1)
+      for(var hi=0; hi<Math.min(3,rows.length); hi++){
+        var hdr = rows[hi].map(function(c){ return String(c||'').toLowerCase().trim(); });
+        hdr.forEach(function(h,ci){
+          if((h.includes('часов') || h.includes('часів') || h==='p') && ci > 10) CI_HOURS = ci;
+          if((h.includes('причина') || h==='q') && ci > 10) CI_REASON = ci;
+          if((h.includes('простой') || h.includes('простій') || h==='r') && ci > 10) CI_DOWNTIME = ci;
+          if((h.includes('коментар') || h.includes('комментар') || h==='s') && ci > 10) CI_COMMENT = ci;
+          if(h.includes('лін') || h.includes('лини') || h==='g') CI_LINE = ci;
+        });
+      }
+      console.log('[DT] loc'+loc.id+' cols: date='+CI_DATE+' line='+CI_LINE+' hours='+CI_HOURS+' reason='+CI_REASON+' dt='+CI_DOWNTIME);
+
+      // Логуємо перший рядок даних для діагностики
+      if(rows[dataStart]) console.log('[DT] loc'+loc.id+' row['+dataStart+']=', rows[dataStart].slice(0,20));
 
       var curDate = null;
-      for (var i = 2; i < rows.length; i++) {
+      var accepted = 0, skippedHours = 0, skippedReason = 0;
+      for (var i = dataStart; i < rows.length; i++) {
         var row = rows[i];
-        if(!row || row.length < 16) continue;
+        if(!row || row.length < CI_HOURS) continue;
 
         // Forward-fill дати
         var dRaw = String(row[CI_DATE] || '').trim();
@@ -4851,42 +4865,43 @@ async function loadDowntimeData() {
         }
         if(!curDate) continue;
 
-        // Фільтр: год/місяць з глобального filterState
-        var yy = parseInt(curDate.slice(0,4));
-        var mm = parseInt(curDate.slice(5,7));
-        if(filterState.year !== 'all' && yy !== filterState.year) continue;
-        if(filterState.month !== 'all' && mm !== filterState.month) continue;
-
-        // Перевіряємо col Q (часи роботи лінії)
+        // Перевіряємо col "Часи роботи лінії" (не 12, не 0, не пусто)
         var hoursRaw = String(row[CI_HOURS] || '').trim().replace(',','.');
-        if(!hoursRaw || hoursRaw === '' || hoursRaw.toLowerCase() === 'nan') continue;
+        if(!hoursRaw || hoursRaw === '' || hoursRaw.toLowerCase() === 'nan'){ skippedHours++; continue; }
         var hours = parseFloat(hoursRaw);
-        if(isNaN(hours) || hours === 0 || hours === 12) continue;
+        if(isNaN(hours) || hours === 0 || hours === 12){ skippedHours++; continue; }
 
         var line   = String(row[CI_LINE] || '').trim().toUpperCase();
-        var reason = String(row[CI_REASON]  || '').trim();
-        var dtHours= parseFloat(String(row[CI_DOWNTIME] || '').replace(',','.')) || (12 - hours);
-        if(dtHours <= 0) dtHours = 12 - hours;
-        var comment= String(row[CI_COMMENT] || '').trim();
+        var reason = String(row[CI_REASON] || '').trim();
+        if(!reason || reason === '' || reason.toLowerCase() === 'nan'){ skippedReason++; continue; }
 
-        if(!line || !reason || reason === '' || reason.toLowerCase() === 'nan') continue;
+        var dtRaw  = String(row[CI_DOWNTIME] || '').replace(',','.');
+        var dtHours= parseFloat(dtRaw);
+        if(isNaN(dtHours) || dtHours <= 0) dtHours = 12 - hours;
+        var comment = String(row[CI_COMMENT] || '').trim();
+        if(comment.toLowerCase() === 'nan') comment = '';
+
+        if(!line) continue;
 
         window._dtRawRows.push({
-          date: curDate,
-          loc: loc.id,
+          date:    curDate,
+          loc:     loc.id,
           locName: loc.name,
-          line: line,
-          hours: hours,
-          downtime: Math.max(0, dtHours),
-          reason: reason,
-          comment: comment === 'nan' ? '' : comment
+          line:    line,
+          hours:   hours,
+          downtime: Math.max(0, parseFloat(dtHours.toFixed(2))),
+          reason:  reason,
+          comment: comment
         });
+        accepted++;
       }
+      console.log('[DT] loc'+loc.id+': accepted='+accepted+' skippedHours='+skippedHours+' skippedReason='+skippedReason);
     } catch(e) {
-      console.warn('[Downtime] loc', loc.id, e);
+      console.warn('[DT] loc'+loc.id+' error:', e);
     }
   }
 
+  console.log('[DT] total raw rows:', window._dtRawRows.length);
   // Будуємо кнопки локацій і ліній
   _dtBuildFilterBtns();
   renderDowntime();
