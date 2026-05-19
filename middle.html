@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 19.05.2026 10:27 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 19.05.2026 11:42 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -482,6 +482,87 @@
           <tr><td colspan="7" style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace">⟳ завантаження даних...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ══ ІТО / ТЕХНІЧНЕ ОБСЛУГОВУВАННЯ ══ -->
+  <div class="section-title" style="margin-top:20px">ІТО · Технічне обслуговування (Локація 1)</div>
+
+  <!-- KPI-рядок -->
+  <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+    <div class="kpi-card" id="itoKpi_break" style="--accent-bar:var(--bad)">
+      <div class="kpi-label">🚨 Поломки</div>
+      <div class="kpi-value" id="itoVal_break" style="color:var(--bad)">—</div>
+      <div class="kpi-unit">накопичено за журналом</div>
+    </div>
+    <div class="kpi-card" id="itoKpi_warn" style="--accent-bar:var(--warn)">
+      <div class="kpi-label">⚠️ Увага</div>
+      <div class="kpi-value" id="itoVal_warn" style="color:var(--warn)">—</div>
+      <div class="kpi-unit">потребують уваги</div>
+    </div>
+    <div class="kpi-card" id="itoKpi_ok" style="--accent-bar:var(--good)">
+      <div class="kpi-label">✅ Готово</div>
+      <div class="kpi-value" id="itoVal_ok" style="color:var(--good)">—</div>
+      <div class="kpi-unit">виконано</div>
+    </div>
+  </div>
+
+  <!-- ТО сьогодні / місяць + топи -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+    <!-- ТО прогрес -->
+    <div class="card">
+      <div class="card-header" style="flex-wrap:wrap;gap:6px">
+        <div><div class="card-title">Прогрес ТО</div><div class="card-subtitle" id="itoToSubtitle">Сьогодні та місяць · по об'єктах</div></div>
+        <div style="display:flex;gap:4px">
+          <button class="month-btn active" id="itoBtnDay" onclick="itoSetView('day',this)" style="font-size:10px">Сьогодні</button>
+          <button class="month-btn" id="itoBtnMonth" onclick="itoSetView('month',this)" style="font-size:10px">Місяць</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="itoProgressTable">
+          <thead><tr>
+            <th>Об'єкт</th>
+            <th style="text-align:right">Виконано</th>
+            <th style="text-align:right">%</th>
+            <th style="text-align:right">Час, хв</th>
+            <th>Прогрес</th>
+          </tr></thead>
+          <tbody id="itoProgressBody">
+            <tr><td colspan="5" style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace">⟳ завантаження...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Топ поломок + Топ забутих задач -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">🏆 Топ-5 поломок</div><div class="card-subtitle">З журналу ІТО</div></div></div>
+        <div id="itoTopBreaks" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">⟳ завантаження...</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">⚠️ Топ-5 забутих задач</div><div class="card-subtitle">Найчастіше пропускаються</div></div></div>
+        <div id="itoTopForgotten" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">⟳ завантаження...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Аналітика: середній час + часті причини + чекають перевірки -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+    <div class="card" style="text-align:center">
+      <div class="card-header" style="justify-content:center"><div><div class="card-title">⏱ Середній час ремонту</div></div></div>
+      <div id="itoAvgTime" style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--good)">—</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">хвилин</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">📊 Часті причини</div><div class="card-subtitle">За місяць</div></div></div>
+      <div id="itoReasons" style="font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2">⟳</div>
+    </div>
+    <div class="card" id="itoWaitCard" style="text-align:center">
+      <div class="card-header" style="justify-content:center"><div><div class="card-title">🛡 Чекають перевірки</div><div class="card-subtitle">Потрібен пароль</div></div></div>
+      <div id="itoWaitVal" style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--bad)">—</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">інцидентів</div>
     </div>
   </div>
 </div>
@@ -1758,6 +1839,7 @@ function initProduction(){
   buildHeatmap();
   loadShiftData();
   loadDowntimeData();
+  loadItoData();
 }
 async function loadProductionCharts(){
   const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
@@ -5362,5 +5444,177 @@ window.dtToggleDetails = function(hdr) {
              document.getElementById('dtDetailsWrap').style.display !== 'none';
   if(open) _renderDtDetails(_dtGetFiltered());
 };
+// ══════════════════════════════════════════════════════════════════
+// ІТО — Технічне обслуговування Локація 1
+// Sheet ID: 19hso8D-1BZYN8j4eSzZPKA_srfrqaBJLFlCPr6nPGGE
+// ══════════════════════════════════════════════════════════════════
+var ITO_SHEET_ID = '19hso8D-1BZYN8j4eSzZPKA_srfrqaBJLFlCPr6nPGGE';
+var ITO_SHEET_NAME = 'Дашборд';
+window._itoView = 'day'; // 'day' | 'month'
+window._itoData = null;
+
+function itoSetView(v, btn) {
+  window._itoView = v;
+  document.querySelectorAll('#itoBtnDay,#itoBtnMonth').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  if(window._itoData) itoRender(window._itoData);
+}
+
+async function loadItoData() {
+  try {
+    var url = 'https://docs.google.com/spreadsheets/d/' + ITO_SHEET_ID +
+              '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(ITO_SHEET_NAME);
+    var r = await fetch(url);
+    if(!r.ok){ console.warn('[ITO] fetch error', r.status); return; }
+    var txt = await r.text();
+    if(txt.includes('<html')){ console.warn('[ITO] access denied'); return; }
+    var rows = lParseCSV(txt);
+    console.log('[ITO] rows:', rows.length);
+
+    // Парсимо структуру (відповідно до локальної копії):
+    // Рядок 0 (A1): "ЦЕНТРАЛЬНЫЙ ДАШБОРД ИТО" | E=🚨 ПОЛОМКИ | F=⚠️ ВНИМАНИЕ | G=✅ ГОТОВО
+    // Рядок 1 (A2): "СЕГОДНЯ..." | E1=значення поломок | F1=увага | G1=готово
+    // Рядок 2 (A3): "МЕСЯЦ..."
+    // Рядки 4-8 (A5:A9): Топ-5 поломок (col A) | Топ-5 забутих (col E)
+    // Рядок 11 (A12): "СРЕДНЕЕ ВРЕМЯ РЕМОНТА" | C12=причини | F12=ждут перевірки
+    // Рядок 12 (A13): значення часу | C13=список | F13=кількість
+    // Рядки 22-30 (A23:G31): таблиця ТО сьогодні (об'єкт, виконано, %, час, щодення, тижн., довгостр.)
+    // Рядки 32-40 (A33:G41): таблиця ТО місяць
+
+    var d = {};
+
+    // KPI (рядок 1, індекс 1)
+    var r1 = rows[1] || [];
+    d.breaks = String(r1[4] || '—').trim();
+    d.warn   = String(r1[5] || '—').trim();
+    d.ok     = String(r1[6] || '—').trim();
+
+    // Заголовки рядків 0: перевіряємо де "СЕГОДНЯ" і "МЕСЯЦ"
+    d.todayLabel = String(rows[1] ? rows[1][0] : '').trim();
+    d.monthLabel = String(rows[2] ? rows[2][0] : '').trim();
+
+    // Топ-5 поломок (рядки 4-8, col 0) і забутих (col 4)
+    d.topBreaks = [];
+    d.topForgotten = [];
+    for(var i=4; i<=8; i++) {
+      var row = rows[i] || [];
+      var b = String(row[0]||'').trim(); if(b && b!=='nan') d.topBreaks.push(b);
+      var f = String(row[4]||'').trim(); if(f && f!=='nan') d.topForgotten.push(f);
+    }
+
+    // Аналітика (рядки 11-12, індекси 11-12)
+    var r12 = rows[12] || [];
+    d.avgTime  = String(r12[0]||'—').trim().replace('мин','').trim();
+    d.reasons  = String(r12[2]||'').trim().replace(/\\n/g,'\n');
+    d.waitVal  = String(r12[5]||'—').trim();
+
+    // ТО таблиці
+    // Сьогодні: рядки 22-30 (індекси 22-30), col: 0=об'єкт,1=виконано,2=%,3=час
+    d.todayRows = [];
+    for(var j=23; j<=30; j++) {
+      var tr = rows[j] || [];
+      var obj = String(tr[0]||'').trim();
+      if(!obj || obj==='nan' || obj==='ОБЪЕКТ' || obj==='ИТОГО:') {
+        if(obj==='ИТОГО:') d.todayRows.push({obj:'ПІДСУМОК', done:String(tr[1]||'').trim(), pct:String(tr[2]||'').trim(), time:String(tr[3]||'').trim(), isTotal:true});
+        continue;
+      }
+      d.todayRows.push({obj:obj, done:String(tr[1]||'').trim(), pct:String(tr[2]||'').trim(), time:String(tr[3]||'').trim(), isTotal:false});
+    }
+
+    // Місяць: рядки 32-40 (індекси 32-40)
+    d.monthRows = [];
+    for(var k=33; k<=40; k++) {
+      var mr = rows[k] || [];
+      var mobj = String(mr[0]||'').trim();
+      if(!mobj || mobj==='nan' || mobj==='ОБЪЕКТ' || mobj==='ИТОГО:') {
+        if(mobj==='ИТОГО:') d.monthRows.push({obj:'ПІДСУМОК', done:String(mr[1]||'').trim(), pct:String(mr[2]||'').trim(), time:String(mr[3]||'').trim(), isTotal:true});
+        continue;
+      }
+      d.monthRows.push({obj:mobj, done:String(mr[1]||'').trim(), pct:String(mr[2]||'').trim(), time:String(mr[3]||'').trim(), isTotal:false});
+    }
+
+    window._itoData = d;
+    itoRender(d);
+  } catch(e) {
+    console.warn('[ITO] error:', e);
+  }
+}
+
+function itoRender(d) {
+  // KPI
+  var set = function(id, v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  set('itoVal_break', d.breaks);
+  set('itoVal_warn',  d.warn);
+  set('itoVal_ok',    d.ok);
+  set('itoAvgTime',   d.avgTime || '—');
+  set('itoWaitVal',   d.waitVal || '—');
+
+  // Причини
+  var reasonEl = document.getElementById('itoReasons');
+  if(reasonEl) {
+    var lines = d.reasons.split('\n').filter(function(l){ return l.trim(); });
+    reasonEl.innerHTML = lines.map(function(l){
+      return '<div style="padding:3px 0;border-bottom:1px solid var(--border)">' + l + '</div>';
+    }).join('') || '—';
+  }
+
+  // Колір картки "чекають перевірки"
+  var waitCard = document.getElementById('itoWaitCard');
+  var waitNum = parseInt(d.waitVal) || 0;
+  if(waitCard) waitCard.style.setProperty('--accent-bar', waitNum > 0 ? 'var(--bad)' : 'var(--good)');
+  var waitValEl = document.getElementById('itoWaitVal');
+  if(waitValEl) waitValEl.style.color = waitNum > 0 ? 'var(--bad)' : 'var(--good)';
+
+  // Топ поломок
+  var bEl = document.getElementById('itoTopBreaks');
+  if(bEl) bEl.innerHTML = d.topBreaks.length
+    ? d.topBreaks.map(function(t,i){
+        return '<div style="padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px">' +
+          '<span style="color:var(--bad);font-weight:700">' + (i+1) + '</span>' +
+          '<span>' + t + '</span></div>';
+      }).join('')
+    : '<div style="color:var(--muted)">Немає даних</div>';
+
+  // Топ забутих
+  var fEl = document.getElementById('itoTopForgotten');
+  if(fEl) fEl.innerHTML = d.topForgotten.length
+    ? d.topForgotten.map(function(t,i){
+        return '<div style="padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px">' +
+          '<span style="color:var(--warn);font-weight:700">' + (i+1) + '</span>' +
+          '<span>' + t + '</span></div>';
+      }).join('')
+    : '<div style="color:var(--muted)">Немає даних</div>';
+
+  // Таблиця прогресу
+  var tableRows = window._itoView === 'day' ? d.todayRows : d.monthRows;
+  var subEl = document.getElementById('itoToSubtitle');
+  if(subEl) subEl.textContent = window._itoView === 'day'
+    ? (d.todayLabel || 'Сьогодні · по об\'єктах')
+    : (d.monthLabel || 'Місяць · по об\'єктах');
+
+  var tbody = document.getElementById('itoProgressBody');
+  if(tbody) {
+    if(!tableRows || !tableRows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Немає даних</td></tr>';
+    } else {
+      tbody.innerHTML = tableRows.map(function(row) {
+        var pctNum = parseInt(String(row.pct).replace('%','')) || 0;
+        var barColor = pctNum >= 100 ? 'var(--good)' : (pctNum >= 70 ? 'var(--warn)' : 'var(--bad)');
+        var rowStyle = row.isTotal ? 'style="font-weight:700;background:var(--surface2)"' : '';
+        return '<tr ' + rowStyle + '>' +
+          '<td>' + row.obj + '</td>' +
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">' + row.done + '</td>' +
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;color:' + barColor + ';font-weight:600">' + row.pct + '</td>' +
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">' + row.time + '</td>' +
+          '<td style="width:100px">' +
+            '<div style="height:6px;background:var(--border);border-radius:3px">' +
+              '<div style="height:6px;width:' + Math.min(100,pctNum) + '%;background:' + barColor + ';border-radius:3px;transition:width .3s"></div>' +
+            '</div>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  }
+}
 
 </script>
