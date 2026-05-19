@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 19.05.2026 10:03 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 19.05.2026 10:16 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -4839,21 +4839,89 @@ async function loadDowntimeData() {
       // 8=Кіл-ть, 9=Вага кг, 10=НФ кг, 11=Відхід кг, 12=Запаковано, 13=Автовага,
       // 14=Упаковщик, 15=ЧасиРоботи, 16=Причина1, 17=Простій, 18=Коментар
       // Але gviz CSV може мати merged-header рядки — шукаємо колонки динамічно
-      var CI_DATE=0, CI_LINE=6, CI_HOURS=15, CI_REASON=16, CI_DOWNTIME=17, CI_COMMENT=18;
-      var dataStart = 2; // пропускаємо 2 рядки заголовків
+      // Структура журналу: перші 2 рядки — заголовки (merged cells у gviz → пусті)
+      // Скануємо всі header-рядки і перший рядок даних для пошуку колонок
+      var CI_DATE=0, CI_LINE=-1, CI_HOURS=-1, CI_REASON=-1, CI_DOWNTIME=-1, CI_COMMENT=-1;
+      var dataStart = 0;
 
-      // Динамічний пошук колонок по заголовках (рядки 0 і 1)
-      for(var hi=0; hi<Math.min(3,rows.length); hi++){
+      // Крок 1: знаходимо dataStart — перший рядок де col0 схожий на дату
+      for(var si=0; si<Math.min(5,rows.length); si++){
+        var c0 = String(rows[si][0]||'').trim();
+        if(c0 && c0 !== '' && !c0.toLowerCase().includes('дата') && lParseDate(c0)){
+          dataStart = si; break;
+        }
+        dataStart = si + 1;
+      }
+
+      // Крок 2: шукаємо колонки по заголовках (рядки до dataStart)
+      for(var hi=0; hi<dataStart; hi++){
         var hdr = rows[hi].map(function(c){ return String(c||'').toLowerCase().trim(); });
         hdr.forEach(function(h,ci){
-          if((h.includes('часов') || h.includes('часів') || h==='p') && ci > 10) CI_HOURS = ci;
-          if((h.includes('причина') || h==='q') && ci > 10) CI_REASON = ci;
-          if((h.includes('простой') || h.includes('простій') || h==='r') && ci > 10) CI_DOWNTIME = ci;
-          if((h.includes('коментар') || h.includes('комментар') || h==='s') && ci > 10) CI_COMMENT = ci;
-          if(h.includes('лін') || h.includes('лини') || h==='g') CI_LINE = ci;
+          if(h.includes('часов') || h.includes('часів') || h.includes('линии') || h.includes('лінії')) {
+            if(ci > 8) CI_HOURS = ci;
+          }
+          if(h.includes('причина')) CI_REASON = ci;
+          if((h.includes('простой') || h.includes('простій')) && ci > CI_HOURS) CI_DOWNTIME = ci;
+          if(h.includes('коментар') || h.includes('комментар')) CI_COMMENT = ci;
+          if((h.includes('лін') || h.includes('лини')) && !h.includes('лінії') && ci < 10) CI_LINE = ci;
         });
       }
-      console.log('[DT] loc'+loc.id+' cols: date='+CI_DATE+' line='+CI_LINE+' hours='+CI_HOURS+' reason='+CI_REASON+' dt='+CI_DOWNTIME);
+
+      // Крок 3: якщо не знайшли — визначаємо по першому рядку даних
+      // Лінія: шукаємо "ЛІНІЯ N" або "ЛИНИЯ N"
+      if(CI_LINE < 0 && rows[dataStart]) {
+        rows[dataStart].forEach(function(v,ci){
+          if(ci > 0 && ci < 12 && /^(лін|лин)/i.test(String(v||''))) CI_LINE = ci;
+        });
+      }
+      // Годин роботи (CI_HOURS): числове значення 0..12 між col 10 і 20
+      // Причина (CI_REASON): текстове значення типу "N. Щось" після CI_HOURS
+      if(CI_HOURS < 0 || CI_REASON < 0) {
+        // Скануємо перші 10 рядків даних, шукаємо патерн
+        var sampleRows = rows.slice(dataStart, dataStart+15);
+        // Для кожної колонки рахуємо: скільки разів значення — число 0..12
+        var numericCounts = {};
+        var textWithDotCounts = {}; // "N. Текст"
+        sampleRows.forEach(function(row){
+          row.forEach(function(v,ci){
+            var s = String(v||'').trim();
+            var n = parseFloat(s.replace(',','.'));
+            if(!isNaN(n) && n>=0 && n<=12 && ci>8 && ci<22) numericCounts[ci]=(numericCounts[ci]||0)+1;
+            if(/^\d+\.\s+\S/.test(s) && ci>8) textWithDotCounts[ci]=(textWithDotCounts[ci]||0)+1;
+          });
+        });
+        // CI_HOURS = колонка з найбільшою кількістю чисел 0..12 (і значення саме 12 часто)
+        if(CI_HOURS < 0) {
+          var best=-1, bestN=0;
+          Object.keys(numericCounts).forEach(function(ci){
+            var cnt = numericCounts[ci];
+            if(cnt>bestN){bestN=cnt; best=parseInt(ci);}
+          });
+          if(best>=0) CI_HOURS=best;
+        }
+        // CI_REASON = перша колонка після CI_HOURS де є "N. Текст" або просто текст
+        if(CI_REASON < 0 && CI_HOURS >= 0) {
+          var bestR=-1, bestRN=0;
+          Object.keys(textWithDotCounts).forEach(function(ci){
+            var cii=parseInt(ci);
+            if(cii>CI_HOURS && textWithDotCounts[ci]>bestRN){bestRN=textWithDotCounts[ci];bestR=cii;}
+          });
+          if(bestR>=0) CI_REASON=bestR;
+          else CI_REASON = CI_HOURS+1; // fallback
+        }
+        // CI_DOWNTIME = числова колонка після CI_REASON (менші числа — години простою)
+        if(CI_DOWNTIME < 0 && CI_REASON >= 0) CI_DOWNTIME = CI_REASON+1;
+        if(CI_COMMENT < 0 && CI_DOWNTIME >= 0) CI_COMMENT  = CI_DOWNTIME+1;
+      }
+
+      // Фінальні дефолти якщо нічого не знайшли
+      if(CI_LINE    < 0) CI_LINE    = 6;
+      if(CI_HOURS   < 0) CI_HOURS   = 15;
+      if(CI_REASON  < 0) CI_REASON  = 16;
+      if(CI_DOWNTIME< 0) CI_DOWNTIME= 17;
+      if(CI_COMMENT < 0) CI_COMMENT = 18;
+
+      console.log('[DT] loc'+loc.id+' dataStart='+dataStart+' cols: line='+CI_LINE+' hours='+CI_HOURS+' reason='+CI_REASON+' dt='+CI_DOWNTIME+' comment='+CI_COMMENT);
 
       // Логуємо перший рядок даних для діагностики
       if(rows[dataStart]) console.log('[DT] loc'+loc.id+' row['+dataStart+']=', rows[dataStart].slice(0,20));
@@ -5045,7 +5113,19 @@ function renderDowntime() {
   });
 
   // ── Графік по причинах ──
-  var COLORS = ['#e05252','#ffc857','#47b4ff','#52e0a0','#b47fff','#ff8c42','#52b0e0','#e0d252','#a0e052','#ff6b9d'];
+  // Корпоративна палітра Drukar: синьо-жовта (UA)
+  var COLORS = [
+    '#1A56DB', // синій (основний)
+    '#F5A623', // бурштиновий/жовтий
+    '#1E8A44', // зелений
+    '#C0392B', // червоний (тривога)
+    '#0891B2', // блакитний
+    '#7C3AED', // фіолетовий
+    '#D97706', // помаранчевий
+    '#065F46', // темно-зелений
+    '#1D4ED8', // синій-2
+    '#B45309', // коричневий
+  ];
   safeCreateChart('dtReasonChart', {
     type: 'bar',
     data: {
@@ -5097,9 +5177,9 @@ function renderDowntime() {
       labels: lineEntries.map(function(e){ return e[0]; }),
       datasets: [
         { label: 'Год. простою', data: lineEntries.map(function(e){ return parseFloat(e[1].hours.toFixed(1)); }),
-          backgroundColor: 'rgba(224,82,82,.75)', borderColor:'#e05252', borderWidth:1, borderRadius:4 },
+          backgroundColor: 'rgba(26,86,219,.8)', borderColor:'#1A56DB', borderWidth:1, borderRadius:4 },
         { label: 'Подій', data: lineEntries.map(function(e){ return e[1].events; }),
-          backgroundColor: 'rgba(71,180,255,.55)', borderColor:'#47b4ff', borderWidth:1, borderRadius:4, yAxisID:'yRight' }
+          backgroundColor: 'rgba(245,166,35,.75)', borderColor:'#F5A623', borderWidth:1, borderRadius:4, yAxisID:'yRight' }
       ]
     },
     options: {
@@ -5134,7 +5214,7 @@ function renderDowntime() {
         var barW = Math.round(agg.hours / maxH * 100);
         // Колір рядка — чергуємо злегка
         var bg = idx % 2 === 0 ? '' : 'style="background:var(--surface2)"';
-        var hourColor = agg.hours >= 8 ? 'var(--bad)' : (agg.hours >= 3 ? 'var(--warn)' : 'var(--text)');
+        var hourColor = agg.hours >= 8 ? '#C0392B' : (agg.hours >= 3 ? '#D97706' : '#1A56DB');
 
         // Стовпці по локаціях (якщо більше однієї видимої)
         var locCols = '';
