@@ -494,17 +494,17 @@
   <div class="section-title">🔧 ІТО · Технічне обслуговування</div>
 
   <!-- Глобальні фільтри ІТО -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">ЛОКАЦІЯ:</span>
-    <div id="itoLocBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:48px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);white-space:nowrap">ЛОКАЦІЯ:</span>
+    <div id="itoLocBtns" style="display:flex;gap:4px;flex-wrap:wrap;min-width:60px">
       <button class="topn-btn active" id="itoLocAll" onclick="itoSetLoc('all',this)" style="font-size:10px">ВСІ</button>
     </div>
-    <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
-    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">ЛІНІЯ:</span>
-    <div id="itoLineBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px;flex-shrink:0"></div>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);white-space:nowrap">ЛІНІЯ:</span>
+    <div id="itoLineBtns" style="display:flex;gap:4px;flex-wrap:wrap;min-width:40px">
       <button class="topn-btn active" id="itoLineAll" onclick="itoSetLine('all',this)" style="font-size:10px">ВСІ</button>
     </div>
-    <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)" id="itoFilterBadge">⟳ завантаження...</div>
+    <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap" id="itoFilterBadge">⟳ завантаження...</div>
   </div>
 
   <!-- KPI -->
@@ -4411,16 +4411,24 @@ async function buildUtilHeatmapWeekly(monthIdx){
   try {
     // We piggyback on the weekly heatmap's data by calling a shared fetch
     // Build weeks of month
+    // Календарні тижні (Пн-Нд) — та ж логіка що і в buildHeatmapWeekly
     function getWeeks(year, month){
       const weeks=[]; const firstDay=new Date(year,month-1,1); const lastDay=new Date(year,month,0);
-      let cur=new Date(firstDay); let wNum=1;
+      let cur=new Date(firstDay);
+      const dow=cur.getDay(); const daysToMon=dow===0?-6:(1-dow);
+      cur.setDate(cur.getDate()+daysToMon);
+      let wNum=1;
       while(cur<=lastDay){
-        const wStart=new Date(cur); const wEnd=new Date(cur); wEnd.setDate(wEnd.getDate()+6);
-        if(wEnd>lastDay) wEnd.setTime(lastDay.getTime());
-        weeks.push({label:`Тиж ${wNum} (${wStart.getDate()}-${Math.min(wEnd.getDate(),lastDay.getDate())})`,
-          from:wStart.toISOString().slice(0,10), to:wEnd.toISOString().slice(0,10),
-          days: Math.round((Math.min(wEnd,lastDay)-wStart)/86400000)+1});
-        cur.setDate(cur.getDate()+7); wNum++;
+        const wStart=new Date(Math.max(cur.getTime(),firstDay.getTime()));
+        const wEndRaw=new Date(cur); wEndRaw.setDate(wEndRaw.getDate()+6);
+        const wEnd=new Date(Math.min(wEndRaw.getTime(),lastDay.getTime()));
+        if(wStart<=lastDay){
+          weeks.push({label:`Тиж ${wNum} (${wStart.getDate()}-${wEnd.getDate()})`,
+            from:wStart.toISOString().slice(0,10), to:wEnd.toISOString().slice(0,10),
+            days: Math.round((wEnd-wStart)/86400000)+1});
+          wNum++;
+        }
+        cur.setDate(cur.getDate()+7);
       }
       return weeks;
     }
@@ -5543,7 +5551,9 @@ function _itoRebuildJLineBtns(locFilter) {
   var allBtn=document.getElementById('itoJLineAll');
   wrap.innerHTML=''; if(allBtn) wrap.appendChild(allBtn);
   var src=locFilter==='all'?window._itoJournalRows:window._itoJournalRows.filter(function(r){return r.locId===locFilter;});
-  var lines=[...new Set(src.map(function(r){return r.line;}).filter(Boolean))].sort(function(a,b){
+  var lines=[...new Set(src.map(function(r){return r.line;})
+    .filter(function(l){ return l && /\d/.test(l) && !l.toUpperCase().includes('ЛОКАЦ'); })
+  )].sort(function(a,b){
     var na=parseInt((a.match(/\d+/)||[0])[0])||0, nb=parseInt((b.match(/\d+/)||[0])[0])||0; return na-nb;
   });
   lines.forEach(function(ln){
@@ -5592,7 +5602,9 @@ function _itoRebuildLineBtns(locFilter) {
   var src = locFilter === 'all'
     ? window._itoJournalRows
     : window._itoJournalRows.filter(function(r){ return r.locId === locFilter; });
-  var lines = [...new Set(src.map(function(r){ return r.line; }).filter(Boolean))].sort(function(a,b){
+  var lines = [...new Set(src.map(function(r){ return r.line; })
+    .filter(function(l){ return l && /\d/.test(l) && !l.toUpperCase().includes('ЛОКАЦ'); })
+  )].sort(function(a,b){
     var na=parseInt((a.match(/\d+/)||[0])[0])||0, nb=parseInt((b.match(/\d+/)||[0])[0])||0;
     return na-nb;
   });
