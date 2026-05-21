@@ -409,6 +409,64 @@
     </div>
   </div>
 
+  <!-- ══ ПОНЕДІЛЬНИЙ АНАЛІЗ ══ -->
+  <div class="section-title" style="margin-top:20px">Понедільний аналіз виробництва</div>
+
+  <!-- Фільтри -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:48px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);white-space:nowrap">РІК:</span>
+    <div id="waLocBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="topn-btn active" id="waYearAll" onclick="waSetYear('all',this)" style="font-size:10px">Всі</button>
+      <button class="topn-btn" onclick="waSetYear('2025',this)" style="font-size:10px">2025</button>
+      <button class="topn-btn active" onclick="waSetYear('2026',this)" style="font-size:10px">2026</button>
+    </div>
+    <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);white-space:nowrap">ЛОКАЦІЯ:</span>
+    <div id="waLocFilterBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="topn-btn active" id="waLocAll" onclick="waSetLoc('all',this)" style="font-size:10px">ВСІ</button>
+      <button class="topn-btn" onclick="waSetLoc('1',this)" style="font-size:10px">Локація 1</button>
+      <button class="topn-btn" onclick="waSetLoc('2',this)" style="font-size:10px">Локація 2</button>
+    </div>
+    <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);white-space:nowrap">ЛІНІЯ:</span>
+    <div id="waLineBtns" style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="topn-btn active" id="waLineAll" onclick="waSetLine('all',this)" style="font-size:10px">ВСІ</button>
+    </div>
+    <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap" id="waFilterBadge">⟳ завантаження...</div>
+  </div>
+
+  <!-- Два тижні порівняння: минулий vs позаминулий -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 200px;gap:14px;margin-bottom:14px">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title" id="waThisWeekTitle">Минулий тиждень</div><div class="card-subtitle" id="waThisWeekDates"></div></div></div>
+      <div style="position:relative;height:220px"><canvas id="waThisWeekChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title" id="waPrevWeekTitle">Тей що був тиждень</div><div class="card-subtitle" id="waPrevWeekDates"></div></div></div>
+      <div style="position:relative;height:220px"><canvas id="waPrevWeekChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Різниця</div><div class="card-subtitle">Мин. vs Попер.</div></div></div>
+      <div style="position:relative;height:220px"><canvas id="waDiffChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Тренд по тижнях (весь рік) -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div><div class="card-title">Тренд по тижнях</div><div class="card-subtitle">Загальний кг · готова продукція · НФ · Брак</div></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap" id="waTrendMetricBtns">
+        <button class="month-btn active" onclick="waSetMetric('kg',this)" style="font-size:10px">Заг. кг</button>
+        <button class="month-btn" onclick="waSetMetric('prod',this)" style="font-size:10px">Гот. прод.</button>
+        <button class="month-btn" onclick="waSetMetric('nf',this)" style="font-size:10px">НФ</button>
+        <button class="month-btn" onclick="waSetMetric('brak',this)" style="font-size:10px">Брак</button>
+        <button class="month-btn" onclick="waSetMetric('coils',this)" style="font-size:10px">Котушки шт</button>
+        <button class="month-btn" onclick="waSetMetric('packed',this)" style="font-size:10px">Запаковано</button>
+      </div>
+    </div>
+    <div style="position:relative;height:260px"><canvas id="waTrendChart"></canvas></div>
+  </div>
+
   <!-- ══ ПРОСТОЇ ══ -->
   <div class="section-title" style="margin-top:20px">Простої ліній</div>
 
@@ -1883,6 +1941,7 @@ function initProduction(){
   buildHeatmap();
   loadShiftData();
   loadDowntimeData();
+  loadWeeklyAnalysis();
 }
 async function loadProductionCharts(){
   const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
@@ -5897,6 +5956,251 @@ function itoRenderAll() {
       }).join('');
     }
   }
+}
+// ══════════════════════════════════════════════════════════════════
+// ПОНЕДІЛЬНИЙ АНАЛІЗ ВИРОБНИЦТВА
+// Джерело: _AllData (лист журналів) — col0=Дата, col3=Вклад%, col4=Лінія,
+//          col6=Котушок, col7=Вес кг, col8=НФ кг, col9=Брак кг, col10=Запаковано
+// Агрегація: sum(col_вклад) по зміні дає реальні значення зміни
+// ══════════════════════════════════════════════════════════════════
+var WA_SOURCES = [
+  { locId:'1', locName:'Локація 1', sheetId:'1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4', sheet:'_AllData' },
+  { locId:'2', locName:'Локація 2', sheetId:'1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI', sheet:'_AllData' },
+  // { locId:'3', locName:'Локація 3', sheetId:'SHEET_ID_3', sheet:'_AllData' },
+];
+
+window._waRaw       = [];   // [{date,week,year,locId,line,kg,prod,nf,brak,coils,packed}]
+window._waYear      = '2026';
+window._waLoc       = 'all';
+window._waLine      = 'all';
+window._waMetric    = 'kg';
+
+// Метрики: ключ → {label, col (0-based в _AllData), color}
+var WA_METRICS = {
+  kg:     { label:'Заг. кг',        col:7,  color:'#1A56DB' },
+  nf:     { label:'НФ кг',          col:8,  color:'#F5A623' },
+  brak:   { label:'Брак кг',        col:9,  color:'#C0392B' },
+  coils:  { label:'Котушок шт',     col:6,  color:'#1E8A44' },
+  packed: { label:'Запаковано шт',  col:10, color:'#7C3AED' },
+};
+// prod = kg - nf - brak (готова продукція)
+
+function waSetYear(v, btn) {
+  window._waYear = v;
+  document.querySelectorAll('#waLocBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  waRender();
+}
+function waSetLoc(v, btn) {
+  window._waLoc  = v;
+  window._waLine = 'all';
+  document.querySelectorAll('#waLocFilterBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  _waRebuildLineBtns(v);
+  var allL=document.getElementById('waLineAll'); if(allL) allL.classList.add('active');
+  waRender();
+}
+function waSetLine(v, btn) {
+  window._waLine = v;
+  document.querySelectorAll('#waLineBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  waRender();
+}
+function waSetMetric(v, btn) {
+  window._waMetric = v;
+  document.querySelectorAll('#waTrendMetricBtns .month-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  waRender();
+}
+function _waRebuildLineBtns(locFilter) {
+  var wrap=document.getElementById('waLineBtns'); if(!wrap) return;
+  var allBtn=document.getElementById('waLineAll');
+  wrap.innerHTML=''; if(allBtn) wrap.appendChild(allBtn);
+  var src=locFilter==='all'?window._waRaw:window._waRaw.filter(function(r){return r.locId===locFilter;});
+  var lines=[...new Set(src.map(function(r){return r.line;}).filter(function(l){return l&&/\d/.test(l);}))].sort(function(a,b){
+    var na=parseInt((a.match(/\d+/)||[0])[0])||0, nb=parseInt((b.match(/\d+/)||[0])[0])||0; return na-nb;
+  });
+  lines.forEach(function(ln){
+    var b=document.createElement('button'); b.className='topn-btn'; b.style.fontSize='9px'; b.textContent=ln;
+    b.onclick=function(){waSetLine(ln,this);}; wrap.appendChild(b);
+  });
+}
+
+async function loadWeeklyAnalysis() {
+  window._waRaw = [];
+  var badge=document.getElementById('waFilterBadge');
+  if(badge) badge.textContent='⟳ завантаження...';
+
+  await Promise.all(WA_SOURCES.map(async function(src){
+    try {
+      var url='https://docs.google.com/spreadsheets/d/'+src.sheetId+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(src.sheet);
+      var r=await fetch(url); if(!r.ok) return;
+      var txt=await r.text(); if(txt.includes('<html')) return;
+      var rows=lParseCSV(txt);
+      // Рядок 0 = заголовок, дані з рядка 1
+      var CI={date:0,shift:1,vklad:3,line:4,coils:6,kg:7,nf:8,brak:9,packed:10};
+      // Агрегуємо по date+shift+line (знімаємо дублі операторів)
+      var agg={}; // key=date|shift|line → {kg,nf,brak,coils,packed}
+      var curDate=null;
+      for(var i=1;i<rows.length;i++){
+        var row=rows[i];
+        var dRaw=String(row[CI.date]||'').trim();
+        if(dRaw&&dRaw!=='nan'){var dp=lParseDate(dRaw); if(dp) curDate=dp;}
+        if(!curDate) continue;
+        var line=String(row[CI.line]||'').toUpperCase().trim();
+        var nm=line.match(/\d+/); if(!nm) continue;
+        line='ЛІНІЯ '+nm[0];
+        var shift=String(row[CI.shift]||'').trim();
+        var key=curDate+'|'+shift+'|'+line;
+        var v=parseFloat(String(row[CI.vklad]||'').replace(',','.')); if(isNaN(v)||v<=0) continue;
+        if(!agg[key]) agg[key]={date:curDate,line:line,locId:src.locId,locName:src.locName,kg:0,nf:0,brak:0,coils:0,packed:0};
+        agg[key].kg     +=parseFloat(String(row[CI.kg]    ||'').replace(',','.'))||0;
+        agg[key].nf     +=parseFloat(String(row[CI.nf]    ||'').replace(',','.'))||0;
+        agg[key].brak   +=parseFloat(String(row[CI.brak]  ||'').replace(',','.'))||0;
+        agg[key].coils  +=parseFloat(String(row[CI.coils] ||'').replace(',','.'))||0;
+        agg[key].packed +=parseFloat(String(row[CI.packed]||'').replace(',','.'))||0;
+      }
+      // Конвертуємо в рядки з тижнями
+      Object.values(agg).forEach(function(rec){
+        var d=new Date(rec.date); if(isNaN(d)) return;
+        // ISO тиждень і рік
+        var jan4=new Date(d.getFullYear(),0,4);
+        var startOfWeek=new Date(jan4);
+        startOfWeek.setDate(jan4.getDate()-((jan4.getDay()+6)%7));
+        var week=Math.floor((d-startOfWeek)/604800000)+1;
+        var year=d.getFullYear();
+        // Якщо тиждень > 52 і ми в грудні — рік+1
+        if(week>=53&&d.getMonth()===0) year--;
+        // Початок тижня (пн)
+        var dow=(d.getDay()+6)%7;
+        var wMon=new Date(d); wMon.setDate(d.getDate()-dow);
+        var wSun=new Date(wMon); wSun.setDate(wMon.getDate()+6);
+        function fd(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+        window._waRaw.push({
+          date:rec.date, weekKey:fd(wMon), weekEnd:fd(wSun),
+          week:week, year:year,
+          locId:rec.locId, locName:rec.locName, line:rec.line,
+          kg:rec.kg, prod:Math.max(0,rec.kg-rec.nf-rec.brak),
+          nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
+        });
+      });
+      console.log('[WA] loc'+src.locId+': '+Object.keys(agg).length+' зміни завантажено');
+    } catch(e){ console.warn('[WA] loc'+src.locId, e); }
+  }));
+
+  _waRebuildLineBtns('all');
+  // Активуємо 2026 за замовчуванням
+  var btn2026=document.querySelector('#waLocBtns .topn-btn:last-child');
+  if(btn2026&&btn2026.textContent==='2026'){ window._waYear='2026'; btn2026.classList.add('active'); }
+  waRender();
+}
+
+function _waGetFiltered() {
+  return window._waRaw.filter(function(r){
+    if(window._waYear!=='all' && String(r.year)!==String(window._waYear)) return false;
+    if(window._waLoc!=='all'  && r.locId!==window._waLoc) return false;
+    if(window._waLine!=='all' && r.line!==window._waLine) return false;
+    return true;
+  });
+}
+
+function _waAggByWeek(rows) {
+  var map={};
+  rows.forEach(function(r){
+    var k=r.weekKey;
+    if(!map[k]) map[k]={weekKey:r.weekKey,weekEnd:r.weekEnd,week:r.week,year:r.year,kg:0,prod:0,nf:0,brak:0,coils:0,packed:0};
+    map[k].kg    +=r.kg;
+    map[k].prod  +=r.prod;
+    map[k].nf    +=r.nf;
+    map[k].brak  +=r.brak;
+    map[k].coils +=r.coils;
+    map[k].packed+=r.packed;
+  });
+  return Object.values(map).sort(function(a,b){return a.weekKey.localeCompare(b.weekKey);});
+}
+
+function waRender() {
+  var filtered=_waGetFiltered();
+  var weeks=_waAggByWeek(filtered);
+
+  var badge=document.getElementById('waFilterBadge');
+  if(badge) badge.textContent=weeks.length+' тижнів · '+Math.round(filtered.reduce(function(s,r){return s+r.kg;},0)).toLocaleString('uk')+' кг';
+
+  // Визначаємо минулий і позаминулий тижні
+  // "Минулий" = останній повний тиждень (weekEnd < сьогодні)
+  function fmtD2(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var today=fmtD2(new Date());
+  var completeWeeks=weeks.filter(function(w){return w.weekEnd<today;});
+  var thisW=completeWeeks[completeWeeks.length-1]||null;
+  var prevW=completeWeeks[completeWeeks.length-2]||null;
+
+  function fmtLabel(w){ if(!w) return '—'; return w.weekKey.slice(5)+' – '+w.weekEnd.slice(5); }
+  function setTxt(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+  setTxt('waThisWeekTitle','Минулий тиждень');
+  setTxt('waThisWeekDates',fmtLabel(thisW));
+  setTxt('waPrevWeekTitle','Тиждень до того');
+  setTxt('waPrevWeekDates',fmtLabel(prevW));
+
+  // Метрики для порівняльних барів
+  var METRICS_ORDER=['kg','prod','nf','brak','coils','packed'];
+  var LABELS_UK={kg:'Заг. кг',prod:'Гот. прод. кг',nf:'НФ кг',brak:'Брак кг',coils:'Котушок шт',packed:'Запаковано шт'};
+  var COLORS_MAP={kg:'#1A56DB',prod:'#1E8A44',nf:'#F5A623',brak:'#C0392B',coils:'#7C3AED',packed:'#0891B2'};
+
+  function weekData(w){ return w?{kg:w.kg,prod:w.prod,nf:w.nf,brak:w.brak,coils:w.coils,packed:w.packed}:{kg:0,prod:0,nf:0,brak:0,coils:0,packed:0}; }
+  function makeHBar(canvasId, wData, colorFn){
+    var labels=METRICS_ORDER.map(function(m){return LABELS_UK[m];});
+    var vals=METRICS_ORDER.map(function(m){return Math.round(wData[m]);});
+    var colors=METRICS_ORDER.map(function(m){return COLORS_MAP[m]+'cc';});
+    safeCreateChart(canvasId,{
+      type:'bar',
+      data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:3,borderWidth:0}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.raw.toLocaleString('uk');}}}},
+        scales:{x:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}}}
+    });
+  }
+  makeHBar('waThisWeekChart', weekData(thisW));
+  makeHBar('waPrevWeekChart', weekData(prevW));
+
+  // Різниця
+  var tdW=weekData(thisW), pdW=weekData(prevW);
+  var diffLabels=METRICS_ORDER.map(function(m){return LABELS_UK[m];});
+  var diffVals=METRICS_ORDER.map(function(m){return Math.round(tdW[m]-pdW[m]);});
+  var diffColors=diffVals.map(function(v,i){
+    // Для НФ і Брак — зростання погано
+    var isNeg=['nf','brak'].includes(METRICS_ORDER[i]);
+    return (isNeg?(v>0?'#C0392B':'#1E8A44'):(v>=0?'#1E8A44':'#C0392B'))+'cc';
+  });
+  safeCreateChart('waDiffChart',{
+    type:'bar',
+    data:{labels:diffLabels,datasets:[{data:diffVals,backgroundColor:diffColors,borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+(ctx.raw>0?'+':'')+ctx.raw.toLocaleString('uk');}}}},
+      scales:{x:{...GR,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}}}
+  });
+
+  // Тренд
+  var metric=window._waMetric||'kg';
+  var mColor=COLORS_MAP[metric]||'#1A56DB';
+  var trendLabels=weeks.map(function(w){return w.weekKey.slice(5,10);});
+  var trendVals=weeks.map(function(w){return Math.round(w[metric]);});
+  // Виділяємо минулий і позаминулий тижні
+  var ptColors=trendLabels.map(function(l,i){
+    if(thisW&&weeks[i].weekKey===thisW.weekKey) return '#F5A623';
+    if(prevW&&weeks[i].weekKey===prevW.weekKey) return '#1E8A44';
+    return mColor+'bb';
+  });
+  safeCreateChart('waTrendChart',{
+    type:'bar',
+    data:{labels:trendLabels,datasets:[{
+      label:LABELS_UK[metric],data:trendVals,
+      backgroundColor:ptColors,borderRadius:3,borderWidth:0
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.raw.toLocaleString('uk');}}}},
+      scales:{x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
+              y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}}
+  });
 }
 
 </script>
