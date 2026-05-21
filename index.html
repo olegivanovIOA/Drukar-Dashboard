@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 20.05.2026 23:23 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 21.05.2026 02:08 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -531,9 +531,13 @@
     <div class="card">
       <div class="card-header" style="flex-wrap:wrap;gap:6px">
         <div><div class="card-title">Прогрес ТО</div><div class="card-subtitle" id="itoToSubtitle">по об'єктах</div></div>
-        <div style="display:flex;gap:4px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
           <button class="month-btn active" id="itoBtnDay" onclick="itoSetView('day',this)" style="font-size:10px">Сьогодні</button>
           <button class="month-btn" id="itoBtnMonth" onclick="itoSetView('month',this)" style="font-size:10px">Місяць</button>
+          <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+          <div id="itoProgressLineBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="topn-btn active" id="itoProgLineAll" onclick="itoSetProgressLine('all',this)" style="font-size:9px">Всі об'єкти</button>
+          </div>
         </div>
       </div>
       <div style="overflow-x:auto">
@@ -557,56 +561,7 @@
     </div>
   </div>
 
-  <!-- Простої (перенесено з вкладки Виробництво) -->
-  <div class="section-title" style="margin-top:6px">Простої ліній</div>
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">ЛОКАЦІЯ:</span>
-    <div id="dtLocBtns" style="display:flex;gap:4px;flex-wrap:wrap">
-      <button class="topn-btn active" id="dtLocAll" onclick="dtSetLoc('all',this)" style="font-size:10px">ВСІ</button>
-    </div>
-    <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
-    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)">ЛІНІЯ:</span>
-    <div id="dtLineBtns" style="display:flex;gap:4px;flex-wrap:wrap">
-      <button class="topn-btn active" id="dtLineAll" onclick="dtSetLine('all',this)" style="font-size:10px">ВСІ</button>
-    </div>
-    <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)" id="dtFilterBadge">⟳</div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-    <div class="card">
-      <div class="card-header"><div><div class="card-title">Простої по причинах</div><div class="card-subtitle">Години простою · сортування ↓</div></div></div>
-      <div class="cw-lg" style="position:relative"><canvas id="dtReasonChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div><div class="card-title">Простої по лініях</div><div class="card-subtitle">Год. простою + кількість подій</div></div></div>
-      <div class="cw-lg" style="position:relative"><canvas id="dtLineChart"></canvas></div>
-    </div>
-  </div>
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-header" style="flex-wrap:wrap;gap:8px">
-      <div><div class="card-title">Зведена таблиця по причинах</div><div class="card-subtitle" id="dtSummarySubtitle">Агреговані підсумки</div></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">СОРТУВАННЯ:</span>
-        <button class="month-btn active" id="dtSortHours" onclick="dtSetSort('hours',this)" style="font-size:10px">Год. ↓</button>
-        <button class="month-btn" id="dtSortEvents" onclick="dtSetSort('events',this)" style="font-size:10px">Подій ↓</button>
-        <div id="dtTotalBadge" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);margin-left:8px"></div>
-      </div>
-    </div>
-    <div style="overflow-x:auto">
-      <table id="dtSummaryTable"><thead><tr id="dtSummaryHead"></tr></thead><tbody id="dtSummaryBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace">⟳</td></tr></tbody></table>
-    </div>
-  </div>
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-header" style="cursor:pointer" onclick="dtToggleDetails(this)">
-      <div><div class="card-title">Деталі простоїв (всі записи)</div><div class="card-subtitle" id="dtTableSubtitle">розгорнути ▾</div></div>
-      <span id="dtDetailsArrow" style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--muted)">▾</span>
-    </div>
-    <div id="dtDetailsWrap" style="display:none;overflow-x:auto">
-      <table><thead><tr><th>Дата</th><th>Локація</th><th>Лінія</th><th style="text-align:right">Факт год.</th><th style="text-align:right">Простій год.</th><th>Причина</th><th>Коментар</th></tr></thead>
-      <tbody id="dtTableBody"><tr><td colspan="7" style="text-align:center;color:var(--muted)">⟳</td></tr></tbody></table>
-    </div>
-  </div>
-
-  <!-- Реакція на поломки (п.6) -->
+  <!-- Реакція на поломки -->
   <div class="section-title" style="margin-top:6px">Реакція на поломки</div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
     <div class="kpi-card" style="--accent-bar:var(--accent)">
@@ -627,8 +582,24 @@
   </div>
   <div class="card">
     <div class="card-header" style="flex-wrap:wrap;gap:8px">
-      <div><div class="card-title">Журнал інцидентів ІТО</div><div class="card-subtitle" id="itoJournalSubtitle">Всі локації · з урахуванням фільтрів</div></div>
-      <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)" id="itoJournalBadge"></div>
+      <div><div class="card-title">Журнал інцидентів ІТО</div><div class="card-subtitle" id="itoJournalSubtitle">з урахуванням фільтрів</div></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <!-- Окремі фільтри журналу -->
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);align-self:center">ЛОК:</span>
+          <div id="itoJLocBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="topn-btn active" id="itoJLocAll" onclick="itoJSetLoc('all',this)" style="font-size:9px">Всі</button>
+          </div>
+        </div>
+        <div style="width:1px;height:16px;background:var(--border)"></div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);align-self:center">ЛІНІЯ:</span>
+          <div id="itoJLineBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="topn-btn active" id="itoJLineAll" onclick="itoJSetLine('all',this)" style="font-size:9px">Всі</button>
+          </div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)" id="itoJournalBadge"></div>
+      </div>
     </div>
     <div style="overflow-x:auto">
       <table>
@@ -2386,26 +2357,35 @@ async function buildHeatmapWeekly(monthIdx){
     const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
     const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
 
-    // Визначаємо тижні місяця (Пн-Нд)
+    // Визначаємо календарні тижні місяця (Пн-Нд)
     function getWeeksOfMonth(year,month){
       const weeks=[];
       const firstDay=new Date(year,month-1,1);
       const lastDay=new Date(year,month,0);
+
+      // Знаходимо понеділок першого тижня що торкається цього місяця
       let cur=new Date(firstDay);
-      // Починаємо з першого дня місяця
+      const dow=cur.getDay(); // 0=нд,1=пн,...,6=сб
+      const daysToMon=dow===0?-6:(1-dow); // зсув до пн
+      cur.setDate(cur.getDate()+daysToMon);
+
       let wNum=1;
       while(cur<=lastDay){
-        const wStart=new Date(cur);
-        const wEnd=new Date(cur);
-        wEnd.setDate(wEnd.getDate()+6);
-        if(wEnd>lastDay) wEnd.setTime(lastDay.getTime());
-        weeks.push({
-          label:`Тиж ${wNum} (${wStart.getDate()}-${Math.min(wEnd.getDate(),lastDay.getDate())})`,
-          from:wStart.toISOString().slice(0,10),
-          to:wEnd.toISOString().slice(0,10)
-        });
+        const wStart=new Date(Math.max(cur.getTime(), firstDay.getTime()));
+        const wEndRaw=new Date(cur); wEndRaw.setDate(wEndRaw.getDate()+6);
+        const wEnd=new Date(Math.min(wEndRaw.getTime(), lastDay.getTime()));
+        // Пропускаємо тижні що повністю поза місяцем
+        if(wStart<=lastDay){
+          const d1=wStart.getDate(), d2=wEnd.getDate();
+          // Мітка: пн-нд числа
+          weeks.push({
+            label:`Тиж ${wNum} (${d1}-${d2})`,
+            from:wStart.toISOString().slice(0,10),
+            to:wEnd.toISOString().slice(0,10)
+          });
+          wNum++;
+        }
         cur.setDate(cur.getDate()+7);
-        wNum++;
       }
       return weeks;
     }
@@ -5539,8 +5519,46 @@ var ITO_LOCATIONS = [
 window._itoView    = 'day';
 window._itoLocFilter  = 'all';
 window._itoLineFilter = 'all';
-window._itoDashData   = []; // [{locId, locName, breaks, warn, ok, todayRows, monthRows, topBreaks}]
-window._itoJournalRows = []; // всі рядки журналів
+window._itoJLocFilter  = 'all';
+window._itoJLineFilter = 'all';
+window._itoProgLineFilter = 'all';
+window._itoDashData   = [];
+window._itoJournalRows = [];
+
+function itoJSetLoc(val, btn) {
+  window._itoJLocFilter  = val;
+  window._itoJLineFilter = 'all';
+  document.querySelectorAll('#itoJLocBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  _itoRebuildJLineBtns(val);
+  var allL=document.getElementById('itoJLineAll'); if(allL) allL.classList.add('active');
+  itoRenderAll();
+}
+function itoJSetLine(val, btn) {
+  window._itoJLineFilter = val;
+  document.querySelectorAll('#itoJLineBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  itoRenderAll();
+}
+function _itoRebuildJLineBtns(locFilter) {
+  var wrap=document.getElementById('itoJLineBtns'); if(!wrap) return;
+  var allBtn=document.getElementById('itoJLineAll');
+  wrap.innerHTML=''; if(allBtn) wrap.appendChild(allBtn);
+  var src=locFilter==='all'?window._itoJournalRows:window._itoJournalRows.filter(function(r){return r.locId===locFilter;});
+  var lines=[...new Set(src.map(function(r){return r.line;}).filter(Boolean))].sort(function(a,b){
+    var na=parseInt((a.match(/\d+/)||[0])[0])||0, nb=parseInt((b.match(/\d+/)||[0])[0])||0; return na-nb;
+  });
+  lines.forEach(function(ln){
+    var b=document.createElement('button'); b.className='topn-btn'; b.style.fontSize='9px'; b.textContent=ln;
+    b.onclick=function(){itoJSetLine(ln,this);}; wrap.appendChild(b);
+  });
+}
+function itoSetProgressLine(val, btn) {
+  window._itoProgLineFilter = val;
+  document.querySelectorAll('#itoProgressLineBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  itoRenderAll();
+}
 
 function itoSetView(v, btn) {
   window._itoView = v;
@@ -5610,6 +5628,28 @@ async function initIto() {
     });
   }
   _itoRebuildLineBtns('all');
+  // Будуємо кнопки журналу
+  var jLocWrap=document.getElementById('itoJLocBtns');
+  if(jLocWrap){
+    var jAllBtn=document.getElementById('itoJLocAll');
+    jLocWrap.innerHTML=''; if(jAllBtn) jLocWrap.appendChild(jAllBtn);
+    ITO_LOCATIONS.forEach(function(loc){
+      var b=document.createElement('button'); b.className='topn-btn'; b.style.fontSize='9px'; b.textContent=loc.name;
+      b.onclick=function(){itoJSetLoc(loc.id,this);}; jLocWrap.appendChild(b);
+    });
+  }
+  _itoRebuildJLineBtns('all');
+  // Будуємо кнопки об'єктів прогресу
+  var progWrap=document.getElementById('itoProgressLineBtns');
+  if(progWrap){
+    var allProgBtn=document.getElementById('itoProgLineAll');
+    progWrap.innerHTML=''; if(allProgBtn) progWrap.appendChild(allProgBtn);
+    var allObjs=[...new Set(window._itoDashData.flatMap(function(d){return d.todayRows.concat(d.monthRows).map(function(r){return r.obj;});}).filter(function(o){return o&&o!=='ПІДСУМОК';}))];
+    allObjs.sort().forEach(function(obj){
+      var b=document.createElement('button'); b.className='topn-btn'; b.style.fontSize='9px'; b.textContent=obj;
+      b.onclick=function(){itoSetProgressLine(obj,this);}; progWrap.appendChild(b);
+    });
+  }
   loadDowntimeData(); // простої також на цій вкладці
   itoRenderAll();
 }
@@ -5719,8 +5759,8 @@ function _itoParseJournal(rows, loc) {
 
 function _itoGetFilteredJournal() {
   return window._itoJournalRows.filter(function(r){
-    if(window._itoLocFilter!=='all'  && r.locId !== window._itoLocFilter)  return false;
-    if(window._itoLineFilter!=='all' && r.line  !== window._itoLineFilter) return false;
+    if(window._itoJLocFilter!=='all'  && r.locId !== window._itoJLocFilter)  return false;
+    if(window._itoJLineFilter!=='all' && r.line  !== window._itoJLineFilter) return false;
     var yy=parseInt((r.date||'').slice(0,4)), mm=parseInt((r.date||'').slice(5,7));
     if(filterState.year!=='all'  && yy!==filterState.year)  return false;
     if(filterState.month!=='all' && mm!==filterState.month) return false;
@@ -5731,116 +5771,114 @@ function _itoGetFilteredJournal() {
 function itoRenderAll() {
   var filtered = _itoGetFilteredJournal();
 
-  // Badge
   var badge = document.getElementById('itoFilterBadge');
-  if(badge) badge.textContent = filtered.length + ' інцидентів у журналі';
+  if(badge) badge.textContent = window._itoJournalRows.length + ' інцидентів загалом';
 
-  // KPI — агрегуємо з усіх dashData відповідно до фільтру локації
+  // KPI
   var srcDash = window._itoLocFilter === 'all'
     ? window._itoDashData
     : window._itoDashData.filter(function(d){ return d.locId === window._itoLocFilter; });
-
   var totBreaks=0, totWarn=0, totOk=0;
-  srcDash.forEach(function(d){
-    totBreaks += parseInt(d.breaks)||0;
-    totWarn   += parseInt(d.warn)||0;
-    totOk     += parseInt(d.ok)||0;
-  });
-  var sv = function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
-  sv('itoVal_break', totBreaks||'—');
-  sv('itoVal_warn',  totWarn||'—');
-  sv('itoVal_ok',    totOk||'—');
+  srcDash.forEach(function(d){ totBreaks+=parseInt(d.breaks)||0; totWarn+=parseInt(d.warn)||0; totOk+=parseInt(d.ok)||0; });
+  var sv=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  sv('itoVal_break',totBreaks||'—'); sv('itoVal_warn',totWarn||'—'); sv('itoVal_ok',totOk||'—');
 
-  // Прогрес ТО
-  var tbody = document.getElementById('itoProgressBody');
-  var sub   = document.getElementById('itoToSubtitle');
-  if(tbody) {
-    var allRows = [];
+  // Прогрес ТО — виводимо по локаціях з ПІДСУМКОМ після кожної
+  var tbody=document.getElementById('itoProgressBody');
+  var sub=document.getElementById('itoToSubtitle');
+  if(tbody){
+    var html='';
     srcDash.forEach(function(d){
-      var src = window._itoView === 'day' ? d.todayRows : d.monthRows;
-      src.forEach(function(row){
-        allRows.push({ locName: d.locName, obj: row.obj, done: row.done,
-                       pct: row.pct, time: row.time, isTotal: row.isTotal });
+      var src=window._itoView==='day'?d.todayRows:d.monthRows;
+      // Фільтр по об'єкту
+      var dataRows=src.filter(function(r){
+        if(r.isTotal) return false;
+        if(window._itoProgLineFilter!=='all' && r.obj!==window._itoProgLineFilter) return false;
+        return true;
       });
-    });
-    if(sub) sub.textContent = (window._itoView==='day' ? 'Сьогодні' : 'Місяць') + ' · по об\'єктах';
-    if(!allRows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Немає даних</td></tr>';
-    } else {
-      tbody.innerHTML = allRows.map(function(row){
+      var totalRow=src.find(function(r){return r.isTotal;});
+      if(!dataRows.length && !totalRow) return;
+      // Рядки об'єктів
+      dataRows.forEach(function(row){
         var pctNum=parseInt(String(row.pct).replace('%',''))||0;
         var barColor=pctNum>=100?'var(--good)':(pctNum>=70?'var(--warn)':'var(--bad)');
-        var rs=row.isTotal?'style="font-weight:700;background:var(--surface2)"':'';
-        return '<tr '+rs+'>' +
-          '<td style="color:var(--muted);font-size:11px">'+row.locName+'</td>' +
-          '<td>'+row.obj+'</td>' +
-          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px">'+row.done+'</td>' +
-          '<td style="text-align:right;color:'+barColor+';font-weight:600">'+row.pct+'</td>' +
-          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px">'+row.time+'</td>' +
-          '<td style="width:80px"><div style="height:5px;background:var(--border);border-radius:3px"><div style="height:5px;width:'+Math.min(100,pctNum)+'%;background:'+barColor+';border-radius:3px"></div></div></td>' +
-        '</tr>';
-      }).join('');
-    }
+        html+='<tr><td style="color:var(--muted);font-size:11px">'+d.locName+'</td>'+
+          '<td>'+row.obj+'</td>'+
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px">'+row.done+'</td>'+
+          '<td style="text-align:right;color:'+barColor+';font-weight:600">'+row.pct+'</td>'+
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px">'+row.time+'</td>'+
+          '<td style="width:80px"><div style="height:5px;background:var(--border);border-radius:3px"><div style="height:5px;width:'+Math.min(100,pctNum)+'%;background:'+barColor+';border-radius:3px"></div></div></td>'+
+          '</tr>';
+      });
+      // ПІДСУМОК локації
+      if(totalRow && window._itoProgLineFilter==='all'){
+        var tPct=parseInt(String(totalRow.pct).replace('%',''))||0;
+        var tColor=tPct>=100?'var(--good)':(tPct>=70?'var(--warn)':'var(--bad)');
+        html+='<tr style="font-weight:700;background:var(--surface2)">'+
+          '<td style="color:var(--accent);font-size:11px;font-weight:700">'+d.locName+'</td>'+
+          '<td style="font-weight:700">ПІДСУМОК</td>'+
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px">'+totalRow.done+'</td>'+
+          '<td style="text-align:right;color:'+tColor+';font-weight:700">'+totalRow.pct+'</td>'+
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:11px">'+totalRow.time+'</td>'+
+          '<td><div style="height:5px;background:var(--border);border-radius:3px"><div style="height:5px;width:'+Math.min(100,tPct)+'%;background:'+tColor+';border-radius:3px"></div></div></td>'+
+          '</tr>';
+      }
+    });
+    tbody.innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:var(--muted)">Немає даних</td></tr>';
+    if(sub) sub.textContent=(window._itoView==='day'?'Сьогодні':'Місяць')+' · по об\'єктах';
   }
 
   // Топ поломок
-  var bEl = document.getElementById('itoTopBreaks');
-  if(bEl) {
-    // Зводимо всі topBreaks зі всіх локацій
-    var allBreaks = [];
-    srcDash.forEach(function(d){ d.topBreaks.forEach(function(b){ allBreaks.push({loc:d.locName, text:b}); }); });
-    bEl.innerHTML = allBreaks.length
-      ? allBreaks.slice(0,5).map(function(b,i){
-          return '<div style="padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px">' +
-            '<span style="color:var(--bad);font-weight:700">'+(i+1)+'</span>' +
+  var bEl=document.getElementById('itoTopBreaks');
+  if(bEl){
+    var allBreaks=[];
+    srcDash.forEach(function(d){d.topBreaks.forEach(function(b){allBreaks.push({loc:d.locName,text:b});});});
+    bEl.innerHTML=allBreaks.length
+      ?allBreaks.slice(0,5).map(function(b,i){
+          return '<div style="padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px">'+
+            '<span style="color:var(--bad);font-weight:700">'+(i+1)+'</span>'+
             '<span style="color:var(--muted);font-size:10px">['+b.loc+']</span> <span>'+b.text+'</span></div>';
         }).join('')
-      : '<div style="color:var(--muted)">Немає даних</div>';
+      :'<div style="color:var(--muted)">Немає даних</div>';
   }
 
-  // Журнал ИТО — КПІ
-  var repairs = filtered.map(function(r){return r.repairMin;}).filter(function(v){return v!==null&&!isNaN(v)&&v>0&&v<600;});
-  var reacts  = filtered.map(function(r){return r.reactMin;}).filter(function(v){return v!==null&&!isNaN(v)&&v>0&&v<7200;});
-  var avgRep  = repairs.length ? Math.round(repairs.reduce(function(s,v){return s+v;},0)/repairs.length) : '—';
-  var avgReact= reacts.length  ? Math.round(reacts.reduce(function(s,v){return s+v;},0)/reacts.length)  : '—';
-  sv('itoAvgRepair',    avgRep);
-  sv('itoAvgReaction',  avgReact);
-  sv('itoTotalIncidents', filtered.length);
+  // Журнал — КПІ
+  var repairs=filtered.map(function(r){return r.repairMin;}).filter(function(v){return v!==null&&!isNaN(v)&&v>0&&v<600;});
+  var reacts=filtered.map(function(r){return r.reactMin;}).filter(function(v){return v!==null&&!isNaN(v)&&v>0&&v<7200;});
+  var avgRep=repairs.length?Math.round(repairs.reduce(function(s,v){return s+v;},0)/repairs.length):'—';
+  var avgReact=reacts.length?Math.round(reacts.reduce(function(s,v){return s+v;},0)/reacts.length):'—';
+  sv('itoAvgRepair',avgRep); sv('itoAvgReaction',avgReact); sv('itoTotalIncidents',filtered.length);
 
-  var jSub = document.getElementById('itoJournalSubtitle');
-  if(jSub) {
-    var UA={'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+  var UA={'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+  var jSub=document.getElementById('itoJournalSubtitle');
+  if(jSub){
     var yStr=filterState.year==='all'?'Всі роки':String(filterState.year);
     var mStr=filterState.month==='all'?'Всі місяці':UA[String(filterState.month).padStart(2,'0')];
-    jSub.textContent = yStr+' · '+mStr;
+    jSub.textContent=yStr+' · '+mStr;
   }
-  var jBadge = document.getElementById('itoJournalBadge');
-  if(jBadge) {
-    var avgRepStr  = repairs.length ? 'Сер. ремонт: '+avgRep+' хв' : '';
-    var avgReaStr  = reacts.length  ? ' · Сер. реакція: '+avgReact+' хв' : '';
-    jBadge.textContent = avgRepStr + avgReaStr;
-  }
+  var jBadge=document.getElementById('itoJournalBadge');
+  if(jBadge) jBadge.textContent=(repairs.length?'Сер. ремонт: '+avgRep+' хв':'')+(reacts.length?' · Сер. реакція: '+avgReact+' хв':'');
 
   // Журнал таблиця
-  var jbody = document.getElementById('itoJournalBody');
-  if(jbody) {
-    var sorted = filtered.slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
-    if(!sorted.length) {
-      jbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">Немає даних</td></tr>';
+  var jbody=document.getElementById('itoJournalBody');
+  if(jbody){
+    var sorted=filtered.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+    if(!sorted.length){
+      jbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted)">Немає даних</td></tr>';
     } else {
-      jbody.innerHTML = sorted.map(function(r){
-        var typeColor = r.type.includes('ПРОСТОЙ') ? 'var(--bad)' : (r.type.includes('РЕМОНТ') ? 'var(--warn)' : 'var(--text)');
-        var repColor  = (r.repairMin!==null && r.repairMin>60) ? 'var(--bad)' : (r.repairMin!==null && r.repairMin>30 ? 'var(--warn)' : 'var(--text)');
-        return '<tr>' +
-          '<td style="font-family:\'IBM Plex Mono\',monospace;font-size:10px">'+r.date+'</td>' +
-          '<td style="font-size:11px;color:var(--muted)">'+r.locName+'</td>' +
-          '<td>'+r.line+(r.node?' / <span style="color:var(--muted);font-size:11px">'+r.node+'</span>':'')+'</td>' +
-          '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.work+'</td>' +
-          '<td style="color:'+typeColor+';font-size:11px">'+r.type.replace('🚨 ','').replace('⚠️ ','')+'</td>' +
-          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;color:'+repColor+'">'+(r.repairMin!==null?r.repairMin:'—')+'</td>' +
-          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">'+(r.reactMin!==null?r.reactMin:'—')+'</td>' +
-          '<td style="font-size:11px;color:var(--muted)">'+r.category+'</td>' +
-        '</tr>';
+      jbody.innerHTML=sorted.map(function(r){
+        var typeColor=r.type.includes('ПРОСТОЙ')?'var(--bad)':(r.type.includes('РЕМОНТ')?'var(--warn)':'var(--text)');
+        var repColor=(r.repairMin!==null&&r.repairMin>60)?'var(--bad)':(r.repairMin!==null&&r.repairMin>30?'var(--warn)':'var(--text)');
+        return '<tr>'+
+          '<td style="font-family:\'IBM Plex Mono\',monospace;font-size:10px">'+r.date+'</td>'+
+          '<td style="font-size:11px;color:var(--muted)">'+r.locName+'</td>'+
+          '<td>'+r.line+(r.node?' / <span style="color:var(--muted);font-size:11px">'+r.node+'</span>':'')+'</td>'+
+          '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.work+'</td>'+
+          '<td style="color:'+typeColor+';font-size:11px">'+r.type.replace('🚨 ','').replace('⚠️ ','')+'</td>'+
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;color:'+repColor+'">'+(r.repairMin!==null?r.repairMin:'—')+'</td>'+
+          '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">'+(r.reactMin!==null?r.reactMin:'—')+'</td>'+
+          '<td style="font-size:11px;color:var(--muted)">'+r.category+'</td>'+
+          '</tr>';
       }).join('');
     }
   }
