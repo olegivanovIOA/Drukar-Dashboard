@@ -1882,6 +1882,7 @@ function initProduction(){
   })();
   buildHeatmap();
   loadShiftData();
+  loadDowntimeData();
 }
 async function loadProductionCharts(){
   const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
@@ -2364,17 +2365,17 @@ async function buildHeatmapWeekly(monthIdx){
 
       let wNum=1;
       while(cur<=lastDay){
+        // Обрізаємо початок/кінець по межах місяця
         const wStart=new Date(Math.max(cur.getTime(), firstDay.getTime()));
         const wEndRaw=new Date(cur); wEndRaw.setDate(wEndRaw.getDate()+6);
         const wEnd=new Date(Math.min(wEndRaw.getTime(), lastDay.getTime()));
-        // Пропускаємо тижні що повністю поза місяцем
+
         if(wStart<=lastDay){
           const d1=wStart.getDate(), d2=wEnd.getDate();
-          // Мітка: пн-нд числа
           weeks.push({
             label:`Тиж ${wNum} (${d1}-${d2})`,
-            from:wStart.toISOString().slice(0,10),
-            to:wEnd.toISOString().slice(0,10)
+            from:wStart.toISOString().slice(0,10),  // від початку тижня в межах місяця
+            to:wEnd.toISOString().slice(0,10)        // до кінця тижня в межах місяця
           });
           wNum++;
         }
@@ -2382,6 +2383,10 @@ async function buildHeatmapWeekly(monthIdx){
       }
       return weeks;
     }
+
+    // Діагностика: логуємо тижні для поточного місяця
+    const _dbgWeeks=getWeeksOfMonth(parseInt(yr),parseInt(mo));
+    console.log('[Heatmap] weeks for',ym,':',_dbgWeeks.map(w=>w.label+'='+w.from+'..'+w.to));
 
     const weeks=getWeeksOfMonth(parseInt(yr),parseInt(mo));
 
@@ -5605,6 +5610,8 @@ async function initIto() {
 
   // Паралельно фетчимо всі локації
   await Promise.all(ITO_LOCATIONS.map(function(loc){ return _itoFetchLoc(loc); }));
+  // Гарантуємо порядок локацій 1→2→3
+  window._itoDashData.sort(function(a,b){ return a.locId - b.locId; });
 
   // Будуємо кнопки локацій
   var locWrap = document.getElementById('itoLocBtns');
