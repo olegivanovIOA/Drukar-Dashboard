@@ -2,6 +2,7 @@
   "tabs": {
     "overview":   { "top": true, "mid": false },
     "production": { "top": true, "mid": true },
+    "ito":        { "top": true, "mid": true },
     "quality":    { "top": true, "mid": true },
     "costs":      { "top": true, "mid": false },
     "operators":  { "top": true, "mid": true },
@@ -13,5 +14,5 @@
     "inventory":  { "top": true, "mid": true },
     "product":    { "top": true, "mid": false }
   },
-  "updated": "2026-05-14"
+  "updated": "2026-05-21"
 }

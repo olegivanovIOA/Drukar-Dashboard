@@ -19,6 +19,7 @@ DEFAULT_CONFIG = {
     "tabs": {
         "overview":   {"top": True, "mid": False},
         "production": {"top": True, "mid": True},
+        "ito":        {"top": True, "mid": True},
         "quality":    {"top": True, "mid": True},
         "costs":      {"top": True, "mid": False},
         "operators":  {"top": True, "mid": True},
