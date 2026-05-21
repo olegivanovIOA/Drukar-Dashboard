@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 21.05.2026 04:25 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 21.05.2026 04:39 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -361,6 +361,20 @@
             <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">100%</span>
           </div>
         </div>
+        <!-- Фільтри Локація / Лінія -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;margin-top:4px;padding-top:6px;border-top:1px solid var(--border)">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap">ЛОКАЦІЯ:</span>
+          <div id="utilLocBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="topn-btn active" id="utilLocAll" onclick="utilSetLoc('all',this)" style="font-size:9px">ВСІ</button>
+            <button class="topn-btn" onclick="utilSetLoc('1',this)" style="font-size:9px">Лок. 1</button>
+            <button class="topn-btn" onclick="utilSetLoc('2',this)" style="font-size:9px">Лок. 2</button>
+          </div>
+          <div style="width:1px;height:16px;background:var(--border);flex-shrink:0"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap">ЛІНІЯ:</span>
+          <div id="utilLineBtns" style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="topn-btn active" id="utilLineAll" onclick="utilSetLine('all',this)" style="font-size:9px">ВСІ</button>
+          </div>
+        </div>
       </div>
       <div style="margin-bottom:4px"><span id="utilNormStatus" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">⟳ Завантаження норм...</span></div>
       <div id="utilHeatmapWrap"></div>
@@ -458,10 +472,11 @@
       <div style="display:flex;gap:4px;flex-wrap:wrap" id="waTrendMetricBtns">
         <button class="month-btn active" onclick="waSetMetric('kg',this)" style="font-size:10px">Заг. кг</button>
         <button class="month-btn" onclick="waSetMetric('prod',this)" style="font-size:10px">Гот. прод.</button>
-        <button class="month-btn" onclick="waSetMetric('nf',this)" style="font-size:10px">НФ</button>
-        <button class="month-btn" onclick="waSetMetric('brak',this)" style="font-size:10px">Брак</button>
+        <button class="month-btn" onclick="waSetMetric('nf',this)" style="font-size:10px">НФ %</button>
+        <button class="month-btn" onclick="waSetMetric('brak',this)" style="font-size:10px">Брак %</button>
         <button class="month-btn" onclick="waSetMetric('coils',this)" style="font-size:10px">Котушки шт</button>
         <button class="month-btn" onclick="waSetMetric('packed',this)" style="font-size:10px">Запаковано</button>
+        <button class="month-btn" onclick="waSetMetric('all',this)" style="font-size:10px;border-color:var(--accent);color:var(--accent)">Всі разом</button>
       </div>
     </div>
     <div style="position:relative;height:260px"><canvas id="waTrendChart"></canvas></div>
@@ -1427,8 +1442,8 @@
 // Підставляється generate.py
 // ══════════════════════════════════════════════════════════════════
 const DASHBOARD_MODE = "mid";
-const MIDDLE_CONFIG  = {"overview": {"top": true, "mid": false}, "production": {"top": true, "mid": true}, "quality": {"top": true, "mid": true}, "costs": {"top": true, "mid": false}, "operators": {"top": true, "mid": true}, "calculator": {"top": true, "mid": false}, "lines": {"top": true, "mid": true}, "sales": {"top": true, "mid": false}, "forecast": {"top": true, "mid": false}, "okr": {"top": true, "mid": true}, "inventory": {"top": true, "mid": true}, "product": {"top": true, "mid": false}};
-const ACTIVE_TABS    = ["production", "quality", "operators", "lines", "okr", "inventory"];
+const MIDDLE_CONFIG  = {"overview": {"top": true, "mid": false}, "production": {"top": true, "mid": true}, "ito": {"top": true, "mid": true}, "quality": {"top": true, "mid": true}, "costs": {"top": true, "mid": false}, "operators": {"top": true, "mid": true}, "calculator": {"top": true, "mid": false}, "lines": {"top": true, "mid": true}, "sales": {"top": true, "mid": false}, "forecast": {"top": true, "mid": false}, "okr": {"top": true, "mid": true}, "inventory": {"top": true, "mid": true}, "product": {"top": true, "mid": false}};
+const ACTIVE_TABS    = ["production", "ito", "quality", "operators", "lines", "okr", "inventory"];
 const DATA_ERRORS    = {};
 
 // Метадані місяців для фільтра
@@ -4342,7 +4357,14 @@ async function buildUtilHeatmap(){
   }
 
   function lineNum(ln){ const m=ln.match(/\d+/); return m?parseInt(m[0]):999; }
-  const sortedLines = [...lines].sort((a,b)=>lineNum(a)-lineNum(b));
+  // Застосовуємо фільтри локації і лінії
+  let sortedLines = [...lines].sort((a,b)=>lineNum(a)-lineNum(b));
+  if(window._utilLocFilter === '1') sortedLines = sortedLines.filter(ln => UTIL_LOC1.includes(ln));
+  else if(window._utilLocFilter === '2') sortedLines = sortedLines.filter(ln => UTIL_LOC2.includes(ln));
+  if(window._utilLineFilter !== 'all') sortedLines = sortedLines.filter(ln => ln === window._utilLineFilter);
+
+  // Будуємо кнопки ліній якщо ще не побудовані або після зміни локації
+  _utilRebuildLineBtns(window._utilLocFilter||'all');
 
   // Определяем локации (те же что в _HM_DATA — по наличию данных)
   const LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
@@ -4449,6 +4471,64 @@ function onUtilMonthChange(val, btn){
   } else {
     buildUtilHeatmapWeekly(parseInt(val));
   }
+}
+
+// ── Фільтри завантаженості ──
+window._utilLocFilter  = 'all';
+window._utilLineFilter = 'all';
+const UTIL_LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
+const UTIL_LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
+// Локація 3 буде додана тут
+
+function utilSetLoc(val, btn) {
+  window._utilLocFilter  = val;
+  window._utilLineFilter = 'all';
+  document.querySelectorAll('#utilLocBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  // Перебудовуємо кнопки ліній
+  _utilRebuildLineBtns(val);
+  var allL=document.getElementById('utilLineAll'); if(allL) allL.classList.add('active');
+  // Перебудовуємо heatmap
+  _utilRefresh();
+}
+
+function utilSetLine(val, btn) {
+  window._utilLineFilter = val;
+  document.querySelectorAll('#utilLineBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  _utilRefresh();
+}
+
+function _utilRefresh() {
+  // Визначаємо що зараз показується — місячний чи тижневий вигляд
+  var activeMonthBtn = document.querySelector('#utilMonthBtns .month-btn.active');
+  if(!activeMonthBtn || activeMonthBtn.textContent.trim()==='ВСІ') {
+    buildUtilHeatmap();
+  } else {
+    // Знаходимо індекс активного місяця
+    var btns = document.querySelectorAll('#utilMonthBtns .month-btn');
+    var idx = -1;
+    btns.forEach(function(b,i){ if(b.classList.contains('active')) idx=i-1; }); // -1 бо перша = ВСІ
+    if(idx>=0) buildUtilHeatmapWeekly(idx);
+    else buildUtilHeatmap();
+  }
+}
+
+function _utilRebuildLineBtns(locFilter) {
+  var wrap = document.getElementById('utilLineBtns'); if(!wrap) return;
+  var allBtn = document.getElementById('utilLineAll');
+  wrap.innerHTML = ''; if(allBtn) wrap.appendChild(allBtn);
+  var locLines = locFilter==='all' ? [...UTIL_LOC1,...UTIL_LOC2]
+                : locFilter==='1'  ? UTIL_LOC1
+                : locFilter==='2'  ? UTIL_LOC2
+                : [];
+  // Показуємо тільки ті лінії що реально є в HM_DATA
+  var available = locLines.filter(function(ln){ return HM_DATA && HM_DATA[ln]; });
+  available.forEach(function(ln){
+    var b=document.createElement('button'); b.className='topn-btn'; b.style.fontSize='9px';
+    b.textContent=ln.replace('ЛІНІЯ ','Лін. ');
+    b.onclick=function(){utilSetLine(ln,this);}; wrap.appendChild(b);
+  });
 }
 
 async function buildUtilHeatmapWeekly(monthIdx){
@@ -4581,7 +4661,11 @@ async function buildUtilHeatmapWeekly(monthIdx){
       return `<div class="hmap-cell" style="background:${bg};color:#fff${extra}" title="${title}">${label}</div>`;
     }
     function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
-    const sortedLines=Object.keys(merged).sort((a,b)=>lineNum(a)-lineNum(b));
+    let sortedLines=Object.keys(merged).sort((a,b)=>lineNum(a)-lineNum(b));
+    // Застосовуємо фільтри
+    if(window._utilLocFilter==='1') sortedLines=sortedLines.filter(ln=>UTIL_LOC1.includes(ln));
+    else if(window._utilLocFilter==='2') sortedLines=sortedLines.filter(ln=>UTIL_LOC2.includes(ln));
+    if(window._utilLineFilter!=='all') sortedLines=sortedLines.filter(ln=>ln===window._utilLineFilter);
     const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10']; const isLoc2=ln=>LOC2.includes(ln);
     const wLabels=weeks.map(w=>w.label); const wcols=weeks.length;
 
@@ -6133,8 +6217,6 @@ function waRender() {
   var badge=document.getElementById('waFilterBadge');
   if(badge) badge.textContent=weeks.length+' тижнів · '+Math.round(filtered.reduce(function(s,r){return s+r.kg;},0)).toLocaleString('uk')+' кг';
 
-  // Визначаємо минулий і позаминулий тижні
-  // "Минулий" = останній повний тиждень (weekEnd < сьогодні)
   function fmtD2(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   var today=fmtD2(new Date());
   var completeWeeks=weeks.filter(function(w){return w.weekEnd<today;});
@@ -6148,22 +6230,60 @@ function waRender() {
   setTxt('waPrevWeekTitle','Тиждень до того');
   setTxt('waPrevWeekDates',fmtLabel(prevW));
 
-  // Метрики для порівняльних барів
   var METRICS_ORDER=['kg','prod','nf','brak','coils','packed'];
   var LABELS_UK={kg:'Заг. кг',prod:'Гот. прод. кг',nf:'НФ кг',brak:'Брак кг',coils:'Котушок шт',packed:'Запаковано шт'};
   var COLORS_MAP={kg:'#1A56DB',prod:'#1E8A44',nf:'#F5A623',brak:'#C0392B',coils:'#7C3AED',packed:'#0891B2'};
 
   function weekData(w){ return w?{kg:w.kg,prod:w.prod,nf:w.nf,brak:w.brak,coils:w.coils,packed:w.packed}:{kg:0,prod:0,nf:0,brak:0,coils:0,packed:0}; }
-  function makeHBar(canvasId, wData, colorFn){
+
+  // п.1: бари з % для НФ і Брак
+  function makeHBar(canvasId, wData){
     var labels=METRICS_ORDER.map(function(m){return LABELS_UK[m];});
     var vals=METRICS_ORDER.map(function(m){return Math.round(wData[m]);});
     var colors=METRICS_ORDER.map(function(m){return COLORS_MAP[m]+'cc';});
+    var totalKg=wData.kg||1;
     safeCreateChart(canvasId,{
       type:'bar',
       data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:3,borderWidth:0}]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.raw.toLocaleString('uk');}}}},
-        scales:{x:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}}}
+        plugins:{
+          legend:{display:false},
+          datalabels:{display:false},
+          tooltip:{callbacks:{label:function(ctx){
+            var m=METRICS_ORDER[ctx.dataIndex];
+            var v=ctx.raw;
+            var str=' '+v.toLocaleString('uk');
+            if(m==='nf'||m==='brak'){
+              var pct=totalKg>0?(v/totalKg*100).toFixed(1):'0.0';
+              str+=' ('+pct+'% від заг.)';
+            }
+            return str;
+          }}}
+        },
+        scales:{x:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}},
+        // Підписи поруч з барами НФ і Брак через afterDraw
+        animation:{onComplete:function(chart){
+          var ctx2=chart.chart.ctx;
+          chart.chart.data.datasets.forEach(function(ds,di){
+            var meta=chart.chart.getDatasetMeta(di);
+            meta.data.forEach(function(bar,idx){
+              var m=METRICS_ORDER[idx];
+              if(m!=='nf'&&m!=='brak') return;
+              var val=ds.data[idx];
+              if(!val) return;
+              var pct=totalKg>0?(val/totalKg*100).toFixed(1):'0';
+              var lbl=pct+'%';
+              ctx2.save();
+              ctx2.font='bold 10px IBM Plex Mono,monospace';
+              ctx2.fillStyle=m==='nf'?'#D97706':'#C0392B';
+              ctx2.textAlign='left';
+              ctx2.textBaseline='middle';
+              ctx2.fillText(lbl, bar.x+6, bar.y);
+              ctx2.restore();
+            });
+          });
+        }}
+      }
     });
   }
   makeHBar('waThisWeekChart', weekData(thisW));
@@ -6171,43 +6291,144 @@ function waRender() {
 
   // Різниця
   var tdW=weekData(thisW), pdW=weekData(prevW);
-  var diffLabels=METRICS_ORDER.map(function(m){return LABELS_UK[m];});
   var diffVals=METRICS_ORDER.map(function(m){return Math.round(tdW[m]-pdW[m]);});
   var diffColors=diffVals.map(function(v,i){
-    // Для НФ і Брак — зростання погано
     var isNeg=['nf','brak'].includes(METRICS_ORDER[i]);
     return (isNeg?(v>0?'#C0392B':'#1E8A44'):(v>=0?'#1E8A44':'#C0392B'))+'cc';
   });
   safeCreateChart('waDiffChart',{
     type:'bar',
-    data:{labels:diffLabels,datasets:[{data:diffVals,backgroundColor:diffColors,borderRadius:3,borderWidth:0}]},
+    data:{labels:METRICS_ORDER.map(function(m){return LABELS_UK[m];}),datasets:[{data:diffVals,backgroundColor:diffColors,borderRadius:3,borderWidth:0}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+(ctx.raw>0?'+':'')+ctx.raw.toLocaleString('uk');}}}},
       scales:{x:{...GR,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}}}
   });
 
-  // Тренд
+  // п.2: Тренд — одна метрика або "all"
   var metric=window._waMetric||'kg';
-  var mColor=COLORS_MAP[metric]||'#1A56DB';
   var trendLabels=weeks.map(function(w){return w.weekKey.slice(5,10);});
-  var trendVals=weeks.map(function(w){return Math.round(w[metric]);});
-  // Виділяємо минулий і позаминулий тижні
-  var ptColors=trendLabels.map(function(l,i){
-    if(thisW&&weeks[i].weekKey===thisW.weekKey) return '#F5A623';
-    if(prevW&&weeks[i].weekKey===prevW.weekKey) return '#1E8A44';
-    return mColor+'bb';
-  });
-  safeCreateChart('waTrendChart',{
-    type:'bar',
-    data:{labels:trendLabels,datasets:[{
-      label:LABELS_UK[metric],data:trendVals,
-      backgroundColor:ptColors,borderRadius:3,borderWidth:0
-    }]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.raw.toLocaleString('uk');}}}},
-      scales:{x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
-              y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}}
-  });
+
+  if(metric==='all'){
+    // Grouped bar: всі метрики крім coils/packed на окремій осі
+    // Основна вісь: kg, prod, nf, brak (кг)
+    // Для НФ і Брак — показуємо підписи %
+    var kgMetrics=['kg','prod','nf','brak'];
+    var datasets=kgMetrics.map(function(m){
+      return {
+        label:LABELS_UK[m],
+        data:weeks.map(function(w){return Math.round(w[m]);}),
+        backgroundColor:COLORS_MAP[m]+'bb',
+        borderColor:COLORS_MAP[m],
+        borderWidth:1,
+        borderRadius:2,
+      };
+    });
+    // Додаємо Котушки і Запаковано на другу вісь
+    ['coils','packed'].forEach(function(m){
+      datasets.push({
+        label:LABELS_UK[m],
+        data:weeks.map(function(w){return Math.round(w[m]);}),
+        backgroundColor:COLORS_MAP[m]+'66',
+        borderColor:COLORS_MAP[m],
+        borderWidth:1,
+        borderRadius:2,
+        yAxisID:'yRight',
+      });
+    });
+    safeCreateChart('waTrendChart',{
+      type:'bar',
+      data:{labels:trendLabels,datasets:datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:true,position:'top',labels:{boxWidth:12,font:{size:10}}},
+          tooltip:{callbacks:{label:function(ctx){
+            var m=kgMetrics[ctx.datasetIndex];
+            var v=ctx.raw;
+            var str=ctx.dataset.label+': '+v.toLocaleString('uk');
+            // % для НФ і Брак відносно заг. кг цього тижня
+            if(m==='nf'||m==='brak'){
+              var wkg=weeks[ctx.dataIndex]?weeks[ctx.dataIndex].kg:0;
+              var pct=wkg>0?(v/wkg*100).toFixed(1):'0';
+              str+=' ('+pct+'%)';
+            }
+            return str;
+          }}}
+        },
+        scales:{
+          x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
+          y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},
+          yRight:{...GR,beginAtZero:true,position:'right',grid:{display:false},ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}
+        },
+        // Підписи % НФ і Брак на барах
+        animation:{onComplete:function(chart){
+          var ctx2=chart.chart.ctx;
+          [2,3].forEach(function(di){ // nf=2, brak=3 в kgMetrics
+            var m=kgMetrics[di];
+            var meta=chart.chart.getDatasetMeta(di);
+            meta.data.forEach(function(bar,idx){
+              var val=datasets[di].data[idx]; if(!val) return;
+              var wkg=weeks[idx]?weeks[idx].kg:0;
+              var pct=wkg>0?(val/wkg*100).toFixed(1):'0';
+              if(parseFloat(pct)<0.1) return;
+              ctx2.save();
+              ctx2.font='bold 8px IBM Plex Mono,monospace';
+              ctx2.fillStyle=m==='nf'?'#D97706':'#C0392B';
+              ctx2.textAlign='center';
+              ctx2.textBaseline='bottom';
+              ctx2.fillText(pct+'%', bar.x, bar.y-2);
+              ctx2.restore();
+            });
+          });
+        }}
+      }
+    });
+  } else {
+    // Одна метрика
+    var mColor=COLORS_MAP[metric]||'#1A56DB';
+    var trendVals=weeks.map(function(w){return Math.round(w[metric]);});
+    var ptColors=weeks.map(function(w,i){
+      if(thisW&&w.weekKey===thisW.weekKey) return '#F5A623';
+      if(prevW&&w.weekKey===prevW.weekKey) return '#1E8A44';
+      return mColor+'bb';
+    });
+    var trendCfg={
+      type:'bar',
+      data:{labels:trendLabels,datasets:[{label:LABELS_UK[metric],data:trendVals,backgroundColor:ptColors,borderRadius:3,borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+          var str=' '+ctx.raw.toLocaleString('uk');
+          if(metric==='nf'||metric==='brak'){
+            var wkg=weeks[ctx.dataIndex]?weeks[ctx.dataIndex].kg:0;
+            var pct=wkg>0?(ctx.raw/wkg*100).toFixed(1):'0';
+            str+=' ('+pct+'% від заг. кг)';
+          }
+          return str;
+        }}}},
+        scales:{x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
+                y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}}
+    };
+    // Підписи % для НФ і Брак над барами
+    if(metric==='nf'||metric==='brak'){
+      trendCfg.options.animation={onComplete:function(chart){
+        var ctx2=chart.chart.ctx;
+        var meta=chart.chart.getDatasetMeta(0);
+        meta.data.forEach(function(bar,idx){
+          var val=trendVals[idx]; if(!val) return;
+          var wkg=weeks[idx]?weeks[idx].kg:0;
+          var pct=wkg>0?(val/wkg*100).toFixed(1):'0';
+          if(parseFloat(pct)<0.1) return;
+          ctx2.save();
+          ctx2.font='bold 9px IBM Plex Mono,monospace';
+          ctx2.fillStyle=metric==='nf'?'#D97706':'#C0392B';
+          ctx2.textAlign='center';
+          ctx2.textBaseline='bottom';
+          ctx2.fillText(pct+'%', bar.x, bar.y-2);
+          ctx2.restore();
+        });
+      }};
+    }
+    safeCreateChart('waTrendChart', trendCfg);
+  }
 }
 
 </script>
