@@ -6061,13 +6061,15 @@ window._waMetric    = 'kg';
 
 // Метрики: ключ → {label, col (0-based в _AllData), color}
 var WA_METRICS = {
-  kg:     { label:'Заг. кг',        col:7,  color:'#1A56DB' },
-  nf:     { label:'НФ кг',          col:8,  color:'#F5A623' },
-  brak:   { label:'Брак кг',        col:9,  color:'#C0392B' },
-  coils:  { label:'Котушок шт',     col:6,  color:'#1E8A44' },
-  packed: { label:'Запаковано шт',  col:10, color:'#7C3AED' },
+  kg:     { label:'Заг. кг',        col:7,  color:'#1A56DB' },  // Вес кг (вклад) = готова продукція
+  nf:     { label:'НФ кг',          col:8,  color:'#F5A623' },  // Н/Ф Вес кг (вклад)
+  brak:   { label:'Брак кг',        col:9,  color:'#C0392B' },  // Отход кг (вклад)
+  coils:  { label:'Котушок шт',     col:6,  color:'#1E8A44' },  // Кол-во шт (вклад)
+  packed: { label:'Запаковано шт',  col:10, color:'#7C3AED' },  // Запаковано шт (вклад)
 };
-// prod = kg - nf - brak (готова продукція)
+// ВАЖЛИВО: Вес кг (вклад) = готова продукція (НФ і Брак вже виключені)
+// Загальна кг = Вес кг + НФ + Брак
+// prod = kg + nf + brak (загальна кількість, НЕ kg-nf-brak!)
 
 function waSetYear(v, btn) {
   window._waYear = v;
@@ -6122,10 +6124,15 @@ async function loadWeeklyAnalysis() {
       var txt=await r.text(); if(txt.includes('<html')) return;
       var rows=lParseCSV(txt);
       // Рядок 0 = заголовок, дані з рядка 1
+      // Структура _AllData: col0=Дата, col1=Смена, col3=Вклад%, col4=Лінія,
+      //   col6=Кол-во шт(вклад), col7=Вес кг(вклад)=ГОТОВА ПРОДУКЦІЯ,
+      //   col8=НФ(вклад), col9=Брак/Відход(вклад), col10=Запаковано(вклад)
+      // ВАЖЛИВО: кожен рядок = 1 оператор, SUM по всіх операторах = правильна сума
+      // НЕ потрібна дедуплікація — вес кг вклад вже враховує частку кожного оператора
       var CI={date:0,shift:1,vklad:3,line:4,coils:6,kg:7,nf:8,brak:9,packed:10};
-      // Агрегуємо по date+shift+line (знімаємо дублі операторів)
-      var agg={}; // key=date|shift|line → {kg,nf,brak,coils,packed}
       var curDate=null;
+      // Збираємо всі рядки напряму (без агрегації — SUM по операторах = коректно)
+      var agg={}; // key=date|line (агрегуємо зміни одного дня/лінії для тижневого графіку)
       for(var i=1;i<rows.length;i++){
         var row=rows[i];
         var dRaw=String(row[CI.date]||'').trim();
@@ -6134,15 +6141,20 @@ async function loadWeeklyAnalysis() {
         var line=String(row[CI.line]||'').toUpperCase().trim();
         var nm=line.match(/\d+/); if(!nm) continue;
         line='ЛІНІЯ '+nm[0];
-        var shift=String(row[CI.shift]||'').trim();
-        var key=curDate+'|'+shift+'|'+line;
-        var v=parseFloat(String(row[CI.vklad]||'').replace(',','.')); if(isNaN(v)||v<=0) continue;
+        var kg=parseFloat(String(row[CI.kg]||'').replace(',','.')); if(isNaN(kg)||kg<0) kg=0;
+        var nf=parseFloat(String(row[CI.nf]||'').replace(',','.')); if(isNaN(nf)) nf=0;
+        var brak=parseFloat(String(row[CI.brak]||'').replace(',','.')); if(isNaN(brak)) brak=0;
+        // Пропускаємо рядки де нічого немає
+        if(kg===0 && nf===0 && brak===0) continue;
+        var coils=parseFloat(String(row[CI.coils]||'').replace(',','.'))||0;
+        var packed=parseFloat(String(row[CI.packed]||'').replace(',','.'))||0;
+        var key=curDate+'|'+line;
         if(!agg[key]) agg[key]={date:curDate,line:line,locId:src.locId,locName:src.locName,kg:0,nf:0,brak:0,coils:0,packed:0};
-        agg[key].kg     +=parseFloat(String(row[CI.kg]    ||'').replace(',','.'))||0;
-        agg[key].nf     +=parseFloat(String(row[CI.nf]    ||'').replace(',','.'))||0;
-        agg[key].brak   +=parseFloat(String(row[CI.brak]  ||'').replace(',','.'))||0;
-        agg[key].coils  +=parseFloat(String(row[CI.coils] ||'').replace(',','.'))||0;
-        agg[key].packed +=parseFloat(String(row[CI.packed]||'').replace(',','.'))||0;
+        agg[key].kg     += kg;     // SUM = загальна готова продукція лінії за день
+        agg[key].nf     += nf;
+        agg[key].brak   += brak;
+        agg[key].coils  += coils;
+        agg[key].packed += packed;
       }
       // Конвертуємо в рядки з тижнями
       Object.values(agg).forEach(function(rec){
@@ -6164,7 +6176,7 @@ async function loadWeeklyAnalysis() {
           date:rec.date, weekKey:fd(wMon), weekEnd:fd(wSun),
           week:week, year:year,
           locId:rec.locId, locName:rec.locName, line:rec.line,
-          kg:rec.kg, prod:Math.max(0,rec.kg-rec.nf-rec.brak),
+          kg:rec.kg+rec.nf+rec.brak, prod:rec.kg  // kg(вклад)=готова, загальна=kg+нф+брак,
           nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
         });
       });
