@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 01.06.2026 11:19 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 01.06.2026 11:28 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -6068,15 +6068,12 @@ window._waMetric    = 'kg';
 
 // Метрики: ключ → {label, col (0-based в _AllData), color}
 var WA_METRICS = {
-  kg:     { label:'Заг. кг',        col:7,  color:'#1A56DB' },  // Вес кг (вклад) = готова продукція
-  nf:     { label:'НФ кг',          col:8,  color:'#F5A623' },  // Н/Ф Вес кг (вклад)
-  brak:   { label:'Брак кг',        col:9,  color:'#C0392B' },  // Отход кг (вклад)
-  coils:  { label:'Котушок шт',     col:6,  color:'#1E8A44' },  // Кол-во шт (вклад)
-  packed: { label:'Запаковано шт',  col:10, color:'#7C3AED' },  // Запаковано шт (вклад)
+  kg:     { label:'Заг. кг',        col:7,  color:'#1A56DB' },
+  nf:     { label:'НФ кг',          col:8,  color:'#F5A623' },
+  brak:   { label:'Брак кг',        col:9,  color:'#C0392B' },
+  coils:  { label:'Котушок шт',     col:6,  color:'#1E8A44' },
+  packed: { label:'Запаковано шт',  col:10, color:'#7C3AED' },
 };
-// ВАЖЛИВО: Вес кг (вклад) = готова продукція (НФ і Брак вже виключені)
-// Загальна кг = Вес кг + НФ + Брак
-// prod = kg + nf + brak (загальна кількість, НЕ kg-nf-brak!)
 
 function waSetYear(v, btn) {
   window._waYear = v;
@@ -6134,8 +6131,7 @@ async function loadWeeklyAnalysis() {
       // Структура _AllData: col0=Дата, col1=Смена, col3=Вклад%, col4=Лінія,
       //   col6=Кол-во шт(вклад), col7=Вес кг(вклад)=ГОТОВА ПРОДУКЦІЯ,
       //   col8=НФ(вклад), col9=Брак/Відход(вклад), col10=Запаковано(вклад)
-      // ВАЖЛИВО: кожен рядок = 1 оператор, SUM по всіх операторах = правильна сума
-      // НЕ потрібна дедуплікація — вес кг вклад вже враховує частку кожного оператора
+      // Each row = 1 operator. SUM all operators = correct total per line/day.
       var CI={date:0,shift:1,vklad:3,line:4,coils:6,kg:7,nf:8,brak:9,packed:10};
       var curDate=null;
       // Збираємо всі рядки напряму (без агрегації — SUM по операторах = коректно)
@@ -6183,7 +6179,7 @@ async function loadWeeklyAnalysis() {
           date:rec.date, weekKey:fd(wMon), weekEnd:fd(wSun),
           week:week, year:year,
           locId:rec.locId, locName:rec.locName, line:rec.line,
-          kg:rec.kg+rec.nf+rec.brak, prod:rec.kg  // kg(вклад)=готова, загальна=kg+нф+брак,
+          kg:rec.kg+rec.nf+rec.brak, prod:rec.kg,
           nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
         });
       });
