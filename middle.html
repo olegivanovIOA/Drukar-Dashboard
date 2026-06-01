@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 01.06.2026 19:00 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 01.06.2026 19:17 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -6103,18 +6103,21 @@ function waSetLoc(v, btn) {
   _waRebuildLineBtns(v);
   var allL=document.getElementById('waLineAll'); if(allL) allL.classList.add('active');
   waRender();
+  waRenderPlastic();
 }
 function waSetLine(v, btn) {
   window._waLine = v;
   document.querySelectorAll('#waLineBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
   waRender();
+  waRenderPlastic();
 }
 function waSetMetric(v, btn) {
   window._waMetric = v;
   document.querySelectorAll('#waTrendMetricBtns .month-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
   waRender();
+  waRenderPlastic();
 }
 function _waRebuildLineBtns(locFilter) {
   var wrap=document.getElementById('waLineBtns'); if(!wrap) return;
@@ -6213,6 +6216,7 @@ async function loadWeeklyAnalysis() {
   var btn2026=document.querySelector('#waLocBtns .topn-btn:last-child');
   if(btn2026&&btn2026.textContent==='2026'){ window._waYear='2026'; btn2026.classList.add('active'); }
   waRender();
+  waRenderPlastic();
 }
 
 function _waGetFiltered() {
@@ -6294,13 +6298,33 @@ function waRender() {
   // п.1: бари з підписами — кг/шт для всіх, % для НФ і Брак
   function makeHBar(canvasId, wData){
     var labels=METRICS_ORDER.map(function(m){return LABELS_UK[m];});
-    var vals=METRICS_ORDER.map(function(m){return Math.round(wData[m]);});
-    var colors=METRICS_ORDER.map(function(m){return COLORS_MAP[m]+'cc';});
     var totalKg=wData.kg||1;
+    // Stacked: PETG (синій) + PLA (зелений) для kg і prod, решта суцільний
+    var petgVals=METRICS_ORDER.map(function(m){
+      if(m==='kg')   return Math.round(wData.petg_kg||0);
+      if(m==='prod') return Math.round(wData.petg_prod||0);
+      if(m==='coils')return Math.round(wData.petg_coils||0);
+      return Math.round(wData[m]||0);
+    });
+    var plaVals=METRICS_ORDER.map(function(m){
+      if(m==='kg')   return Math.round(wData.pla_kg||0);
+      if(m==='prod') return Math.round(wData.pla_prod||0);
+      if(m==='coils')return Math.round(wData.pla_coils||0);
+      return 0; // НФ, Брак, packed — не ділимо
+    });
+    var petgColors=METRICS_ORDER.map(function(m){return COLORS_MAP[m]+'cc';});
+    var plaColors=METRICS_ORDER.map(function(m){
+      if(m==='kg'||m==='prod'||m==='coils') return '#1E8A44cc';
+      return 'transparent';
+    });
     safeCreateChart(canvasId,{
       type:'bar',
-      data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:3,borderWidth:0}]},
+      data:{labels:labels,datasets:[
+        {label:'PETG',data:petgVals,backgroundColor:petgColors,borderRadius:3,borderWidth:0},
+        {label:'PLA', data:plaVals, backgroundColor:plaColors, borderRadius:0, borderWidth:0},
+      ]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        scales:{x:{stacked:true},y:{stacked:true}},
         layout:{padding:{right:60}},
         plugins:{
           legend:{display:false},
