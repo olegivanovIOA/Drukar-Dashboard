@@ -482,6 +482,18 @@
     <div style="position:relative;height:260px"><canvas id="waTrendChart"></canvas></div>
   </div>
 
+  <!-- ══ PETG vs PLA ══ -->
+  <div class="kpi-row" style="gap:16px;margin-top:20px">
+    <div class="card" style="flex:1;min-width:0">
+      <div class="section-title" style="margin-bottom:8px">PETG vs PLA — кг (останні 8 тижнів)</div>
+      <div style="position:relative;height:220px"><canvas id="waPlasticKgChart"></canvas></div>
+    </div>
+    <div class="card" style="flex:1;min-width:0">
+      <div class="section-title" style="margin-bottom:8px">PETG vs PLA — котушок шт (останні 8 тижнів)</div>
+      <div style="position:relative;height:220px"><canvas id="waPlasticCoilsChart"></canvas></div>
+    </div>
+  </div>
+
   <!-- ══ ПРОСТОЇ ══ -->
   <div class="section-title" style="margin-top:20px">Простої ліній</div>
 
@@ -6053,7 +6065,7 @@ var WA_SOURCES = [
   // { locId:'3', locName:'Локація 3', sheetId:'SHEET_ID_3', sheet:'_AllData' },
 ];
 
-window._waRaw       = [];   // [{date,week,year,locId,line,kg,prod,nf,brak,coils,packed}]
+window._waRaw       = [];   // [{date,week,year,locId,line,vid,kg,prod,nf,brak,coils,packed}]
 window._waYear      = '2026';
 window._waLoc       = 'all';
 window._waLine      = 'all';
@@ -6125,7 +6137,7 @@ async function loadWeeklyAnalysis() {
       //   col6=Кол-во шт(вклад), col7=Вес кг(вклад)=ГОТОВА ПРОДУКЦІЯ,
       //   col8=НФ(вклад), col9=Брак/Відход(вклад), col10=Запаковано(вклад)
       // Each row = 1 operator. SUM all operators = correct total per line/day.
-      var CI={date:0,shift:1,vklad:3,line:4,coils:6,kg:7,nf:8,brak:9,packed:10};
+      var CI={date:0,shift:1,vklad:3,line:4,vid:5,coils:6,kg:7,nf:8,brak:9,packed:10,autokg:11};
       var curDate=null;
       // Збираємо всі рядки напряму (без агрегації — SUM по операторах = коректно)
       var agg={}; // key=date|line (агрегуємо зміни одного дня/лінії для тижневого графіку)
@@ -6144,9 +6156,14 @@ async function loadWeeklyAnalysis() {
         if(kg===0 && nf===0 && brak===0) continue;
         var coils=parseFloat(String(row[CI.coils]||'').replace(',','.'))||0;
         var packed=parseFloat(String(row[CI.packed]||'').replace(',','.'))||0;
-        var key=curDate+'|'+line;
-        if(!agg[key]) agg[key]={date:curDate,line:line,locId:src.locId,locName:src.locName,kg:0,nf:0,brak:0,coils:0,packed:0};
-        agg[key].kg     += kg;     // SUM = загальна готова продукція лінії за день
+        var autokg=parseFloat(String(row[CI.autokg]||'').replace(',','.'))||0;
+        var vid=String(row[CI.vid]||'').trim();
+        var plastic=vid.toUpperCase().indexOf('PLA')>=0?'PLA':'PETG';
+        var key=curDate+'|'+line+'|'+vid;
+        if(!agg[key]) agg[key]={date:curDate,line:line,vid:vid,plastic:plastic,
+                                 locId:src.locId,locName:src.locName,kg:0,nf:0,brak:0,coils:0,packed:0,autokg:0};
+        agg[key].kg     += kg;
+        agg[key].autokg += autokg;
         agg[key].nf     += nf;
         agg[key].brak   += brak;
         agg[key].coils  += coils;
@@ -6172,7 +6189,9 @@ async function loadWeeklyAnalysis() {
           date:rec.date, weekKey:fd(wMon), weekEnd:fd(wSun),
           week:week, year:year,
           locId:rec.locId, locName:rec.locName, line:rec.line,
+          vid:rec.vid||'',
           kg:rec.kg+rec.nf+rec.brak, prod:rec.kg,
+          autokg:rec.autokg||0,
           nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
         });
       });
@@ -6200,13 +6219,31 @@ function _waAggByWeek(rows) {
   var map={};
   rows.forEach(function(r){
     var k=r.weekKey;
-    if(!map[k]) map[k]={weekKey:r.weekKey,weekEnd:r.weekEnd,week:r.week,year:r.year,kg:0,prod:0,nf:0,brak:0,coils:0,packed:0};
+    if(!map[k]) map[k]={weekKey:r.weekKey,weekEnd:r.weekEnd,week:r.week,year:r.year,
+      kg:0,prod:0,nf:0,brak:0,coils:0,packed:0,autokg:0,
+      petg_kg:0,pla_kg:0,petg_coils:0,pla_coils:0,
+      petg_prod:0,pla_prod:0,
+      petg_autokg:0,pla_autokg:0};
     map[k].kg    +=r.kg;
     map[k].prod  +=r.prod;
     map[k].nf    +=r.nf;
     map[k].brak  +=r.brak;
-    map[k].coils +=r.coils;
-    map[k].packed+=r.packed;
+    map[k].coils  +=r.coils;
+    map[k].packed +=r.packed;
+    map[k].autokg +=(r.autokg||0);
+    // Розбивка по PETG/PLA
+    var pl=r.plastic||(r.vid&&r.vid.toUpperCase().indexOf('PLA')>=0?'PLA':'PETG');
+    if(pl==='PLA'){
+      map[k].pla_kg     +=r.kg;
+      map[k].pla_prod   +=r.prod;
+      map[k].pla_coils  +=r.coils;
+      map[k].pla_autokg +=(r.autokg||0);
+    } else {
+      map[k].petg_kg     +=r.kg;
+      map[k].petg_prod   +=r.prod;
+      map[k].petg_coils  +=r.coils;
+      map[k].petg_autokg +=(r.autokg||0);
+    }
   });
   return Object.values(map).sort(function(a,b){return a.weekKey.localeCompare(b.weekKey);});
 }
@@ -6349,7 +6386,46 @@ function waRender() {
       datasets.push({label:LABELS_UK[m],data:weeks.map(function(w){return Math.round(w[m]);}),
         backgroundColor:allColors[m]+'99',borderColor:allColors[m],borderWidth:1,borderRadius:2,yAxisID:'yRight'});
     });
-    safeCreateChart('waTrendChart',{
+    // ── PETG vs PLA charts ────────────────────────────────────
+  var wkLast8=completeWeeks.slice(-8);
+  var wLabels=wkLast8.map(function(w){return w.weekKey.slice(5)+' – '+w.weekEnd.slice(5);});
+
+  safeCreateChart('waPlasticKgChart',{
+    type:'bar',
+    data:{labels:wLabels,datasets:[
+      {label:'PETG екструдер кг', data:wkLast8.map(function(w){return Math.round(w.petg_autokg||0);}),
+       backgroundColor:'#1A56DBcc',borderColor:'#1A56DB',borderWidth:1,borderRadius:3},
+      {label:'PETG готова кг',    data:wkLast8.map(function(w){return Math.round(w.petg_prod||0);}),
+       backgroundColor:'#1A56DB44',borderColor:'#1A56DB',borderWidth:1,borderRadius:3,
+       borderDash:[4,2]},
+      {label:'PLA екструдер кг',  data:wkLast8.map(function(w){return Math.round(w.pla_autokg||0);}),
+       backgroundColor:'#1E8A44cc',borderColor:'#1E8A44',borderWidth:1,borderRadius:3},
+      {label:'PLA готова кг',     data:wkLast8.map(function(w){return Math.round(w.pla_prod||0);}),
+       backgroundColor:'#1E8A4444',borderColor:'#1E8A44',borderWidth:1,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TC,font:{size:10},boxWidth:12}}},
+      scales:{x:{...GR},y:{...GR,beginAtZero:true,
+        ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
+    }
+  });
+
+  safeCreateChart('waPlasticCoilsChart',{
+    type:'bar',
+    data:{labels:wLabels,datasets:[
+      {label:'PETG котушок',data:wkLast8.map(function(w){return Math.round(w.petg_coils||0);}),
+       backgroundColor:'#2E75B6aa',borderColor:'#2E75B6',borderWidth:1,borderRadius:3},
+      {label:'PLA котушок', data:wkLast8.map(function(w){return Math.round(w.pla_coils||0);}),
+       backgroundColor:'#107C10aa',borderColor:'#107C10',borderWidth:1,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TC,font:{size:11}}}},
+      scales:{x:{...GR},y:{...GR,beginAtZero:true,
+        ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
+    }
+  });
+
+  safeCreateChart('waTrendChart',{
       type:'bar',data:{labels:trendLabels,datasets:datasets},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,font:{size:10}}},
@@ -6435,7 +6511,46 @@ function waRender() {
         ctx2.restore();
       });
     }};
-    safeCreateChart('waTrendChart', trendCfg);
+    // ── PETG vs PLA charts ────────────────────────────────────
+  var wkLast8=completeWeeks.slice(-8);
+  var wLabels=wkLast8.map(function(w){return w.weekKey.slice(5)+' – '+w.weekEnd.slice(5);});
+
+  safeCreateChart('waPlasticKgChart',{
+    type:'bar',
+    data:{labels:wLabels,datasets:[
+      {label:'PETG екструдер кг', data:wkLast8.map(function(w){return Math.round(w.petg_autokg||0);}),
+       backgroundColor:'#1A56DBcc',borderColor:'#1A56DB',borderWidth:1,borderRadius:3},
+      {label:'PETG готова кг',    data:wkLast8.map(function(w){return Math.round(w.petg_prod||0);}),
+       backgroundColor:'#1A56DB44',borderColor:'#1A56DB',borderWidth:1,borderRadius:3,
+       borderDash:[4,2]},
+      {label:'PLA екструдер кг',  data:wkLast8.map(function(w){return Math.round(w.pla_autokg||0);}),
+       backgroundColor:'#1E8A44cc',borderColor:'#1E8A44',borderWidth:1,borderRadius:3},
+      {label:'PLA готова кг',     data:wkLast8.map(function(w){return Math.round(w.pla_prod||0);}),
+       backgroundColor:'#1E8A4444',borderColor:'#1E8A44',borderWidth:1,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TC,font:{size:10},boxWidth:12}}},
+      scales:{x:{...GR},y:{...GR,beginAtZero:true,
+        ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
+    }
+  });
+
+  safeCreateChart('waPlasticCoilsChart',{
+    type:'bar',
+    data:{labels:wLabels,datasets:[
+      {label:'PETG котушок',data:wkLast8.map(function(w){return Math.round(w.petg_coils||0);}),
+       backgroundColor:'#2E75B6aa',borderColor:'#2E75B6',borderWidth:1,borderRadius:3},
+      {label:'PLA котушок', data:wkLast8.map(function(w){return Math.round(w.pla_coils||0);}),
+       backgroundColor:'#107C10aa',borderColor:'#107C10',borderWidth:1,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TC,font:{size:11}}}},
+      scales:{x:{...GR},y:{...GR,beginAtZero:true,
+        ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
+    }
+  });
+
+  safeCreateChart('waTrendChart', trendCfg);
   }
 }
 
