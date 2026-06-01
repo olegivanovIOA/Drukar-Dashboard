@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 01.06.2026 18:19 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 01.06.2026 18:42 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -6196,7 +6196,7 @@ async function loadWeeklyAnalysis() {
           date:rec.date, weekKey:fd(wMon), weekEnd:fd(wSun),
           week:week, year:year,
           locId:rec.locId, locName:rec.locName, line:rec.line,
-          vid:rec.vid||'',
+          vid:rec.vid||'', plastic:rec.plastic||'PETG',
           kg:rec.kg+rec.nf+rec.brak, prod:rec.kg,
           autokg:rec.autokg||0,
           nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
@@ -6379,21 +6379,22 @@ function waRender() {
 
   // п.3: Тренд — один колір (без виділення минулого/поперед. в різних режимах)
   var metric=window._waMetric||'kg';
-  var trendLabels=weeks.map(function(w){return w.weekKey.slice(5,10);});
+  var trendWeeks=weeks.slice(-16);
+  var trendLabels=trendWeeks.map(function(w){return w.weekKey.slice(5,10);});
 
   if(metric==='all'){
     var kgMetrics=['kg','prod','nf','brak'];
     // UA кольори для "всі разом": відтінки синього + акценти
     var allColors={kg:'#1A56DB',prod:'#2E75B6',nf:'#F5A623',brak:'#C0392B',coils:'#1E3A5F',packed:'#0D2B4E'};
     var datasets=kgMetrics.map(function(m){
-      return {label:LABELS_UK[m],data:weeks.map(function(w){return Math.round(w[m]);}),
+      return {label:LABELS_UK[m],data:trendWeeks.map(function(w){return Math.round(w[m]);}),
         backgroundColor:allColors[m]+'bb',borderColor:allColors[m],borderWidth:1,borderRadius:2};
     });
     ['coils','packed'].forEach(function(m){
-      datasets.push({label:LABELS_UK[m],data:weeks.map(function(w){return Math.round(w[m]);}),
+      datasets.push({label:LABELS_UK[m],data:trendWeeks.map(function(w){return Math.round(w[m]);}),
         backgroundColor:allColors[m]+'99',borderColor:allColors[m],borderWidth:1,borderRadius:2,yAxisID:'yRight'});
     });
-  safeCreateChart('waTrendChart',{
+  var trendCfg={
       type:'bar',data:{labels:trendLabels,datasets:datasets},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,font:{size:10}}},
@@ -6428,7 +6429,7 @@ function waRender() {
   } else {
     // п.3: один колір для всіх барів, без виділення 2 останніх
     var mColor=COLORS_MAP[metric]||'#1A56DB';
-    var trendVals=weeks.map(function(w){return Math.round(w[metric]);});
+    var trendVals=trendWeeks.map(function(w){return Math.round(w[metric]);});
     // Виділяємо тільки в режимі kg тонкою позначкою (outline), не кольором
     var barColors=weeks.map(function(){ return mColor+'bb'; });
     var barBorders=weeks.map(function(w){
@@ -6516,8 +6517,7 @@ function waRender() {
       scales:{x:{...GR},y:{...GR,beginAtZero:true,
         ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
     }
-  });
-
+  };
   safeCreateChart('waTrendChart', trendCfg);
   }
 }
