@@ -6085,6 +6085,7 @@ function waSetYear(v, btn) {
   document.querySelectorAll('#waLocBtns .topn-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
   waRender();
+  waRenderPlastic();
 }
 function waSetLoc(v, btn) {
   window._waLoc  = v;
@@ -6387,14 +6388,14 @@ function waRender() {
       datasets.push({label:LABELS_UK[m],data:trendWeeks.map(function(w){return Math.round(w[m]);}),
         backgroundColor:allColors[m]+'99',borderColor:allColors[m],borderWidth:1,borderRadius:2,yAxisID:'yRight'});
     });
-  safeCreateChart('waTrendChart',{
+  var trendCfg={
       type:'bar',data:{labels:trendLabels,datasets:datasets},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,font:{size:10}}},
           tooltip:{callbacks:{label:function(ctx){
             var m=kgMetrics[ctx.datasetIndex];
             var str=ctx.dataset.label+': '+ctx.raw.toLocaleString('uk');
-            if(m==='nf'||m==='brak'){var wkg=trendWeeks[ctx.dataIndex]?trendWeeks[ctx.dataIndex].kg:0;str+=' ('+(wkg>0?(ctx.raw/wkg*100).toFixed(1):'0')+'%)';}
+            if(m==='nf'||m==='brak'){var wkg=weeks[ctx.dataIndex]?weeks[ctx.dataIndex].kg:0;str+=' ('+(wkg>0?(ctx.raw/wkg*100).toFixed(1):'0')+'%)';}
             return str;
           }}}},
         scales:{x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
@@ -6407,7 +6408,7 @@ function waRender() {
             var meta=chart.chart.getDatasetMeta(di);
             meta.data.forEach(function(bar,idx){
               var val=datasets[di].data[idx]; if(!val) return;
-              var wkg=trendWeeks[idx]?trendWeeks[idx].kg:0;
+              var wkg=weeks[idx]?weeks[idx].kg:0;
               var pct=wkg>0?(val/wkg*100).toFixed(1):'0';
               if(parseFloat(pct)<0.1) return;
               ctx2.save(); ctx2.font='bold 8px IBM Plex Mono,monospace';
@@ -6434,7 +6435,7 @@ function waRender() {
       return (thisW&&w.weekKey===thisW.weekKey)||(prevW&&w.weekKey===prevW.weekKey)?2:0;
     });
     var isNfBrak=metric==='nf'||metric==='brak';
-    safeCreateChart('waTrendChart',{
+    var trendCfg={
       type:'bar',
       data:{labels:trendLabels,datasets:[{
         label:LABELS_UK[metric],data:trendVals,
@@ -6450,7 +6451,7 @@ function waRender() {
         }}}},
         scales:{x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
                 y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}}
-    });
+    };
     // Підписи над барами
     trendCfg.options.animation={onComplete:function(chart){
       var ctx2=chart.chart.ctx;
@@ -6473,6 +6474,16 @@ function waRender() {
         ctx2.restore();
       });
     }};
+  safeCreateChart('waTrendChart', trendCfg);
+  }
+}
+
+function waRenderPlastic(){
+  var filtered=_waGetFiltered();
+  var weeks=_waAggByWeek(filtered);
+  function fmtD2(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var today=fmtD2(new Date());
+  var completeWeeks=weeks.filter(function(w){return w.weekEnd<today;});
     // ── PETG vs PLA charts ────────────────────────────────────
   var wkLast8=completeWeeks.slice(-8);
   var wLabels=wkLast8.map(function(w){return w.weekKey.slice(5)+' – '+w.weekEnd.slice(5);});
@@ -6511,7 +6522,4 @@ function waRender() {
         ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
     }
   });
-  }
 }
-
-</script>
