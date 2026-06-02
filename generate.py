@@ -13,6 +13,7 @@ LINES_SHEET_ID2 = os.environ.get("LINES_SHEET_ID2", "1NJkxtyha_oSpeaB7Jzmf440-kO
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
+RETAIL_SHEET_ID   = os.environ.get("RETAIL_SHEET_ID",   "1W4mHhbIy43xxTuTQA2nl1atYag8ynlkHpbY_Fx6JUdk")
 
 # ── Middle dashboard config ─────────────────────────────────────────────────
 DEFAULT_CONFIG = {
@@ -918,6 +919,83 @@ def parse_lines_heatmap(rows_list):
 
 
 
+def parse_retail(rows):
+    """
+    Читає лист "2026" з окремого Google Sheet роздрібних продажів.
+    Структура: col0=№, col1=ПІБ, col2=Дата, col4=Сума грн, col5=Продукт, col7=Кількість кг.
+    Повертає: {'sku_ret_kg': {sku: [14 values]}, 'sku_ret_grn': {sku: [14 values]},
+               'ret_kg_by_month': {ym: total_kg}, 'ret_grn_by_month': {ym: total_grn}}
+    """
+    from collections import defaultdict
+    from datetime import datetime as _dt
+
+    SKU_DISPLAY = {
+        'PETG 3.0': 'PETG 3кг', 'PETG 2.5': 'PETG 2.5кг',
+        'PETG 1.0': 'PETG 1кг', 'PLA 3.0':  'PLA 3кг',
+        'PLA 2.5':  'PLA 2.5кг',
+    }
+
+    if not rows or len(rows) < 2:
+        print("  WARNING: parse_retail — no rows")
+        return {}
+
+    sku_kg  = defaultdict(lambda: [0.0] * MONTH_COUNT)
+    sku_grn = defaultdict(lambda: [0.0] * MONTH_COUNT)
+    ret_kg_by_month  = defaultdict(float)
+    ret_grn_by_month = defaultdict(float)
+    parsed = 0
+
+    for row in rows[1:]:   # пропускаємо рядок заголовку
+        if not row or len(row) < 8: continue
+        # col2 = дата
+        raw = row[2]
+        d = None
+        if hasattr(raw, 'strftime'):
+            d = raw
+        elif isinstance(raw, str):
+            s = raw.strip()
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y'):
+                try: d = _dt.strptime(s[:10], fmt); break
+                except: pass
+        if d is None: continue
+        if d.year < 2020: continue
+        ym = d.strftime('%Y-%m')
+        try:
+            mi = MONTH_ORDER.index(ym)
+        except ValueError:
+            continue
+
+        # col5 = Продукт
+        prod = str(row[5]).strip() if len(row) > 5 else ''
+        sku  = SKU_DISPLAY.get(prod, prod if prod else None)
+        if not sku or sku in ('nan', 'None', ''): continue
+
+        def _n(v):
+            try: return float(str(v).replace(',','.').replace(' ','').replace('\xa0','').strip()) if v else 0.0
+            except: return 0.0
+
+        kg  = _n(row[7]) if len(row) > 7 else 0.0
+        grn = _n(row[4]) if len(row) > 4 else 0.0
+        if kg <= 0 and grn <= 0: continue
+
+        sku_kg[sku][mi]  += kg
+        sku_grn[sku][mi] += grn
+        ret_kg_by_month[ym]  += kg
+        ret_grn_by_month[ym] += grn
+        parsed += 1
+
+    print(f"  parse_retail: {parsed} rows, {len(sku_kg)} SKUs")
+    for ym in sorted(ret_kg_by_month):
+        print(f"    {ym}: {round(ret_kg_by_month[ym],1)} кг, {round(ret_grn_by_month[ym]):,} грн")
+
+    return {
+        'sku_ret_kg':       {sk: [round(v,1) if v>0 else None for v in sku_kg[sk]]  for sk in sku_kg},
+        'sku_ret_grn':      {sk: [round(v,1) if v>0 else None for v in sku_grn[sk]] for sk in sku_grn},
+        'ret_kg_by_month':  dict(ret_kg_by_month),
+        'ret_grn_by_month': dict(ret_grn_by_month),
+    }
+
+
 def parse_sales(rows):
     """
     Парсит продажи из листа _AllData_$ — выторг по каналам по месяцам,
@@ -1119,6 +1197,8 @@ def parse_sales(rows):
 
     sku_sales_opt = {sk: [round(v, 1) if v > 0 else None for v in sku_opt[sk]] for sk in all_skus}
     sku_sales_ret = {sk: [round(v, 1) if v > 0 else None for v in sku_ret[sk]] for sk in all_skus}
+    # retail_data може бути переданий ззовні (з окремого Google Sheet)
+    # merging відбувається в main() після виклику parse_sales + parse_retail
 
     result = {
         'sales_labels':      labels,
@@ -1555,6 +1635,47 @@ if __name__ == '__main__':
             print(f"  Income after sales backfill: {data['income']}")
     except Exception as e:
         print(f"WARNING sales: {e}")
+
+    # ── 4b. Роздрібні продажі (окремий Google Sheet) ──────────
+    # RETAIL_SHEET_ID = 1W4mHhbIy43xxTuTQA2nl1atYag8ynlkHpbY_Fx6JUdk, лист "2026"
+    try:
+        retail_rows = fetch_csv(RETAIL_SHEET_ID, "2026")
+        retail = parse_retail(retail_rows)
+        if retail and sales:
+            from collections import defaultdict as _ddr
+            # Мержимо роздрібні кг у sku_sales_ret (додаємо до існуючих wholesale retail)
+            for sku, arr in retail['sku_ret_kg'].items():
+                if sku not in sales['sku_sales_ret']:
+                    sales['sku_sales_ret'][sku] = [None] * MONTH_COUNT
+                    if sku not in sales['sku_list']:
+                        sales['sku_list'].append(sku)
+                for i, v in enumerate(arr):
+                    if v:
+                        old_v = sales['sku_sales_ret'][sku][i] or 0
+                        sales['sku_sales_ret'][sku][i] = round(old_v + v, 1)
+            # Додаємо роздрібну виручку до income якщо ще не враховано
+            for ym, grn in retail['ret_grn_by_month'].items():
+                try:
+                    mi = MONTH_ORDER.index(ym)
+                    # income вже включає опт — додаємо розд тільки якщо _AllData_$ не мав Розница
+                    # (перевіряємо чи monthly_ret було 0 — але немає прямого доступу тут)
+                    # Безпечніше: не дублюємо, просто логуємо
+                except ValueError:
+                    pass
+            print(f"  Retail merged: {sorted(retail['sku_ret_kg'].keys())}")
+        elif retail and not sales:
+            # Якщо продажів з _AllData_$ взагалі немає — створюємо sales зі структури retail
+            sales = {
+                'sku_sales_opt': {},
+                'sku_sales_ret': {sk: arr for sk, arr in retail['sku_ret_kg'].items()},
+                'sku_list': list(retail['sku_ret_kg'].keys()),
+                'sales_opt': [None]*MONTH_COUNT, 'sales_ret': [None]*MONTH_COUNT,
+                'donut_by_month': {},
+            }
+            print(f"  Retail-only sales created")
+    except Exception as e:
+        print(f"  WARNING retail: {e}")
+        import traceback; traceback.print_exc()
 
     # ── 5. OKR (стратегія xlsx) ────────────────────────────────
     okr = None
