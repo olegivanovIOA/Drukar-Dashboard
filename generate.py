@@ -1411,8 +1411,12 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         opt1 = sales.get('sales_opt1_kg', [])
         opt2 = sales.get('sales_opt2_kg', [])
         ret  = sales.get('sales_ret_kg',  [])
+        from datetime import datetime as _now
+        # Беремо тільки ЗАКІНЧЕНІ місяці — поточний місяць виключаємо
+        _current_ym = _now.utcnow().strftime('%Y-%m')
         for i, ym in enumerate(MONTH_ORDER):
             if not ym.startswith('2026'): continue
+            if ym >= _current_ym: continue  # поточний і майбутні — пропускаємо
             month_num = int(ym.split('-')[1])  # 01→1, 05→5 тощо
             # Спочатку беремо виробництво (кг → тонни)
             prod_kg = total_prod[i] if i < len(total_prod) and total_prod[i] else None
@@ -1428,7 +1432,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             if total_t > 0:
                 fc_fact[month_num] = total_t
                 fc_last_m = month_num
-        print(f"  FC_FACT (production-based): {fc_fact}, LAST_M: {fc_last_m}")
+        print(f"  FC_FACT (closed months only, production-based): {fc_fact}, LAST_M: {fc_last_m}")
         subs.update({
             '{{FC_FACT}}':  jv(fc_fact) if fc_fact else '{1:25,2:31,3:45,4:50}',
             '{{FC_LAST_M}}': str(fc_last_m) if fc_last_m else '4',
