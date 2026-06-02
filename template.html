@@ -4781,12 +4781,13 @@ function _fcRender() {
   const FACT = {{FC_FACT}}; // {month_num: tonnes} — факт продажів по місяцях
   const LAST_FACT_M = {{FC_LAST_M}}; // останній місяць з фактом
 
-  // Лінійна регресія
-  const xs=[1,2,3,4], ys=[25,31,45,47], n=4;
+  // Лінійна регресія — динамічно з FC_FACT
+  const _fmKeys=Object.keys(FACT).map(Number).sort((a,b)=>a-b);
+  const xs=_fmKeys, ys=_fmKeys.map(m=>FACT[m]), n=_fmKeys.length;
   let sx=0,sy=0,sxy=0,sx2=0;
   xs.forEach((x,i)=>{sx+=x;sy+=ys[i];sxy+=x*ys[i];sx2+=x*x;});
-  const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx);
-  const intercept=(sy-slope*sx)/n;
+  const slope=n>1?(n*sxy-sx*sy)/(n*sx2-sx*sx):0;
+  const intercept=n>0?(sy-slope*sx)/n:0;
   const trendAt=m=>Math.max(0,slope*m+intercept);
 
   // Ввід: розширення існуючих + нові акаунти (накопично)

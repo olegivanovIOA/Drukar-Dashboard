@@ -1402,26 +1402,33 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{HM_DATA}}':         jv(hm_data or {}),
     }
     if sales:
-        # FC_FACT: {місяць_номер: тонни} для прогнозу — з реальних продажів
-        # MONTH_ORDER = ['2025-11','2025-12','2026-01',...] → місяць 1=Лис25, 2=Гру25...
-        # Для прогнозу потрібні місяці 2026 року: Січ=1, Лют=2, ..., Гру=12
+        # FC_FACT: {місяць_номер: тонни} для прогнозу — ВИРОБНИЦТВО з журналів
+        # Пріоритет: data['total_prod'] (кг з журналів) → більш точний показник ніж продажі
+        # Fallback: сума продажів (opt1+opt2+ret) якщо журнальних даних немає
         fc_fact = {}
         fc_last_m = 0
+        total_prod = data.get('total_prod', [])  # кг, індекси = MONTH_ORDER
         opt1 = sales.get('sales_opt1_kg', [])
         opt2 = sales.get('sales_opt2_kg', [])
         ret  = sales.get('sales_ret_kg',  [])
         for i, ym in enumerate(MONTH_ORDER):
             if not ym.startswith('2026'): continue
-            month_num = int(ym.split('-')[1])  # 01→1, 04→4
-            total_kg = 0
-            if i < len(opt1) and opt1[i]: total_kg += opt1[i]
-            if i < len(opt2) and opt2[i]: total_kg += opt2[i]
-            if i < len(ret)  and ret[i]:  total_kg += ret[i]
-            total_t = round(total_kg / 1000, 1)
+            month_num = int(ym.split('-')[1])  # 01→1, 05→5 тощо
+            # Спочатку беремо виробництво (кг → тонни)
+            prod_kg = total_prod[i] if i < len(total_prod) and total_prod[i] else None
+            if prod_kg and prod_kg > 0:
+                total_t = round(prod_kg / 1000, 1)
+            else:
+                # Fallback до продажів
+                sales_kg = 0
+                if i < len(opt1) and opt1[i]: sales_kg += opt1[i]
+                if i < len(opt2) and opt2[i]: sales_kg += opt2[i]
+                if i < len(ret)  and ret[i]:  sales_kg += ret[i]
+                total_t = round(sales_kg / 1000, 1) if sales_kg > 0 else 0
             if total_t > 0:
                 fc_fact[month_num] = total_t
                 fc_last_m = month_num
-        print(f"  FC_FACT: {fc_fact}, LAST_M: {fc_last_m}")
+        print(f"  FC_FACT (production-based): {fc_fact}, LAST_M: {fc_last_m}")
         subs.update({
             '{{FC_FACT}}':  jv(fc_fact) if fc_fact else '{1:25,2:31,3:45,4:50}',
             '{{FC_LAST_M}}': str(fc_last_m) if fc_last_m else '4',
@@ -1662,7 +1669,18 @@ if __name__ == '__main__':
                     # Безпечніше: не дублюємо, просто логуємо
                 except ValueError:
                     pass
+            # Також оновлюємо sales_ret_kg (тонни по MONTH_ORDER) для FC_FACT
+            cur_ret_kg = list(sales.get('sales_ret_kg', [None]*MONTH_COUNT))
+            # Вирівнюємо до MONTH_COUNT
+            while len(cur_ret_kg) < MONTH_COUNT:
+                cur_ret_kg.append(None)
+            for sku, arr in retail['sku_ret_kg'].items():
+                for i, v in enumerate(arr):
+                    if v and i < MONTH_COUNT:
+                        cur_ret_kg[i] = round((cur_ret_kg[i] or 0) + v / 1000, 3)
+            sales['sales_ret_kg'] = cur_ret_kg
             print(f"  Retail merged: {sorted(retail['sku_ret_kg'].keys())}")
+            print(f"  sales_ret_kg updated: {[round(v,1) if v else None for v in cur_ret_kg]}")
         elif retail and not sales:
             # Якщо продажів з _AllData_$ взагалі немає — створюємо sales зі структури retail
             sales = {
