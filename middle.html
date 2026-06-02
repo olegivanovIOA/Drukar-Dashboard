@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.06.2026 04:25 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.06.2026 04:38 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -6324,6 +6324,7 @@ function waRender() {
         {label:'PLA', data:plaVals, backgroundColor:plaColors, borderRadius:0, borderWidth:0},
       ]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        scales:{x:{stacked:true},y:{stacked:true}},
         layout:{padding:{right:60}},
         plugins:{
           legend:{display:false},
@@ -6344,7 +6345,7 @@ function waRender() {
           var meta=chart.chart.getDatasetMeta(0);
           meta.data.forEach(function(bar,idx){
             var m=METRICS_ORDER[idx];
-            var val=petgVals[idx]; if(!val) return;
+            var val=vals[idx]; if(!val) return;
             ctx2.save();
             ctx2.font='bold 9px IBM Plex Mono,monospace';
             ctx2.textBaseline='middle';
@@ -6409,8 +6410,7 @@ function waRender() {
 
   if(metric==='all'){
     var kgMetrics=['kg','prod','nf','brak'];
-    // UA кольори для "всі разом": відтінки синього + акценти
-    var allColors={kg:'#1A56DB',prod:'#2E75B6',nf:'#F5A623',brak:'#C0392B',coils:'#1E3A5F',packed:'#0D2B4E'};
+    var allColors={kg:'#1A56DB',prod:'#2E75B6',nf:'#F5A623',brak:'#C0392B',coils:'#1E3A5F',packed:'#0D2137'};
     var datasets=kgMetrics.map(function(m){
       return {label:LABELS_UK[m],data:trendWeeks.map(function(w){return Math.round(w[m]);}),
         backgroundColor:allColors[m]+'bb',borderColor:allColors[m],borderWidth:1,borderRadius:2};
@@ -6426,12 +6426,12 @@ function waRender() {
           tooltip:{callbacks:{label:function(ctx){
             var m=kgMetrics[ctx.datasetIndex];
             var str=ctx.dataset.label+': '+ctx.raw.toLocaleString('uk');
-            if(m==='nf'||m==='brak'){var wkg=trendWeeks[ctx.dataIndex]?trendWeeks[ctx.dataIndex].kg:0;str+=' ('+(wkg>0?(ctx.raw/wkg*100).toFixed(1):'0')+'%)'}
+            if(m==='nf'||m==='brak'){var wkg=trendWeeks[ctx.dataIndex]?trendWeeks[ctx.dataIndex].kg:0;str+=' ('+(wkg>0?(ctx.raw/wkg*100).toFixed(1):'0')+'%)';}
             return str;
           }}}},
         scales:{x:{...GR,ticks:{...GR.ticks,maxRotation:45,font:{size:9}}},
           y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},
-          yRight:{...GR,beginAtZero:true,position:'right',grid:{display:false},ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}},
+          yRight:{...GR,beginAtZero:true,position:'right',grid:{display:false},ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}},
         animation:{onComplete:function(chart){
           var ctx2=chart.chart.ctx;
           [2,3].forEach(function(di){
@@ -6452,7 +6452,6 @@ function waRender() {
       }
     });
   } else {
-    // Один колір для всіх барів
     var mColor=COLORS_MAP[metric]||'#1A56DB';
     var trendVals=trendWeeks.map(function(w){return Math.round(w[metric]);});
     var barColors=trendWeeks.map(function(){ return mColor+'bb'; });
@@ -6502,11 +6501,10 @@ function waRender() {
             ctx2.restore();
           });
         }}
+      }
     });
   }
 }
-
-
 
 function waRenderPlastic(){
   var filtered=_waGetFiltered();
