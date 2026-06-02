@@ -1732,6 +1732,8 @@ const HM_NORMS={{HM_NORMS}};
 const SKU_SALES_OPT={{SKU_SALES_OPT}};
 const SKU_SALES_RET={{SKU_SALES_RET}};
 const SKU_LIST={{SKU_LIST}}; // {line: {vid: norm_kg_per_shift}}
+const PROD_BY_SKU={{PROD_BY_SKU}};
+const PROD_SKU_LIST={{PROD_SKU_LIST}};
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
@@ -4973,7 +4975,9 @@ function _fcRender() {
   var _filt='all';
 
   function visSkus(){
-    return (SKU_LIST||[]).filter(function(s){return _filt==='all'||s.startsWith(_filt);});
+    var allSkus=[],seen={};
+    (PROD_SKU_LIST||[]).concat(SKU_LIST||[]).forEach(function(s){if(!seen[s]){seen[s]=true;allSkus.push(s);}});
+    return allSkus.filter(function(s){return _filt==='all'||s.startsWith(_filt);});
   }
   function fmtKg(v,bal){
     if(v===null||v===undefined) return '<span style="color:var(--muted)">\u2014</span>';
@@ -5016,14 +5020,17 @@ function _fcRender() {
       var bg=si%2===0?'var(--surface)':'var(--surface2)';
       var opt=SKU_SALES_OPT[sku]||[];
       var ret=SKU_SALES_RET[sku]||[];
+      var prodArr=(PROD_BY_SKU&&PROD_BY_SKU[sku])?PROD_BY_SKU[sku]:null;
       var rowDefs=[
-        {label:'Продано Опт',  arr:opt, color:'var(--accent)'},
-        {label:'Продано Роздр',arr:ret, color:'var(--good)'},
+        {label:'Вироблено',    arr:prodArr, color:'var(--muted)',  dim:true},
+        {label:'Продано Опт',  arr:opt,     color:'var(--accent)'},
+        {label:'Продано Роздр',arr:ret,     color:'var(--good)'},
       ];
+      var nRows=rowDefs.length;
       rowDefs.forEach(function(row,ri){
         var tr='<tr style="background:'+bg+'">';
         if(ri===0){
-          tr+='<td rowspan="2" style="position:sticky;left:0;z-index:2;background:'+bg+
+          tr+='<td rowspan="'+nRows+'" style="position:sticky;left:0;z-index:2;background:'+bg+
               ';border-right:1px solid var(--border);padding:8px 14px;vertical-align:middle;'+
               'font-family:\'Bebas Neue\',sans-serif;font-size:17px;letter-spacing:1px;color:'+skuColor+'">'+sku+'</td>';
         }
@@ -5040,6 +5047,12 @@ function _fcRender() {
 
     html+='<tr><td colspan="'+colSpan+'" style="height:3px;background:var(--border);padding:0"></td></tr>';
 
+    function prodTotalAtIdx(i){
+      var t=0;
+      (PROD_SKU_LIST||[]).forEach(function(sk){var a=PROD_BY_SKU&&PROD_BY_SKU[sk]?PROD_BY_SKU[sk]:null;if(a)t+=a[i]||0;});
+      if(!PROD_SKU_LIST||!PROD_SKU_LIST.length)t=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
+      return t||null;
+    }
     var totalDefs=[
       {label:'Вироблено PETG', fn:function(i){return PETG_ALL[i]||null;},  color:'var(--accent2)', dim:true},
       {label:'Вироблено PLA',  fn:function(i){return PLA_ALL[i]||null;},   color:'var(--good)',    dim:true},
@@ -5067,13 +5080,13 @@ function _fcRender() {
 
       for(var i=0;i<N;i++){
         var v=null,cur=MO[i]===CUR_YM;
-        var prod=(PETG_ALL[i]||0)+(PLA_ALL[i]||0);
+        var prod=prodTotalAtIdx(i);
         var sold=0;(SKU_LIST||[]).forEach(function(sk){sold+=(SKU_SALES_OPT[sk]||[])[i]||0;sold+=(SKU_SALES_RET[sk]||[])[i]||0;});
-
+        var prodV=prod||0;
         if(row.monthly){
-          v=Math.round((prod-sold)*10)/10;
+          v=Math.round((prodV-sold)*10)/10;
         } else if(row.cumul){
-          cumBal+=prod-sold;
+          cumBal+=prodV-sold;
           v=Math.round(cumBal*10)/10;
         } else {
           v=row.fn(i);

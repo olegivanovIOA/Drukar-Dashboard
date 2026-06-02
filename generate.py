@@ -357,12 +357,26 @@ def parse_production_from_journals(rows_list):
                     pass
         return None
 
+    # Маппінг назв Видів з журналу → назва SKU для дашборду (має збігатися з продажами)
+    SKU_DISPLAY_MAP = {
+        'PETG 2.5':     'PETG 2.5кг',
+        'PETG 3.0':     'PETG 3кг',
+        'PETG 3.0 RED': 'PETG 3кг RED',
+        'PETG 1.0':     'PETG 1кг',
+        'PETG 1.0 ':    'PETG 1кг',
+        'PLA 2.5':      'PLA 2.5кг',
+        'PLA 3.0':      'PLA 3кг',
+    }
+
     monthly = defaultdict(lambda: {
         'petg': 0.0, 'pla': 0.0,
         'petg_nf': 0.0, 'pla_nf': 0.0,
         'petg_waste': 0.0, 'pla_waste': 0.0,
         'petg_pcs': 0.0, 'pla_pcs': 0.0,
     })
+    # per-SKU: sku_display → ym → kg
+    from collections import defaultdict as _dd
+    sku_monthly = _dd(lambda: _dd(float))
 
     total_rows = 0
     for rows in rows_list:
@@ -408,6 +422,9 @@ def parse_production_from_journals(rows_list):
                 monthly[ym]['pla_pcs']    += pcs
                 monthly[ym]['pla_nf']     += nf
                 monthly[ym]['pla_waste']  += waste
+            # per-SKU accumulation
+            sku_disp = SKU_DISPLAY_MAP.get(vid, vid.strip())
+            sku_monthly[sku_disp][ym] += kg
             total_rows += 1
 
     print(f"  parse_production_from_journals: {total_rows} data rows, {len(monthly)} months")
@@ -438,6 +455,21 @@ def parse_production_from_journals(rows_list):
     petg_w_r  = [round((petg_w_kg[i]  or 0) / (petg_prod[i] or 1) * 100, 2) if petg_prod[i] else None for i in range(MONTH_COUNT)]
     pla_w_r   = [round((pla_w_kg[i]   or 0) / (pla_prod[i]  or 1) * 100, 2) if pla_prod[i]  else None for i in range(MONTH_COUNT)]
 
+    # Будуємо PROD_BY_SKU: {sku_display: [14 значень по MONTH_ORDER]}
+    all_skus_sorted = sorted(sku_monthly.keys(), key=lambda s: (
+        0 if s.startswith('PETG 2') else
+        1 if s.startswith('PETG 3к') and 'RED' not in s else
+        2 if 'RED' in s else
+        3 if s.startswith('PETG 1') else
+        4 if s.startswith('PLA 2') else
+        5
+    ))
+    prod_by_sku = {
+        sku: [round(sku_monthly[sku].get(m, 0.0), 1) if sku_monthly[sku].get(m, 0) > 0 else None
+              for m in MONTH_ORDER]
+        for sku in all_skus_sorted
+    }
+
     result = {
         # кг вироблено (для дашборду і ПнЛ)
         'petg_prod':    petg_prod,
@@ -458,6 +490,9 @@ def parse_production_from_journals(rows_list):
         'petg_waste':   petg_w_r,
         'pla_waste':    pla_w_r,
         'waste_pct':    waste_pct,
+        # per-SKU для таба "Товар"
+        'prod_by_sku':    prod_by_sku,
+        'prod_sku_list':  all_skus_sorted,
     }
 
     print(f"  PETG prod (journals): {petg_prod}")
@@ -483,6 +518,7 @@ def _empty_production():
         "cost_petg_kg": [None]*MONTH_COUNT, "cost_pla_kg": [None]*MONTH_COUNT,
         "petg_waste_kg": [None]*MONTH_COUNT, "pla_waste_kg": [None]*MONTH_COUNT,
         "petg_pcs": [None]*MONTH_COUNT, "pla_pcs": [None]*MONTH_COUNT,
+        "prod_by_sku": {}, "prod_sku_list": [],
     }
 
 def parse_production(rows):
@@ -1332,6 +1368,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{SKU_SALES_OPT}}':      jv(sales.get('sku_sales_opt', {})),
             '{{SKU_SALES_RET}}':      jv(sales.get('sku_sales_ret', {})),
             '{{SKU_LIST}}':           jv(sales.get('sku_list', [])),
+            '{{PROD_BY_SKU}}':        jv(data.get('prod_by_sku', {})),
+            '{{PROD_SKU_LIST}}':      jv(data.get('prod_sku_list', [])),
         })
     else:
         subs.update({
@@ -1356,6 +1394,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{SKU_SALES_OPT}}':      '{}',
             '{{SKU_SALES_RET}}':      '{}',
             '{{SKU_LIST}}':           '[]',
+            '{{PROD_BY_SKU}}':        jv(data.get('prod_by_sku', {})),
+            '{{PROD_SKU_LIST}}':      jv(data.get('prod_sku_list', [])),
         })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
     subs.update({
@@ -1425,7 +1465,10 @@ if __name__ == '__main__':
             data['pla_waste_kg']  = jdata['pla_waste_kg']
             data['petg_pcs']      = jdata['petg_pcs']
             data['pla_pcs']       = jdata['pla_pcs']
+            data['prod_by_sku']   = jdata['prod_by_sku']
+            data['prod_sku_list'] = jdata['prod_sku_list']
             print("  Journal data merged into data[] OK")
+            print(f"  prod_sku_list: {jdata['prod_sku_list']}")
         except Exception as e:
             print(f"  WARNING parse_production_from_journals: {e}")
             import traceback; traceback.print_exc()
