@@ -6316,7 +6316,6 @@ function waRender() {
         {label:'PLA', data:plaVals, backgroundColor:plaColors, borderRadius:0, borderWidth:0},
       ]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        scales:{x:{stacked:true},y:{stacked:true}},
         layout:{padding:{right:60}},
         plugins:{
           legend:{display:false},
@@ -6331,13 +6330,13 @@ function waRender() {
             return str;
           }}}
         },
-        scales:{x:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}},
+        scales:{x:{...GR,beginAtZero:true,stacked:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR,stacked:true}},
         animation:{onComplete:function(chart){
           var ctx2=chart.chart.ctx;
           var meta=chart.chart.getDatasetMeta(0);
           meta.data.forEach(function(bar,idx){
             var m=METRICS_ORDER[idx];
-            var val=vals[idx]; if(!val) return;
+            var val=petgVals[idx]; if(!val) return;
             ctx2.save();
             ctx2.font='bold 9px IBM Plex Mono,monospace';
             ctx2.textBaseline='middle';
@@ -6449,13 +6448,13 @@ function waRender() {
     var mColor=COLORS_MAP[metric]||'#1A56DB';
     var trendVals=trendWeeks.map(function(w){return Math.round(w[metric]);});
     // Виділяємо тільки в режимі kg тонкою позначкою (outline), не кольором
-    var barColors=weeks.map(function(){ return mColor+'bb'; });
-    var barBorders=weeks.map(function(w){
+    var barColors=trendWeeks.map(function(){ return mColor+'bb'; });
+    var barBorders=trendWeeks.map(function(w){
       if(thisW&&w.weekKey===thisW.weekKey) return '#F5A623';
       if(prevW&&w.weekKey===prevW.weekKey) return '#1E8A44';
       return 'transparent';
     });
-    var borderWidths=weeks.map(function(w){
+    var borderWidths=trendWeeks.map(function(w){
       return (thisW&&w.weekKey===thisW.weekKey)||(prevW&&w.weekKey===prevW.weekKey)?2:0;
     });
     var isNfBrak=metric==='nf'||metric==='brak';
