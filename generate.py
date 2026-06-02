@@ -316,6 +316,159 @@ def parse_production_from_alldata(rows):
     return data
 
 
+def parse_production_from_journals(rows_list):
+    """
+    Читає основні Журнали локацій (Журнал.Локація1, Журнал.Локація2, ...) напряму.
+    Використовується для розрахунку ВИРОБНИЦТВО / НФ / БРАК для ПнЛ і собівартості.
+    НЕ замінює _AllData_Product — вклади/мотивація операторів залишаються як є.
+
+    Структура журналу (рядки з індексу 2, тобто пропускаємо 2 рядки заголовків):
+      col 0  = Дата (datetime, ffill по блоках)
+      col 6  = Зміна (День/Ніч)
+      col 7  = Лінія
+      col 8  = Вид (PETG 2.5 / PETG 3.0 / PLA 3.0 / ...)
+      col 9  = Кількість шт (вироблено)
+      col 10 = Вага кг (вироблено)
+      col 11 = НФ кг
+      col 12 = Відхід (Брак) кг
+
+    rows_list: список списків рядків — по одному на кожен журнал локації.
+    """
+    from collections import defaultdict
+    from datetime import datetime as _dt, date as _date, timedelta
+
+    def _safe(val):
+        try:
+            v = str(val).replace(',', '.').replace(' ', '').replace('\xa0', '').strip()
+            return float(v) if v else 0.0
+        except:
+            return 0.0
+
+    def _parse_date(val):
+        if hasattr(val, 'strftime'):
+            return val.strftime('%Y-%m')
+        if isinstance(val, (int, float)) and 40000 < val < 60000:
+            return (_date(1899, 12, 30) + timedelta(days=int(val))).strftime('%Y-%m')
+        if isinstance(val, str):
+            for fmt in ('%Y-%m-%d', '%d.%m.%Y'):
+                try:
+                    return _dt.strptime(str(val)[:10], fmt).strftime('%Y-%m')
+                except:
+                    pass
+        return None
+
+    monthly = defaultdict(lambda: {
+        'petg': 0.0, 'pla': 0.0,
+        'petg_nf': 0.0, 'pla_nf': 0.0,
+        'petg_waste': 0.0, 'pla_waste': 0.0,
+        'petg_pcs': 0.0, 'pla_pcs': 0.0,
+    })
+
+    total_rows = 0
+    for rows in rows_list:
+        if not rows or len(rows) < 3:
+            continue
+        # Рядки даних починаються з індексу 2 (пропускаємо 2 рядки заголовків)
+        last_ym = None
+        for row in rows[2:]:
+            if not row or len(row) < 9:
+                continue
+
+            # col 0 = дата (може бути NaT/порожньо — тоді ffill)
+            raw_date = row[0]
+            ym = _parse_date(raw_date)
+            if ym:
+                last_ym = ym
+            else:
+                ym = last_ym
+            if not ym or ym < '2025-11':
+                continue
+
+            # col 8 = Вид продукту
+            vid = str(row[8]).strip() if len(row) > 8 else ''
+            if not vid or vid in ('nan', 'None', ''):
+                continue
+            is_petg = 'PETG' in vid.upper()
+            is_pla  = 'PLA'  in vid.upper() and not is_petg
+            if not is_petg and not is_pla:
+                continue
+
+            pcs   = _safe(row[9])  if len(row) > 9  else 0.0  # col 9  Кількість шт
+            kg    = _safe(row[10]) if len(row) > 10 else 0.0  # col 10 Вага кг
+            nf    = _safe(row[11]) if len(row) > 11 else 0.0  # col 11 НФ кг
+            waste = _safe(row[12]) if len(row) > 12 else 0.0  # col 12 Відхід кг
+
+            if is_petg:
+                monthly[ym]['petg']       += kg
+                monthly[ym]['petg_pcs']   += pcs
+                monthly[ym]['petg_nf']    += nf
+                monthly[ym]['petg_waste'] += waste
+            else:
+                monthly[ym]['pla']        += kg
+                monthly[ym]['pla_pcs']    += pcs
+                monthly[ym]['pla_nf']     += nf
+                monthly[ym]['pla_waste']  += waste
+            total_rows += 1
+
+    print(f"  parse_production_from_journals: {total_rows} data rows, {len(monthly)} months")
+
+    petg_prod  = [round(monthly[m]['petg'],  1) if m in monthly else None for m in MONTH_ORDER]
+    pla_prod   = [round(monthly[m]['pla'],   1) if m in monthly else None for m in MONTH_ORDER]
+    petg_nf_kg = [round(monthly[m]['petg_nf'],   1) if m in monthly else None for m in MONTH_ORDER]
+    pla_nf_kg  = [round(monthly[m]['pla_nf'],    1) if m in monthly else None for m in MONTH_ORDER]
+    petg_w_kg  = [round(monthly[m]['petg_waste'], 1) if m in monthly else None for m in MONTH_ORDER]
+    pla_w_kg   = [round(monthly[m]['pla_waste'],  1) if m in monthly else None for m in MONTH_ORDER]
+    petg_pcs   = [round(monthly[m]['petg_pcs']) if m in monthly else None for m in MONTH_ORDER]
+    pla_pcs    = [round(monthly[m]['pla_pcs'])  if m in monthly else None for m in MONTH_ORDER]
+
+    total_prod = [
+        round((petg_prod[i] or 0) + (pla_prod[i] or 0), 1)
+        if petg_prod[i] is not None or pla_prod[i] is not None else None
+        for i in range(MONTH_COUNT)
+    ]
+
+    nf_pct = []; waste_pct = []
+    for i in range(MONTH_COUNT):
+        pp = (petg_prod[i] or 0) + (pla_prod[i] or 0)
+        nf_pct.append(   round(((petg_nf_kg[i] or 0) + (pla_nf_kg[i] or 0)) / pp * 100, 2) if pp else None)
+        waste_pct.append(round(((petg_w_kg[i]  or 0) + (pla_w_kg[i]  or 0)) / pp * 100, 2) if pp else None)
+
+    petg_nf_r = [round((petg_nf_kg[i] or 0) / (petg_prod[i] or 1) * 100, 2) if petg_prod[i] else None for i in range(MONTH_COUNT)]
+    pla_nf_r  = [round((pla_nf_kg[i]  or 0) / (pla_prod[i]  or 1) * 100, 2) if pla_prod[i]  else None for i in range(MONTH_COUNT)]
+    petg_w_r  = [round((petg_w_kg[i]  or 0) / (petg_prod[i] or 1) * 100, 2) if petg_prod[i] else None for i in range(MONTH_COUNT)]
+    pla_w_r   = [round((pla_w_kg[i]   or 0) / (pla_prod[i]  or 1) * 100, 2) if pla_prod[i]  else None for i in range(MONTH_COUNT)]
+
+    result = {
+        # кг вироблено (для дашборду і ПнЛ)
+        'petg_prod':    petg_prod,
+        'pla_prod':     pla_prod,
+        'total_prod':   total_prod,
+        # штуки вироблено (для якісної таблиці)
+        'petg_pcs':     petg_pcs,
+        'pla_pcs':      pla_pcs,
+        # НФ
+        'petg_nf_kg':   petg_nf_kg,
+        'pla_nf_kg':    pla_nf_kg,
+        'petg_nf':      petg_nf_r,
+        'pla_nf':       pla_nf_r,
+        'nf_pct':       nf_pct,
+        # Брак (Відхід)
+        'petg_waste_kg': petg_w_kg,
+        'pla_waste_kg':  pla_w_kg,
+        'petg_waste':   petg_w_r,
+        'pla_waste':    pla_w_r,
+        'waste_pct':    waste_pct,
+    }
+
+    print(f"  PETG prod (journals): {petg_prod}")
+    print(f"  PLA  prod (journals): {pla_prod}")
+    print(f"  PETG НФ kg:           {petg_nf_kg}")
+    print(f"  PLA  НФ kg:           {pla_nf_kg}")
+    print(f"  PETG Брак kg:         {petg_w_kg}")
+    print(f"  PLA  Брак kg:         {pla_w_kg}")
+    return result
+
+
 def _empty_production():
     return {
         "updated": datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC'),
@@ -328,6 +481,8 @@ def _empty_production():
         "pla_waste": [None]*MONTH_COUNT, "income": [None]*MONTH_COUNT,
         "expenses": [None]*MONTH_COUNT, "profit": [None]*MONTH_COUNT,
         "cost_petg_kg": [None]*MONTH_COUNT, "cost_pla_kg": [None]*MONTH_COUNT,
+        "petg_waste_kg": [None]*MONTH_COUNT, "pla_waste_kg": [None]*MONTH_COUNT,
+        "petg_pcs": [None]*MONTH_COUNT, "pla_pcs": [None]*MONTH_COUNT,
     }
 
 def parse_production(rows):
@@ -1113,6 +1268,10 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{PLA_PACKED}}':      jv(data.get('pla_packed',  [None]*MONTH_COUNT)),
         '{{PETG_WASTE}}':      jv(data['petg_waste']),
         '{{PLA_WASTE}}':       jv(data['pla_waste']),
+        '{{PETG_WASTE_KG}}':   jv(data.get('petg_waste_kg', [None]*MONTH_COUNT)),
+        '{{PLA_WASTE_KG}}':    jv(data.get('pla_waste_kg',  [None]*MONTH_COUNT)),
+        '{{PETG_PCS}}':        jv(data.get('petg_pcs',      [None]*MONTH_COUNT)),
+        '{{PLA_PCS}}':         jv(data.get('pla_pcs',       [None]*MONTH_COUNT)),
         '/*INCOME*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null]': jv(data['income']),
         '/*EXPENSES*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null]': jv(data['expenses']),
         '{{PROFIT}}':          jv(data['profit']),
@@ -1222,7 +1381,8 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
 if __name__ == '__main__':
     line_norms = {}
 
-    # ── 1. Виробництво (_AllData_Product) ──────────────────────
+    # ── 1a. Виробництво (_AllData_Product) — для вкладів/операторів ──
+    # Залишаємо як є — використовується для heatmap, операторів, мотивації.
     prod_rows = []
     data = None
     try:
@@ -1233,6 +1393,44 @@ if __name__ == '__main__':
         import traceback; traceback.print_exc()
     if data is None:
         data = _empty_production()
+
+    # ── 1b. Виробництво з Журналів локацій — для кг/НФ/Брак/ПнЛ ─────
+    # LINES_SHEET_ID  = Журнал Локація 1 (1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4)
+    # LINES_SHEET_ID2 = Журнал Локація 2 (1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI)
+    # Назви листів журналів. Щоб додати нову локацію — додайте (SHEET_ID, "Журнал.ЛокаціяN").
+    JOURNAL_SOURCES = [
+        (LINES_SHEET_ID,  "Журнал.Локация1"),
+        (LINES_SHEET_ID2, "Журнал.Локация2"),
+    ]
+    journal_rows_list = []
+    for _jid, _jsheet in JOURNAL_SOURCES:
+        try:
+            _rows = fetch_csv(_jid, _jsheet)
+            print(f"  Journal '{_jsheet}': {len(_rows)} rows")
+            journal_rows_list.append(_rows)
+        except Exception as e:
+            print(f"  WARNING journal '{_jsheet}': {e}")
+
+    if journal_rows_list:
+        try:
+            jdata = parse_production_from_journals(journal_rows_list)
+            # Перезаписуємо поля виробництва/НФ/Брак з точних даних журналів.
+            # Поля вкладів операторів (_AllData_Product) залишаються незмінними.
+            for _key in ('petg_prod', 'pla_prod', 'total_prod',
+                         'petg_nf', 'pla_nf', 'petg_nf_kg', 'pla_nf_kg', 'nf_pct',
+                         'petg_waste', 'pla_waste', 'waste_pct'):
+                data[_key] = jdata[_key]
+            # Нові поля для ПнЛ (kg абсолютні значення НФ/Брак)
+            data['petg_waste_kg'] = jdata['petg_waste_kg']
+            data['pla_waste_kg']  = jdata['pla_waste_kg']
+            data['petg_pcs']      = jdata['petg_pcs']
+            data['pla_pcs']       = jdata['pla_pcs']
+            print("  Journal data merged into data[] OK")
+        except Exception as e:
+            print(f"  WARNING parse_production_from_journals: {e}")
+            import traceback; traceback.print_exc()
+    else:
+        print("  WARNING: no journal rows fetched — using _AllData_Product for production")
 
     # ── 2. Фінансові дані (_AllData_Sebest) ────────────────────
     try:
