@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.06.2026 04:59 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.06.2026 09:02 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1714,7 +1714,7 @@ const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).to
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
 const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
 const FIN_INCOME=[1959890,5336309,5010632,24480,1891488,13047011,9939011,0,null,null,null,null,null,null];
-const FIN_EXPENSES=[5504774,null,7555593,10295245,15695358,null,null,null,null,null,null,null,null,null];
+const FIN_EXPENSES=[5504774,null,7596768,10295245,15695358,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT=45.5;
@@ -6349,7 +6349,7 @@ function waRender() {
           var meta=chart.chart.getDatasetMeta(0);
           meta.data.forEach(function(bar,idx){
             var m=METRICS_ORDER[idx];
-            var val=vals[idx]; if(!val) return;
+            var val=(petgVals[idx]||0)+(plaVals[idx]||0); if(!val) return;
             ctx2.save();
             ctx2.font='bold 9px IBM Plex Mono,monospace';
             ctx2.textBaseline='middle';
