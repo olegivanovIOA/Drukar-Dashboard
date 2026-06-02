@@ -1821,7 +1821,12 @@ function switchTab(id,el){
         if(ch) try{ch.resize();}catch(e){}
       });
       if(id==='overview'&&typeof renderOvKpis==='function') try{renderOvKpis();}catch(e){}
+      if(id==='production'&&typeof waRenderPlastic==='function') try{waRenderPlastic();}catch(e){}
     });
+  }
+  // Якщо вкладка виробництво — завжди перерендерити пластикові графіки
+  if(id==='production'&&typeof waRenderPlastic==='function'){
+    setTimeout(function(){try{waRenderPlastic();}catch(e){}}, 150);
   }
 }
 // ── Захист: ізольований запуск модулів ──
@@ -6285,7 +6290,7 @@ function waRender() {
     packed:'#1E3A5F', // темно-синій
   };
 
-  function weekData(w){ return w?{kg:w.kg,prod:w.prod,nf:w.nf,brak:w.brak,coils:w.coils,packed:w.packed}:{kg:0,prod:0,nf:0,brak:0,coils:0,packed:0}; }
+  function weekData(w){ return w?{kg:w.kg,prod:w.prod,nf:w.nf,brak:w.brak,coils:w.coils,packed:w.packed,petg_kg:w.petg_kg||0,pla_kg:w.pla_kg||0,petg_prod:w.petg_prod||0,pla_prod:w.pla_prod||0,petg_coils:w.petg_coils||0,pla_coils:w.pla_coils||0,petg_autokg:w.petg_autokg||0,pla_autokg:w.pla_autokg||0}:{kg:0,prod:0,nf:0,brak:0,coils:0,packed:0,petg_kg:0,pla_kg:0,petg_prod:0,pla_prod:0,petg_coils:0,pla_coils:0,petg_autokg:0,pla_autokg:0}; }
 
   // п.1: бари з підписами — кг/шт для всіх, % для НФ і Брак
   function makeHBar(canvasId, wData){
