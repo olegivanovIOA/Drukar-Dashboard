@@ -6341,7 +6341,7 @@ function waRender() {
           var meta=chart.chart.getDatasetMeta(0);
           meta.data.forEach(function(bar,idx){
             var m=METRICS_ORDER[idx];
-            var val=vals[idx]; if(!val) return;
+            var val=(petgVals[idx]||0)+(plaVals[idx]||0); if(!val) return;
             ctx2.save();
             ctx2.font='bold 9px IBM Plex Mono,monospace';
             ctx2.textBaseline='middle';
