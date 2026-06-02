@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.06.2026 04:38 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 02.06.2026 04:50 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -6324,7 +6324,6 @@ function waRender() {
         {label:'PLA', data:plaVals, backgroundColor:plaColors, borderRadius:0, borderWidth:0},
       ]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        scales:{x:{stacked:true},y:{stacked:true}},
         layout:{padding:{right:60}},
         plugins:{
           legend:{display:false},
@@ -6339,7 +6338,7 @@ function waRender() {
             return str;
           }}}
         },
-        scales:{x:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR}},
+        scales:{x:{...GR,beginAtZero:true,stacked:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}},y:{...GR,stacked:true}},
         animation:{onComplete:function(chart){
           var ctx2=chart.chart.ctx;
           var meta=chart.chart.getDatasetMeta(0);
