@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 04.06.2026 18:22 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 04.06.2026 21:00 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -714,7 +714,7 @@
 <tr><td>Березень 2026</td><td style="color:var(--good)">3.24%</td><td style="color:var(--good)">1.84%</td><td style="color:var(--warn)">5.06%</td><td style="color:var(--good)">1.91%</td><td style="color:var(--good)">3.60%</td><td style="color:var(--good)">1.86%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
 <tr><td>Квітень 2026</td><td style="color:var(--good)">1.96%</td><td style="color:var(--good)">1.31%</td><td style="color:var(--good)">1.40%</td><td style="color:var(--good)">1.35%</td><td style="color:var(--good)">1.89%</td><td style="color:var(--good)">1.32%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
 <tr><td>Травень 2026</td><td style="color:var(--good)">1.16%</td><td style="color:var(--good)">0.78%</td><td style="color:var(--good)">1.71%</td><td style="color:var(--good)">1.14%</td><td style="color:var(--good)">1.22%</td><td style="color:var(--good)">0.82%</td><td><span class="badge badge-green">ДОБРЕ</span></td></tr>
-<tr><td>Червень 2026*</td><td style="color:var(--good)">1.12%</td><td style="color:var(--good)">0.84%</td><td style="color:var(--warn)">7.89%</td><td style="color:var(--bad)">5.09%</td><td style="color:var(--good)">1.83%</td><td style="color:var(--good)">1.29%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
+<tr><td>Червень 2026*</td><td style="color:var(--good)">1.16%</td><td style="color:var(--good)">1.27%</td><td style="color:var(--warn)">7.89%</td><td style="color:var(--bad)">5.09%</td><td style="color:var(--good)">1.87%</td><td style="color:var(--good)">1.67%</td><td><span class="badge badge-yellow">МІСЯЦЬ НЕ ЗАКРИТ</span></td></tr>
 </tbody></table>
   </div>
 </div>
@@ -1695,10 +1695,10 @@ const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26
 const PETG_ALL=[21339.5,23162.8,19124.9,25768.0,37850.7,45084.2,55398.9,5641.5,null,null,null,null,null,null];
 const PLA_ALL=[724.7,3501.7,5319.7,6983.2,9267.0,5851.9,7670.7,663.8,null,null,null,null,null,null];
 const TOTAL_ALL=[22064.2,26664.5,24444.6,32751.2,47117.7,50936.1,63069.6,6305.3,null,null,null,null,null,null];
-const NF_PCT=[4.67,3.29,3.7,1.78,3.6,1.89,1.22,1.83,null,null,null,null,null,null];
-const NF_PETG=[4.77,3.0,3.32,1.82,3.24,1.96,1.16,1.12,null,null,null,null,null,null];
+const NF_PCT=[4.67,3.29,3.7,1.78,3.6,1.89,1.22,1.87,null,null,null,null,null,null];
+const NF_PETG=[4.77,3.0,3.32,1.82,3.24,1.96,1.16,1.16,null,null,null,null,null,null];
 const NF_PLA=[1.96,5.23,5.1,1.64,5.06,1.4,1.71,7.89,null,null,null,null,null,null];
-const W_PETG=[1.4,1.94,2.56,1.25,1.84,1.31,0.78,0.84,null,null,null,null,null,null];
+const W_PETG=[1.4,1.94,2.56,1.25,1.84,1.31,0.78,1.27,null,null,null,null,null,null];
 const W_PLA=[1.05,14.33,3.16,1.37,1.91,1.35,1.14,5.09,null,null,null,null,null,null];
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
