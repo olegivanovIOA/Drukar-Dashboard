@@ -1333,6 +1333,22 @@
     </div>
   </div>
 
+  <!-- Прогрес виконавців у часі + прогноз досягнення 100% -->
+  <div id="okrForecastSection" style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">👥 Прогрес виконавців — динаміка</div><div class="card-subtitle">зміна реалізованого потенціалу кожного учасника у часі</div></div>
+      </div>
+      <div class="cw-lg"><canvas id="okrPersonHistChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">📈 Прогноз досягнення 100%</div><div class="card-subtitle">за лінійним трендом OKR_Log</div></div>
+      </div>
+      <div id="okrForecastTable"></div>
+    </div>
+  </div>
+
   <!-- OKR cards grid -->
   <div id="okrCardsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
 
@@ -3929,8 +3945,24 @@ function okrShowKr(okrName, okrShort) {
   } else {
     el.innerHTML = '<div style="padding:8px 0">' + krs.map(k => {
       const color = k.pct >= 75 ? 'var(--good)' : k.pct >= 25 ? 'var(--accent)' : 'var(--accent2)';
+      const krFc = okrFindKrForecast(k.kr);
+      let fcHtml = '';
+      if (krFc) {
+        if (krFc.forecast_date === null) {
+          fcHtml = `<div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px">прогноз: прогрес не зростає</div>`;
+        } else {
+          const p = krFc.forecast_date.split('-');
+          const dStr = p[2]+'.'+p[1]+'.'+p[0];
+          const okClr = krFc.on_track ? 'var(--good)' : 'var(--warn)';
+          const okTxt = krFc.on_track ? '✅' : '⚠️';
+          fcHtml = `<div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:${okClr};margin-top:2px">${okTxt} прогноз 100%: ${dStr}</div>`;
+        }
+      }
       return `<div style="display:grid;grid-template-columns:1fr 180px 52px;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)">${k.kr}</div>
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)">${k.kr}</div>
+          ${fcHtml}
+        </div>
         <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
           <div style="width:${k.pct}%;height:100%;background:${color};border-radius:3px"></div>
         </div>
@@ -3945,13 +3977,17 @@ function okrShowKr(okrName, okrShort) {
 // ── Динаміка прогресу OKR у часі (з OKR_Log) ──
 function okrRenderHistory() {
   const sec = document.getElementById('okrHistorySection');
+  const sec2 = document.getElementById('okrForecastSection');
   if (!OKR_HISTORY || !OKR_HISTORY.total || !OKR_HISTORY.total.dates || !OKR_HISTORY.total.dates.length) {
     if (sec) sec.style.display = 'none';
+    if (sec2) sec2.style.display = 'none';
     return;
   }
   if (sec) sec.style.display = 'grid';
+  if (sec2) sec2.style.display = 'grid';
 
   const fmtD = s => { const p = s.split('-'); return p[2] + '.' + p[1]; };
+  const fmtDFull = s => { if(!s) return '—'; const p = s.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; };
 
   // ── Графік 1: загальний прогрес + тренд ──
   const t = OKR_HISTORY.total;
@@ -3996,6 +4032,84 @@ function okrRenderHistory() {
       scales: { x: GR, y: { ...GR, beginAtZero: true, max: 100, ticks: { ...GR.ticks, callback: v => v + '%' } } }
     }
   });
+
+  // ── Графік 3: прогрес виконавців у часі ──
+  const byPerson = OKR_HISTORY.by_person || { dates: [], series: [] };
+  const ppalette = ['#47b4ff', '#ff6b47', '#b47bff', '#34a853', '#fbbc04', '#ec4899', '#14b8a6', '#a78bfa', '#f97316', '#64748b'];
+  const datasets3 = (byPerson.series || []).map((s, i) => ({
+    label: s.label, data: s.data, borderColor: ppalette[i % ppalette.length], backgroundColor: 'transparent',
+    tension: .3, pointRadius: 3, spanGaps: true
+  }));
+  safeCreateChart('okrPersonHistChart', {
+    type: 'line', data: { labels: (byPerson.dates || []).map(fmtD), datasets: datasets3 },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 8 } } } },
+      scales: { x: GR, y: { ...GR, beginAtZero: true, max: 100, ticks: { ...GR.ticks, callback: v => v + '%' } } }
+    }
+  });
+
+  // ── Таблиця прогнозів досягнення 100% ──
+  const fc = OKR_HISTORY.forecasts || {};
+  function statusBadge(f) {
+    if (!f || f.forecast_date === null) {
+      return `<span style="color:var(--muted)">прогрес не зростає</span>`;
+    }
+    if (f.on_track) {
+      if (f.days_left !== null && f.days_left >= 0) {
+        return `<span style="color:var(--good)">✅ ще ~${f.days_left} дн.</span>`;
+      }
+      return `<span style="color:var(--good)">✅ за трендом — вже мало бути готово</span>`;
+    }
+    return `<span style="color:var(--warn)">⚠️ поза графіком року</span>`;
+  }
+  function fcRow(label, f, bold) {
+    if (!f) return '';
+    const fw = bold ? 'font-weight:700' : '';
+    return `<tr>
+      <td style="${fw}">${label}</td>
+      <td style="text-align:right;${fw}">${f.current_pct}%</td>
+      <td style="text-align:right;color:var(--muted)">${f.slope_pct_day >= 0 ? '+' : ''}${f.slope_pct_day}%/д</td>
+      <td>${fmtDFull(f.forecast_date)}</td>
+      <td>${statusBadge(f)}</td>
+    </tr>`;
+  }
+  let tableRows = '';
+  if (fc.total) tableRows += fcRow('Компанія загалом', fc.total, true);
+  if (fc.okr) {
+    Object.values(fc.okr).forEach((f, i) => {
+      tableRows += fcRow(`ОКР${i+1} · ${f.label}`, f, false);
+    });
+  }
+  if (fc.person) {
+    Object.entries(fc.person).forEach(([k, f]) => {
+      tableRows += fcRow(`👤 ${f.label || k}`, f, false);
+    });
+  }
+  const tableEl = document.getElementById('okrForecastTable');
+  if (tableEl) {
+    if (!tableRows) {
+      tableEl.innerHTML = '<div style="padding:16px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted)">Замало знімків для прогнозу (потрібно мінімум 2)</div>';
+    } else {
+      tableEl.innerHTML = `<table><thead><tr>
+        <th>Назва</th><th style="text-align:right">Зараз</th><th style="text-align:right">Темп</th><th>Прогноз 100%</th><th>Статус</th>
+      </tr></thead><tbody>${tableRows}</tbody></table>`;
+    }
+  }
+}
+
+// Прогноз для конкретного KR за номером (наприклад "3.1") з OKR_Log
+function okrFindKrForecast(krText) {
+  const fc = OKR_HISTORY && OKR_HISTORY.forecasts && OKR_HISTORY.forecasts.kr;
+  if (!fc) return null;
+  const m = String(krText).match(/\d+(\.\d+)+/);
+  if (!m) return null;
+  const num = m[0];
+  for (const [key, f] of Object.entries(fc)) {
+    const lm = (f.label || '').match(/\d+(\.\d+)+/) || key.match(/\d+(\.\d+)+/);
+    if (lm && lm[0] === num) return f;
+  }
+  return null;
 }
 
 // ══════════════ INVENTORY MODULE ══════════════

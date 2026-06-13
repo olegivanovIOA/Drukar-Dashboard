@@ -256,6 +256,87 @@ def parse_person_sheets(xl):
 # OKR_Log — історія снапшотів (для графіків динаміки)
 # ══════════════════════════════════════════════
 
+def _linreg_forecast(dates, values):
+    """
+    dates: сортований список 'YYYY-MM-DD', values: прогрес 0..1 у тому ж порядку.
+    Лінійна регресія → прогноз дати досягнення 100%.
+    Повертає dict {current_pct, slope_pct_day, forecast_date, days_left, on_track}
+    або None якщо замало точок.
+    """
+    import datetime as _dt
+    if len(dates) < 2:
+        return None
+    x0 = _dt.datetime.strptime(dates[0], '%Y-%m-%d')
+    xs = [(_dt.datetime.strptime(d, '%Y-%m-%d') - x0).days for d in dates]
+    ys = values
+    n = len(xs)
+    sumx, sumy = sum(xs), sum(ys)
+    sumxy = sum(x * y for x, y in zip(xs, ys))
+    sumx2 = sum(x * x for x in xs)
+    denom = n * sumx2 - sumx * sumx
+    if denom == 0:
+        return None
+    slope = (n * sumxy - sumx * sumy) / denom
+    intercept = (sumy - slope * sumx) / n
+    current = ys[-1]
+
+    result = {
+        'current_pct':   round(current * 100, 1),
+        'slope_pct_day': round(slope * 100, 4),
+        'forecast_date': None,
+        'days_left':     None,
+        'on_track':      False,
+    }
+    if slope <= 0:
+        return result
+
+    x_for_100 = (1 - intercept) / slope
+    forecast_date = x0 + _dt.timedelta(days=x_for_100)
+    year_end = _dt.datetime(x0.year, 12, 31)
+    result['forecast_date'] = forecast_date.strftime('%Y-%m-%d')
+    result['days_left']     = (forecast_date - _dt.datetime.now()).days
+    result['on_track']      = forecast_date <= year_end
+    return result
+
+
+def _pivot_history(rows, type_name):
+    """
+    Будує {dates, keys, labels, pivot} для заданого типу рядків OKR_Log.
+    pivot: {date: {key: val}} (дублі → максимум).
+    """
+    sub = [r for r in rows if r['type'] == type_name and r['key']]
+    keys = sorted({r['key'] for r in sub})
+    labels = {}
+    for r in sub:
+        if r['key'] not in labels and r['label']:
+            labels[r['key']] = r['label']
+    dates = sorted({r['date'] for r in sub})
+    pivot = {}
+    for r in sub:
+        d = pivot.setdefault(r['date'], {})
+        cur = d.get(r['key'])
+        if cur is None or r['val'] > cur:
+            d[r['key']] = r['val']
+    return dates, keys, labels, pivot
+
+
+def _series_forecasts(dates, keys, labels, pivot, label_transform=None):
+    """Прогноз досягнення 100% для кожного ключа (мін. 2 точки з даними)."""
+    out = {}
+    for k in keys:
+        pts = [(d, pivot[d][k]) for d in dates if k in pivot.get(d, {})]
+        if len(pts) < 2:
+            continue
+        fc = _linreg_forecast([p[0] for p in pts], [p[1] for p in pts])
+        if fc is None:
+            continue
+        label = labels.get(k, k)
+        if label_transform:
+            label = label_transform(label)
+        out[k] = {'label': label, **fc}
+    return out
+
+
 def parse_okr_log(xl):
     """
     Читає лист OKR_Log (історія снапшотів прогресу), створений
@@ -339,34 +420,45 @@ def parse_okr_log(xl):
             trend_values.append(round(min(1.2, slope * x + intercept) * 100, 1))
 
     # ── ОКР у часі (pivot: дата → {okrKey: val}) ──
-    okr_rows = [r for r in rows if r['type'] == 'OKR']
-    okr_keys = sorted({r['key'] for r in okr_rows if r['key']})
-    okr_labels = {}
-    for r in okr_rows:
-        if r['key'] and r['key'] not in okr_labels and r['label']:
-            okr_labels[r['key']] = r['label']
-    okr_dates = sorted({r['date'] for r in okr_rows})
+    okr_dates, okr_keys, okr_labels, okr_pivot = _pivot_history(rows, 'OKR')
 
-    pivot = {}
-    for r in okr_rows:
-        if not r['key']:
-            continue
-        d = pivot.setdefault(r['date'], {})
-        cur = d.get(r['key'])
-        if cur is None or r['val'] > cur:
-            d[r['key']] = r['val']
+    def _short(label):
+        return label.split('. ', 1)[1] if '. ' in label else label
 
-    series = []
+    okr_series = []
     for k in okr_keys:
-        label = okr_labels.get(k, k)
-        short = label.split('. ', 1)[1] if '. ' in label else label
-        data = [round(pivot[d][k] * 100, 1) if k in pivot.get(d, {}) else None for d in okr_dates]
-        series.append({'key': k, 'label': short, 'data': data})
+        label = _short(okr_labels.get(k, k))
+        data = [round(okr_pivot[d][k] * 100, 1) if k in okr_pivot.get(d, {}) else None for d in okr_dates]
+        okr_series.append({'key': k, 'label': label, 'data': data})
+
+    # ── Виконавці у часі (pivot: дата → {personKey: val}) ──
+    person_dates, person_keys, person_labels, person_pivot = _pivot_history(rows, 'PERSON')
+    person_series = []
+    for k in person_keys:
+        label = person_labels.get(k, k)
+        data = [round(person_pivot[d][k] * 100, 1) if k in person_pivot.get(d, {}) else None for d in person_dates]
+        person_series.append({'key': k, 'label': label, 'data': data})
+
+    # ── KR у часі (тільки для прогнозів, без окремого графіка) ──
+    kr_dates, kr_keys, kr_labels, kr_pivot = _pivot_history(rows, 'KR')
+
+    # ── Прогнози досягнення 100% (лінійна регресія) ──
+    total_forecast = _linreg_forecast(total_dates, [total_map[d] for d in total_dates])
+    okr_forecasts    = _series_forecasts(okr_dates,    okr_keys,    okr_labels,    okr_pivot,    _short)
+    person_forecasts = _series_forecasts(person_dates, person_keys, person_labels, person_pivot)
+    kr_forecasts      = _series_forecasts(kr_dates,     kr_keys,     kr_labels,     kr_pivot)
 
     return {
-        'total': {'dates': total_dates, 'values': total_values},
-        'trend': {'dates': trend_dates, 'values': trend_values},
-        'by_okr': {'dates': okr_dates, 'series': series},
+        'total':    {'dates': total_dates, 'values': total_values},
+        'trend':    {'dates': trend_dates, 'values': trend_values},
+        'by_okr':   {'dates': okr_dates, 'series': okr_series},
+        'by_person': {'dates': person_dates, 'series': person_series},
+        'forecasts': {
+            'total':  total_forecast,
+            'okr':    okr_forecasts,
+            'person': person_forecasts,
+            'kr':     kr_forecasts,
+        },
     }
 
 
