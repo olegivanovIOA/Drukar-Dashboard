@@ -253,6 +253,124 @@ def parse_person_sheets(xl):
     return person_map
 
 # ══════════════════════════════════════════════
+# OKR_Log — історія снапшотів (для графіків динаміки)
+# ══════════════════════════════════════════════
+
+def parse_okr_log(xl):
+    """
+    Читає лист OKR_Log (історія снапшотів прогресу), створений
+    OKR_Progress_Log.gs / snapshotOKRProgress().
+    Стовпці позиційно (A..F): Дата, Тип('TOTAL'/'OKR'/'PERSON'),
+    Ключ, Назва/Лейбл, Прогрес(0..1), (резерв).
+    Повертає dict з даними для графіків Chart.js, або None
+    якщо лист відсутній/порожній.
+    """
+    if 'OKR_Log' not in xl.sheet_names:
+        return None
+    try:
+        df = xl.parse('OKR_Log', header=0)
+    except Exception as e:
+        print(f"  ⚠ OKR_Log: {e}")
+        return None
+    if df.empty or df.shape[1] < 5:
+        return None
+
+    import datetime as _dt
+
+    def fmt_date(v):
+        try:
+            ts = pd.Timestamp(v)
+            if pd.isna(ts):
+                return None
+            return ts.strftime('%Y-%m-%d')
+        except Exception:
+            return None
+
+    rows = []
+    for _, r in df.iterrows():
+        d = fmt_date(r.iloc[0])
+        if d is None:
+            continue
+        typ = str(r.iloc[1]).strip()
+        key = str(r.iloc[2]).strip() if pd.notna(r.iloc[2]) else ''
+        label = str(r.iloc[3]).strip() if pd.notna(r.iloc[3]) else ''
+        val = to_progress(r.iloc[4])
+        if val is None:
+            continue
+        rows.append({'date': d, 'type': typ, 'key': key, 'label': label, 'val': val})
+
+    if not rows:
+        return None
+
+    # ── TOTAL у часі (дублікати дат → максимум) ──
+    total_map = {}
+    for r in rows:
+        if r['type'] != 'TOTAL':
+            continue
+        cur = total_map.get(r['date'])
+        if cur is None or r['val'] > cur:
+            total_map[r['date']] = r['val']
+    total_dates = sorted(total_map.keys())
+    total_values = [round(total_map[d] * 100, 1) for d in total_dates]
+
+    # ── Тренд: лінійна регресія TOTAL + екстраполяція до кінця року ──
+    trend_dates, trend_values = [], []
+    if len(total_dates) >= 2:
+        x0 = _dt.datetime.strptime(total_dates[0], '%Y-%m-%d')
+        xs = [(_dt.datetime.strptime(d, '%Y-%m-%d') - x0).days for d in total_dates]
+        ys = [total_map[d] for d in total_dates]
+        n = len(xs)
+        sumx, sumy = sum(xs), sum(ys)
+        sumxy = sum(x * y for x, y in zip(xs, ys))
+        sumx2 = sum(x * x for x in xs)
+        denom = (n * sumx2 - sumx * sumx)
+        slope = (n * sumxy - sumx * sumy) / denom if denom else 0.0
+        intercept = (sumy - slope * sumx) / n
+
+        year_end = _dt.datetime(x0.year, 12, 31)
+        for d, x in zip(total_dates, xs):
+            trend_dates.append(d)
+            trend_values.append(round(min(1.2, slope * x + intercept) * 100, 1))
+        d = _dt.datetime.strptime(total_dates[-1], '%Y-%m-%d')
+        while d <= year_end:
+            d = d + _dt.timedelta(days=7)
+            x = (d - x0).days
+            trend_dates.append(d.strftime('%Y-%m-%d'))
+            trend_values.append(round(min(1.2, slope * x + intercept) * 100, 1))
+
+    # ── ОКР у часі (pivot: дата → {okrKey: val}) ──
+    okr_rows = [r for r in rows if r['type'] == 'OKR']
+    okr_keys = sorted({r['key'] for r in okr_rows if r['key']})
+    okr_labels = {}
+    for r in okr_rows:
+        if r['key'] and r['key'] not in okr_labels and r['label']:
+            okr_labels[r['key']] = r['label']
+    okr_dates = sorted({r['date'] for r in okr_rows})
+
+    pivot = {}
+    for r in okr_rows:
+        if not r['key']:
+            continue
+        d = pivot.setdefault(r['date'], {})
+        cur = d.get(r['key'])
+        if cur is None or r['val'] > cur:
+            d[r['key']] = r['val']
+
+    series = []
+    for k in okr_keys:
+        label = okr_labels.get(k, k)
+        short = label.split('. ', 1)[1] if '. ' in label else label
+        data = [round(pivot[d][k] * 100, 1) if k in pivot.get(d, {}) else None for d in okr_dates]
+        series.append({'key': k, 'label': short, 'data': data})
+
+    return {
+        'total': {'dates': total_dates, 'values': total_values},
+        'trend': {'dates': trend_dates, 'values': trend_values},
+        'by_okr': {'dates': okr_dates, 'series': series},
+    }
+
+
+# ══════════════════════════════════════════════
 # CALCULATION ENGINE
 # ══════════════════════════════════════════════
 
@@ -427,12 +545,21 @@ def run(filepath=None):
     print("  ℹ Абс. вклад = вклад в общий % прогресса компании")
     print("─" * 65 + "\n")
 
+    okr_log = parse_okr_log(xl)
+    if okr_log:
+        print(f"\n📈 OKR_Log: {len(okr_log['total']['dates'])} TOTAL-точок, "
+              f"{len(okr_log['by_okr']['series'])} ОКР-рядів, "
+              f"{len(okr_log['by_okr']['dates'])} дат")
+    else:
+        print("\n📈 OKR_Log: лист відсутній або порожній — графіки динаміки не будуються")
+
     return {
         'company_pct':    company_pct,
         'okr_results':    okr_results,
         'person_contribs': person_contribs,
         'okr_weights':    okr_weights,
         'rows':           rows,
+        'okr_log':        okr_log,
     }
 
 def to_dashboard_json(result):
@@ -484,6 +611,7 @@ def to_dashboard_json(result):
         'okr_data_json':  json.dumps(okr_data,  ensure_ascii=False),
         'kr_data_json':   json.dumps(kr_data,   ensure_ascii=False),
         'people_json':    json.dumps(people,     ensure_ascii=False),
+        'okr_history_json': json.dumps(result.get('okr_log'), ensure_ascii=False),
     }
 
 if __name__ == '__main__':

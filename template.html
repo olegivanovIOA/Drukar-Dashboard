@@ -1317,6 +1317,22 @@
 
   </div>
 
+  <!-- Динаміка прогресу (з OKR_Log) -->
+  <div id="okrHistorySection" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">🎯 Загальний прогрес компанії — динаміка та прогноз</div><div class="card-subtitle">факт + лінійний тренд до кінця року</div></div>
+      </div>
+      <div class="cw-lg"><canvas id="okrTotalHistChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">📈 Прогрес по ОКР — динаміка</div><div class="card-subtitle">зміна прогресу кожного ОКР у часі</div></div>
+      </div>
+      <div class="cw-lg"><canvas id="okrByOkrHistChart"></canvas></div>
+    </div>
+  </div>
+
   <!-- OKR cards grid -->
   <div id="okrCardsGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
 
@@ -1703,6 +1719,7 @@ const OKR_COMPANY_PCT={{OKR_COMPANY_PCT}};
 const OKR_DATA={{OKR_DATA}};
 const OKR_KR_DATA={{OKR_KR_DATA}};
 const OKR_PEOPLE={{OKR_PEOPLE}};
+const OKR_HISTORY={{OKR_HISTORY}};
 // ── SALES DATA (from _AllData_$ sheet) ──
 const SALES_LABELS={{SALES_LABELS}};
 const SALES_MONTHS={{SALES_MONTHS}};
@@ -3806,6 +3823,9 @@ function initSales() {
 }
 
 function initOkr() {
+  // ── Дінаміка прогресу (OKR_Log) ──
+  okrRenderHistory();
+
   // ── Company % ──
   document.getElementById('okrCompanyPct').textContent = OKR_COMPANY_PCT + '%';
   const pct = parseFloat(OKR_COMPANY_PCT);
@@ -3920,6 +3940,62 @@ function okrShowKr(okrName, okrShort) {
   }
   document.getElementById('okrKrDetail').style.display = '';
   document.getElementById('okrKrDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Динаміка прогресу OKR у часі (з OKR_Log) ──
+function okrRenderHistory() {
+  const sec = document.getElementById('okrHistorySection');
+  if (!OKR_HISTORY || !OKR_HISTORY.total || !OKR_HISTORY.total.dates || !OKR_HISTORY.total.dates.length) {
+    if (sec) sec.style.display = 'none';
+    return;
+  }
+  if (sec) sec.style.display = 'grid';
+
+  const fmtD = s => { const p = s.split('-'); return p[2] + '.' + p[1]; };
+
+  // ── Графік 1: загальний прогрес + тренд ──
+  const t = OKR_HISTORY.total;
+  const trend = (OKR_HISTORY.trend && OKR_HISTORY.trend.dates && OKR_HISTORY.trend.dates.length)
+    ? OKR_HISTORY.trend : null;
+  const labels1 = trend ? trend.dates : t.dates;
+  const factSet = labels1.map(d => {
+    const i = t.dates.indexOf(d);
+    return i >= 0 ? t.values[i] : null;
+  });
+  const datasets1 = [{
+    label: 'Факт', data: factSet, borderColor: '#34a853', backgroundColor: 'transparent',
+    tension: .3, pointRadius: 5, spanGaps: false
+  }];
+  if (trend) {
+    datasets1.push({
+      label: 'Тренд', data: trend.values, borderColor: '#fbbc04', backgroundColor: 'transparent',
+      borderDash: [5, 5], borderWidth: 2, tension: .2, pointRadius: 0
+    });
+  }
+  safeCreateChart('okrTotalHistChart', {
+    type: 'line', data: { labels: labels1.map(fmtD), datasets: datasets1 },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+      scales: { x: GR, y: { ...GR, beginAtZero: true, max: 120, ticks: { ...GR.ticks, callback: v => v + '%' } } }
+    }
+  });
+
+  // ── Графік 2: прогрес по кожному ОКР у часі ──
+  const byOkr = OKR_HISTORY.by_okr || { dates: [], series: [] };
+  const palette = ['#2563eb', '#ef4444', '#fbbc04', '#34a853', '#14b8a6', '#8b5cf6', '#f97316', '#ec4899'];
+  const datasets2 = (byOkr.series || []).map((s, i) => ({
+    label: s.label, data: s.data, borderColor: palette[i % palette.length], backgroundColor: 'transparent',
+    tension: .3, pointRadius: 3, spanGaps: true
+  }));
+  safeCreateChart('okrByOkrHistChart', {
+    type: 'line', data: { labels: (byOkr.dates || []).map(fmtD), datasets: datasets2 },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 8 } } } },
+      scales: { x: GR, y: { ...GR, beginAtZero: true, max: 100, ticks: { ...GR.ticks, callback: v => v + '%' } } }
+    }
+  });
 }
 
 // ══════════════ INVENTORY MODULE ══════════════

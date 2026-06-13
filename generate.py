@@ -1494,6 +1494,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{OKR_DATA}}':          okr['okr_data_json']  if okr else '[]',
         '{{OKR_PEOPLE}}':        okr['people_json']    if okr else '[]',
         '{{OKR_KR_DATA}}':       okr['kr_data_json']   if okr else '[]',
+        '{{OKR_HISTORY}}':       okr['okr_history_json'] if okr and okr.get('okr_history_json') else 'null',
     })
     # ── Mode/config placeholders (for tab visibility + admin panel) ──
     subs.update({
