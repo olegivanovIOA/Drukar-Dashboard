@@ -637,13 +637,20 @@ def run(filepath=None):
     print("  ℹ Абс. вклад = вклад в общий % прогресса компании")
     print("─" * 65 + "\n")
 
-    okr_log = parse_okr_log(xl)
-    if okr_log:
-        print(f"\n📈 OKR_Log: {len(okr_log['total']['dates'])} TOTAL-точок, "
-              f"{len(okr_log['by_okr']['series'])} ОКР-рядів, "
-              f"{len(okr_log['by_okr']['dates'])} дат")
-    else:
-        print("\n📈 OKR_Log: лист відсутній або порожній — графіки динаміки не будуються")
+    okr_log = None
+    try:
+        okr_log = parse_okr_log(xl)
+        if okr_log:
+            print(f"\n📈 OKR_Log: {len(okr_log['total']['dates'])} TOTAL-точок, "
+                  f"{len(okr_log['by_okr']['series'])} ОКР-рядів, "
+                  f"{len(okr_log['by_okr']['dates'])} дат, "
+                  f"{len(okr_log['by_person']['series'])} виконавців")
+        else:
+            print("\n📈 OKR_Log: лист відсутній або порожній — графіки динаміки не будуються")
+    except Exception as e:
+        print(f"\n⚠ OKR_Log: помилка парсингу історії — {e}")
+        import traceback; traceback.print_exc()
+        okr_log = None
 
     return {
         'company_pct':    company_pct,
