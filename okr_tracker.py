@@ -347,13 +347,20 @@ def parse_okr_log(xl):
     якщо лист відсутній/порожній.
     """
     if 'OKR_Log' not in xl.sheet_names:
+        print(f"  ⚠ OKR_Log: лист не знайдено. Доступні листи: {xl.sheet_names}")
         return None
     try:
         df = xl.parse('OKR_Log', header=0)
     except Exception as e:
-        print(f"  ⚠ OKR_Log: {e}")
+        print(f"  ⚠ OKR_Log: помилка читання листа — {e}")
         return None
+
+    print(f"  OKR_Log: shape={df.shape}, columns={list(df.columns)}")
+    if not df.empty:
+        print(f"  OKR_Log: перший рядок = {list(df.iloc[0])}")
+
     if df.empty or df.shape[1] < 5:
+        print(f"  ⚠ OKR_Log: недостатньо колонок ({df.shape[1]}) або лист порожній")
         return None
 
     import datetime as _dt
@@ -368,17 +375,26 @@ def parse_okr_log(xl):
             return None
 
     rows = []
+    skipped_date, skipped_val = 0, 0
     for _, r in df.iterrows():
         d = fmt_date(r.iloc[0])
         if d is None:
+            skipped_date += 1
             continue
         typ = str(r.iloc[1]).strip()
         key = str(r.iloc[2]).strip() if pd.notna(r.iloc[2]) else ''
         label = str(r.iloc[3]).strip() if pd.notna(r.iloc[3]) else ''
         val = to_progress(r.iloc[4])
         if val is None:
+            skipped_val += 1
             continue
         rows.append({'date': d, 'type': typ, 'key': key, 'label': label, 'val': val})
+
+    type_counts = {}
+    for r in rows:
+        type_counts[r['type']] = type_counts.get(r['type'], 0) + 1
+    print(f"  OKR_Log: розпізнано {len(rows)} рядків (пропущено: дата={skipped_date}, прогрес={skipped_val}), "
+          f"типи: {type_counts}")
 
     if not rows:
         return None
