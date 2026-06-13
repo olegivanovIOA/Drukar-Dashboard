@@ -291,6 +291,13 @@ def _linreg_forecast(dates, values):
         return result
 
     x_for_100 = (1 - intercept) / slope
+    # Захист від OverflowError: datetime.timedelta(days=...) падає, якщо
+    # значення занадто велике (Python int too large to convert to C int).
+    # Якщо прогноз виходить за межі ~100 років — вважаємо його недостовірним.
+    MAX_DAYS = 36500
+    if not (x_for_100 == x_for_100) or x_for_100 > MAX_DAYS or x_for_100 < -MAX_DAYS:
+        return result
+
     forecast_date = x0 + _dt.timedelta(days=x_for_100)
     year_end = _dt.datetime(x0.year, 12, 31)
     result['forecast_date'] = forecast_date.strftime('%Y-%m-%d')
