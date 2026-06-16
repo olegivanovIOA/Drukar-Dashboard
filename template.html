@@ -6259,9 +6259,9 @@ function itoRenderAll() {
 // Агрегація: sum(col_вклад) по зміні дає реальні значення зміни
 // ══════════════════════════════════════════════════════════════════
 var WA_SOURCES = [
-  { locId:'1', locName:'Локація 1', sheetId:'1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4', sheet:'_AllData' },
-  { locId:'2', locName:'Локація 2', sheetId:'1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI', sheet:'_AllData' },
-  // { locId:'3', locName:'Локація 3', sheetId:'SHEET_ID_3', sheet:'_AllData' },
+  { locId:'1', locName:'Локація 1', sheetId:'1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4', sheet:'Журнал.Локация1' },
+  { locId:'2', locName:'Локація 2', sheetId:'1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI', sheet:'Журнал.Локация2' },
+  // { locId:'3', locName:'Локація 3', sheetId:'SHEET_ID_3', sheet:'Журнал.Локация3' },
 ];
 
 window._waRaw       = [];   // [{date,week,year,locId,line,vid,kg,prod,nf,brak,coils,packed}]
@@ -6331,16 +6331,18 @@ async function loadWeeklyAnalysis() {
       var r=await fetch(url); if(!r.ok) return;
       var txt=await r.text(); if(txt.includes('<html')) return;
       var rows=lParseCSV(txt);
-      // Рядок 0 = заголовок, дані з рядка 1
-      // Структура _AllData: col0=Дата, col1=Смена, col3=Вклад%, col4=Лінія,
-      //   col6=Кол-во шт(вклад), col7=Вес кг(вклад)=ГОТОВА ПРОДУКЦІЯ,
-      //   col8=НФ(вклад), col9=Брак/Відход(вклад), col10=Запаковано(вклад)
-      // Each row = 1 operator. SUM all operators = correct total per line/day.
-      var CI={date:0,shift:1,vklad:3,line:4,vid:5,coils:6,kg:7,nf:8,brak:9,packed:10,autokg:11};
+      // Джерело: ПЕРШИЙ лист журналу "Журнал.ЛокаціяN".
+      // Тут Вага (col10) = ПОВНА вага лінії за зміну (БЕЗ вкладу, без розмноження
+      // по операторах) — просто сумуємо по даті|лінії|виду. Дата заповнена лише
+      // в першому рядку зміни → forward-fill (curDate тримається до наступної дати).
+      // Структура: col0=Дата, col6=24/7(зміна), col7=Лінія, col8=Вид,
+      //   col9=Кількість шт, col10=Вага кг(гот.прод), col11=НФ кг, col12=Відхід кг,
+      //   col13=Запаковано шт.
+      var CI={date:0,shift:6,line:7,vid:8,coils:9,kg:10,nf:11,brak:12,packed:13};
       var curDate=null;
-      // Збираємо всі рядки напряму (без агрегації — SUM по операторах = коректно)
-      var agg={}; // key=date|line (агрегуємо зміни одного дня/лінії для тижневого графіку)
-      for(var i=1;i<rows.length;i++){
+      // Агрегуємо просто по key=date|line|vid (БЕЗ вкладу, БЕЗ ділення)
+      var agg={};
+      for(var i=2;i<rows.length;i++){  // дані з рядка 2 (рядки 0-1 = заголовки)
         var row=rows[i];
         var dRaw=String(row[CI.date]||'').trim();
         if(dRaw&&dRaw!=='nan'){var dp=lParseDate(dRaw); if(dp) curDate=dp;}
@@ -6351,18 +6353,17 @@ async function loadWeeklyAnalysis() {
         var kg=parseFloat(String(row[CI.kg]||'').replace(',','.')); if(isNaN(kg)||kg<0) kg=0;
         var nf=parseFloat(String(row[CI.nf]||'').replace(',','.')); if(isNaN(nf)) nf=0;
         var brak=parseFloat(String(row[CI.brak]||'').replace(',','.')); if(isNaN(brak)) brak=0;
-        // Пропускаємо рядки де нічого немає
         if(kg===0 && nf===0 && brak===0) continue;
         var coils=parseFloat(String(row[CI.coils]||'').replace(',','.'))||0;
         var packed=parseFloat(String(row[CI.packed]||'').replace(',','.'))||0;
-        var autokg=parseFloat(String(row[CI.autokg]||'').replace(',','.'))||0;
+        var shift=String(row[CI.shift]||'').trim();
         var vid=String(row[CI.vid]||'').trim();
         var plastic=vid.toUpperCase().indexOf('PLA')>=0?'PLA':'PETG';
         var key=curDate+'|'+line+'|'+vid;
         if(!agg[key]) agg[key]={date:curDate,line:line,vid:vid,plastic:plastic,
-                                 locId:src.locId,locName:src.locName,kg:0,nf:0,brak:0,coils:0,packed:0,autokg:0};
-        agg[key].kg     += kg;
-        agg[key].autokg += autokg;
+                                 locId:src.locId,locName:src.locName,
+                                 kg:0,nf:0,brak:0,coils:0,packed:0,autokg:0};
+        agg[key].kg     += kg;     // повна вага — просто сумуємо
         agg[key].nf     += nf;
         agg[key].brak   += brak;
         agg[key].coils  += coils;
@@ -6535,11 +6536,12 @@ function waRender() {
             ctx2.font='bold 9px IBM Plex Mono,monospace';
             ctx2.textBaseline='middle';
             if(m==='nf'||m==='brak'){
-              // % поруч з баром
+              // кг + % поруч з баром (раніше був лише %)
               var pct=totalKg>0?(val/totalKg*100).toFixed(1):'0';
+              var kgLbl=val>=1000?(val/1000).toFixed(1)+'k':Math.round(val).toLocaleString('uk');
               ctx2.fillStyle=m==='nf'?'#D97706':'#C0392B';
               ctx2.textAlign='left';
-              ctx2.fillText(pct+'%', bar.x+6, bar.y);
+              ctx2.fillText(kgLbl+' кг ('+pct+'%)', bar.x+6, bar.y);
             } else {
               // кг/шт поруч з баром
               var lbl=val>=1000?(val/1000).toFixed(1)+'k':val.toLocaleString('uk');
