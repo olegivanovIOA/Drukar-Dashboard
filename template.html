@@ -689,40 +689,8 @@
       </table>
     </div>
   </div>
-
-  <!-- ── Графік продуктивності по днях ── -->
-  <div class="card" style="margin-top:14px">
-    <div class="card-header" style="flex-wrap:wrap;gap:8px">
-      <div>
-        <div class="card-title">Продуктивність ліній по днях</div>
-        <div class="card-subtitle" id="dailyChartSubtitle">кг/день · поточний рік</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ЛІНІЯ</span>
-        <select id="dailyLineFilter" onchange="renderDailyChart()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
-          <option value="all">Всі лінії</option>
-          <option value="loc1">Локація 1</option>
-          <option value="loc2">Локація 2</option>
-          <option value="1">Лінія 1</option>
-          <option value="2">Лінія 2</option>
-          <option value="3">Лінія 3</option>
-          <option value="4">Лінія 4</option>
-          <option value="5">Лінія 5</option>
-          <option value="6">Лінія 6</option>
-          <option value="7">Лінія 7</option>
-          <option value="8">Лінія 8</option>
-          <option value="9">Лінія 9</option>
-          <option value="10">Лінія 10</option>
-        </select>
-      </div>
-    </div>
-    <div style="position:relative;height:280px">
-      <canvas id="dailyProdChart"></canvas>
-      <div id="dailyChartLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">⟳ завантаження...</div>
-    </div>
-  </div>
-
 </div>
+
 <!-- ══════════════ QUALITY ══════════════ -->
 <div id="tab-quality" class="tab-content" data-tab-id="quality">
   <div class="section-title">Якість та відходи</div>
@@ -853,6 +821,39 @@
 
 <!-- ══════════════ LINES RECORDS ══════════════ -->
 <div id="tab-lines" class="tab-content" data-tab-id="lines">
+
+  <!-- ── Графік продуктивності по днях ── -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="card-title">Продуктивність ліній по днях · {{CURRENT_YEAR}}</div>
+        <div class="card-subtitle" id="dailyChartSubtitle">кг/день · поточний рік · всі лінії</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ЛІНІЯ</span>
+        <select id="dailyLineFilter" onchange="renderDailyChart()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
+          <option value="all">Всі лінії</option>
+          <option value="loc1">Локація 1</option>
+          <option value="loc2">Локація 2</option>
+          <option value="1">Лінія 1</option>
+          <option value="2">Лінія 2</option>
+          <option value="3">Лінія 3</option>
+          <option value="4">Лінія 4</option>
+          <option value="5">Лінія 5</option>
+          <option value="6">Лінія 6</option>
+          <option value="7">Лінія 7</option>
+          <option value="8">Лінія 8</option>
+          <option value="9">Лінія 9</option>
+          <option value="10">Лінія 10</option>
+        </select>
+      </div>
+    </div>
+    <div style="position:relative;height:260px">
+      <canvas id="dailyProdChart"></canvas>
+      <div id="dailyChartLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">⟳ завантаження...</div>
+    </div>
+  </div>
+
   <div class="section-title">Рекорди продуктивності ліній</div>
 
   <div class="lines-controls">
@@ -2029,7 +2030,6 @@ function initProduction(){
   })();
   buildHeatmap();
   loadShiftData();
-  buildDailyChart();
   loadDowntimeData();
   loadWeeklyAnalysis();
 }
@@ -2571,7 +2571,7 @@ async function buildHeatmapWeekly(monthIdx){
         const nm=line.match(/\d+/);
         if(!nm) continue;
         const lineNum=parseInt(nm[0]);
-        if(lineNum<1||lineNum>20) continue; // лінії 1-20
+        if(lineNum<1||lineNum>20) continue;
         line='ЛІНІЯ '+lineNum;
 
         const shift=String(row[1]||'').trim();
@@ -3433,6 +3433,7 @@ function renderOpTotal(key) {
   // will be set on tab init
   window._lInited = false;
   window.lInitTab = function() {
+    buildDailyChart();
     if (!window._lInited) {
       document.getElementById('lDateFrom').value = fmt(firstDay);
       document.getElementById('lDateTo').value   = fmt(today);
@@ -4457,35 +4458,36 @@ async function loadNormsFromSheets(){
   }
 }
 
-// ════════════════════════════════════════════════════════
-// ГРАФІК ПРОДУКТИВНОСТІ ПО ДНЯХ
-// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
+// ГРАФІК ПРОДУКТИВНОСТІ ПО ДНЯХ (tab-lines)
+// ════════════════════════════════════════════════
 window._dailyRawData = null;
 
 async function buildDailyChart(){
-  const loading = document.getElementById('dailyChartLoading');
   if(!document.getElementById('dailyProdChart')) return;
+  const loading = document.getElementById('dailyChartLoading');
   if(loading) loading.style.display='flex';
   try {
     if(!window._dailyRawData){
       const SID = '1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-      const url = 'https://docs.google.com/spreadsheets/d/'+SID+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent('_AllData_Product');
+      const url = 'https://docs.google.com/spreadsheets/d/'+SID+
+        '/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent('_AllData_Product');
       const r = await fetch(url);
-      if(!r.ok) throw new Error('fetch failed '+r.status);
+      if(!r.ok) throw new Error('HTTP '+r.status);
       const txt = await r.text();
-      if(txt.includes('<html')) throw new Error('sheet not public');
-      const rows = lParseCSV(txt);
-      window._dailyRawData = parseDailyData(rows);
+      if(txt.trim().startsWith('<')) throw new Error('sheet not public');
+      window._dailyRawData = parseDailyData(lParseCSV(txt));
     }
     renderDailyChart();
   } catch(e) {
-    if(loading){ loading.textContent='Cannot read properties: '+e.message; }
+    const loading2=document.getElementById('dailyChartLoading');
+    if(loading2) loading2.textContent='⚠ '+e.message;
     console.warn('[dailyChart]', e);
   }
 }
 
 function parseDailyData(rows){
-  const agg = {};
+  const agg={};
   const curYear = new Date().getFullYear();
   for(let i=1;i<rows.length;i++){
     const row=rows[i];
@@ -4502,7 +4504,7 @@ function parseDailyData(rows){
     const wh=parseFloat(String(row[7]||'').replace(',','.'));
     if(isNaN(wh)||wh<=0) continue;
     const key=d+'|'+ln+'|'+shift;
-    if(!agg[key]) agg[key]={sumH:0,sumD:0,d,ln};
+    if(!agg[key]) agg[key]={sumH:0,sumD:0,d:d,ln:ln};
     agg[key].sumH+=wh; agg[key].sumD+=contrib;
   }
   const result={};
@@ -4539,17 +4541,21 @@ function renderDailyChart(){
     return targetLines.reduce(function(s,ln){return s+(dd[ln]||0);},0);
   });
 
-  const UA={'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
-             '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+  const UA={'01':'Січ','02':'Лют','03':'Бер',
+            '04':'Кві','05':'Тра','06':'Чер',
+            '07':'Лип','08':'Сер','09':'Вер',
+            '10':'Жов','11':'Лис','12':'Гру'};
   const labels=dates.map(function(d){
-    const p=d.split('-'); return p[2]+' '+UA[p[1]];
+    const p=d.split('-'); return p[2]+' '+(UA[p[1]]||p[1]);
   });
 
   const sub=document.getElementById('dailyChartSubtitle');
   if(sub){
-    const yr=new Date().getFullYear();
-    const fl=filter==='all'?'всі лінії':filter==='loc1'?'Локація 1':filter==='loc2'?'Локація 2':'Лінія '+filter;
-    sub.textContent='кг/день · '+yr+' · '+fl;
+    const fl=filter==='all'?'всі лінії':
+             filter==='loc1'?'Локація 1':
+             filter==='loc2'?'Локація 2':
+             'Лінія '+filter;
+    sub.textContent='кг/день · '+new Date().getFullYear()+' · '+fl;
   }
 
   const CLRS={'1':'rgba(37,99,235,.7)','2':'rgba(14,165,233,.7)','3':'rgba(6,182,212,.7)',
@@ -4559,22 +4565,23 @@ function renderDailyChart(){
   const color=(filter==='all'||filter==='loc1'||filter==='loc2')
     ?'rgba(37,99,235,.65)':(CLRS[filter]||'rgba(37,99,235,.65)');
 
-  var existing=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
-  if(existing) existing.destroy();
+  var ex=typeof Chart!=='undefined'&&Chart.getChart?Chart.getChart(canvas):null;
+  if(ex) ex.destroy();
 
   new Chart(canvas,{type:'bar',data:{labels:labels,datasets:[{
-    label:'кг/день',data:vals,backgroundColor:color,borderWidth:0,borderRadius:2
+    label:'kg/day',data:vals,backgroundColor:color,borderWidth:0,borderRadius:2
   }]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},
     plugins:{legend:{display:false},tooltip:{callbacks:{
       title:function(ctx){return dates[ctx[0].dataIndex];},
-      label:function(ctx){var v=ctx.raw;return v>=1000?(v/1000).toFixed(2)+'т':v+' кг';}
+      label:function(ctx){var v=ctx.raw;return v>=1000?(v/1000).toFixed(2)+'t':v+' kg';}
     }}},
     scales:{
       x:{...GR,ticks:{...GR.ticks,maxRotation:60,autoSkip:true,maxTicksLimit:40}},
-      y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}
+      y:{...GR,beginAtZero:true,ticks:{...GR.ticks,callback:function(v){
+        return v>=1000?(v/1000).toFixed(1)+'k':v;
+      }}}
     }
   }});
-
   if(loading) loading.style.display='none';
 }
 
