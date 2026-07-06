@@ -4644,58 +4644,155 @@ function renderDailyChart(){
     sub.textContent='кг/день · '+new Date().getFullYear()+' · '+fl;
   }
 
-  // Plugin для міток min/max на кожній лінії
+  // ── Логарифмічний тренд (МНК в log-просторі) ──────────────────
+  function logTrend(vals){
+    // y = a * ln(x) + b, x = індекс (1-based)
+    var pts=vals.map(function(v,i){return{x:i+1,y:v};})
+               .filter(function(p){return p.y!==null&&p.y>0;});
+    if(pts.length<4) return vals.map(function(){return null;});
+    var n=pts.length;
+    var slx=0,sly=0,slx2=0,slxy=0;
+    pts.forEach(function(p){
+      var lx=Math.log(p.x);
+      slx+=lx; sly+=p.y; slx2+=lx*lx; slxy+=lx*p.y;
+    });
+    var denom=n*slx2-slx*slx;
+    if(Math.abs(denom)<1e-10) return vals.map(function(){return null;});
+    var a=(n*slxy-slx*sly)/denom;
+    var b=(sly-a*slx)/n;
+    return vals.map(function(v,i){
+      if(v===null) return null;
+      var t=a*Math.log(i+1)+b;
+      return Math.max(0,Math.round(t));
+    });
+  }
+
+  // ── Маркери стрибків (>THRESHOLD% день-до-дня) ──────────────────
+  var SPIKE_THRESHOLD = 0.10; // 10%
+  function spikePoints(vals){
+    // Повертає масив: null або значення якщо стрибок
+    return vals.map(function(v,i){
+      if(i===0||v===null||v<=0) return null;
+      // Знаходимо попереднє ненульове
+      var prev=null;
+      for(var j=i-1;j>=0;j--){
+        if(vals[j]!==null&&vals[j]>0){prev=vals[j];break;}
+      }
+      if(prev===null||prev===0) return null;
+      var chg=(v-prev)/prev;
+      if(Math.abs(chg)>=SPIKE_THRESHOLD) return v;
+      return null;
+    });
+  }
+
+  // ── Plugin: min/max мітки + стрибки ────────────────────────────
   var minMaxPlugin={
     id:'minMaxLabels',
     afterDatasetsDraw:function(chart){
       var ctx2=chart.ctx;
+      // Обробляємо тільки "основні" датасети (не тренд, не spike)
       chart.data.datasets.forEach(function(ds,di){
+        if(ds._isTrend||ds._isSpike) return;
         var meta=chart.getDatasetMeta(di);
         if(meta.hidden) return;
         var pts=ds.data;
-        // Знаходимо глобальний min і max (не null, >0)
-        var valid=pts.map(function(v,i){return{v:v,i:i};}).filter(function(o){return o.v!==null&&o.v>0;});
+        var valid=pts.map(function(v,i){return{v:v,i:i};})
+                     .filter(function(o){return o.v!==null&&o.v>0;});
         if(valid.length<3) return;
         var maxO=valid.reduce(function(a,b){return b.v>a.v?b:a;});
         var minO=valid.reduce(function(a,b){return b.v<a.v?b:a;});
         [maxO,minO].forEach(function(o){
-          var el=meta.data[o.i];
-          if(!el) return;
-          var x=el.x, y=el.y;
+          var el=meta.data[o.i]; if(!el) return;
           var lbl=o.v>=1000?(o.v/1000).toFixed(1)+'k':String(o.v);
           ctx2.save();
-          ctx2.font='bold 10px IBM Plex Mono,monospace';
+          ctx2.font='bold 10px "IBM Plex Mono",monospace';
           ctx2.fillStyle=ds.borderColor||'#fff';
           ctx2.textAlign='center';
           ctx2.textBaseline=o===maxO?'bottom':'top';
-          ctx2.fillText(lbl, x, o===maxO?y-4:y+4);
+          ctx2.fillText(lbl,el.x,o===maxO?el.y-5:el.y+5);
           ctx2.restore();
         });
       });
     }
   };
 
+  // ── Додаємо тренд і spike до кожного датасету ──────────────────
+  var datasetsWithExtras=[];
+  datasets.forEach(function(ds){
+    datasetsWithExtras.push(ds);
+    var clr=ds.borderColor||'#2563eb';
+    // Логарифмічний тренд
+    var trendVals=logTrend(ds.data);
+    var hasTrend=trendVals.some(function(v){return v!==null;});
+    if(hasTrend){
+      datasetsWithExtras.push({
+        _isTrend:true,
+        label:ds.label+' тренд',
+        data:trendVals,
+        borderColor:clr,
+        borderWidth:1.5,
+        borderDash:[6,4],
+        pointRadius:0,
+        fill:false,
+        tension:0,
+        spanGaps:true,
+        backgroundColor:'transparent',
+      });
+    }
+    // Spike маркери
+    var spikes=spikePoints(ds.data);
+    var hasSpikes=spikes.some(function(v){return v!==null;});
+    if(hasSpikes){
+      // Визначаємо тип стрибка для кольору
+      var spikeColors=spikes.map(function(v,i){
+        if(v===null) return 'transparent';
+        var prev=null;
+        for(var j=i-1;j>=0;j--){
+          if(ds.data[j]!==null&&ds.data[j]>0){prev=ds.data[j];break;}
+        }
+        if(prev===null) return 'transparent';
+        return (v-prev)/prev>0?'rgba(34,197,94,0.9)':'rgba(239,68,68,0.9)';
+      });
+      datasetsWithExtras.push({
+        _isSpike:true,
+        label:'_spike',
+        data:spikes,
+        borderColor:'transparent',
+        backgroundColor:spikeColors,
+        pointRadius:6,
+        pointHoverRadius:8,
+        pointStyle:'circle',
+        showLine:false,
+        fill:false,
+        spanGaps:false,
+        tension:0,
+      });
+    }
+  });
+
   new Chart(canvas,{
     type:'line',
-    data:{labels:labels,datasets:datasets},
+    data:{labels:labels,datasets:datasetsWithExtras},
     options:{
       responsive:true,maintainAspectRatio:false,animation:{duration:200},
       interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:isMulti?{
-          display:true,
-          position:'top',
-          align:'start',
-          labels:{boxWidth:12,padding:10,font:{size:10,family:'IBM Plex Mono,monospace'},
-            color:'var(--text)',usePointStyle:true,pointStyle:'line'}
-        }:{display:false},
         tooltip:{callbacks:{
           title:function(ctx){return dates[ctx[0].dataIndex];},
           label:function(ctx){
+            if(ctx.dataset._isTrend||ctx.dataset._isSpike) return null;
             var v=ctx.raw; if(v===null) return null;
             return ctx.dataset.label+': '+(v>=1000?(v/1000).toFixed(2)+'т':v+' кг');
           }
-        }}
+        }},
+        legend:isMulti?{
+          display:true,position:'top',align:'start',
+          labels:{
+            boxWidth:12,padding:10,font:{size:10,family:'IBM Plex Mono,monospace'},
+            color:'var(--text)',usePointStyle:true,pointStyle:'line',
+            filter:function(item){return !item.text.includes('тренд')&&item.text!=='_spike';}
+          }
+        }:{display:false}
       },
       scales:{
         x:{...GR,ticks:{...GR.ticks,maxRotation:45,autoSkip:true,maxTicksLimit:35}},
