@@ -4713,6 +4713,32 @@ function renderDailyChart(){
           ctx2.restore();
         });
       });
+      // Мітки на spike-точках
+      chart.data.datasets.forEach(function(ds,di){
+        if(!ds._isSpike) return;
+        var meta=chart.getDatasetMeta(di);
+        var mainDs=chart.data.datasets[di-2]||chart.data.datasets[di-1]; // основний dataset
+        ds.data.forEach(function(v,i){
+          if(v===null) return;
+          var el=meta.data[i]; if(!el) return;
+          var prev=null;
+          if(mainDs){
+            for(var j=i-1;j>=0;j--){
+              if(mainDs.data[j]!==null&&mainDs.data[j]>0){prev=mainDs.data[j];break;}
+            }
+          }
+          var pct=prev&&prev>0?Math.round((v-prev)/prev*100):null;
+          var lbl=(v>=1000?(v/1000).toFixed(1)+'k':String(v))+(pct!==null?(pct>0?' +'+pct+'%':' '+pct+'%'):'');
+          var clr=ds.backgroundColor[i]||'#fff';
+          ctx2.save();
+          ctx2.font='bold 9px "IBM Plex Mono",monospace';
+          ctx2.fillStyle=clr==='transparent'?'#fff':clr;
+          ctx2.textAlign='center';
+          ctx2.textBaseline= prev&&v>prev ? 'bottom' : 'top';
+          ctx2.fillText(lbl, el.x, prev&&v>prev ? el.y-8 : el.y+8);
+          ctx2.restore();
+        });
+      });
     }
   };
 
