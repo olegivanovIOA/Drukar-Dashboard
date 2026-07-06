@@ -689,6 +689,39 @@
       </table>
     </div>
   </div>
+
+  <!-- ── Графік продуктивності по днях ── -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="card-title">Продуктивність ліній по днях</div>
+        <div class="card-subtitle" id="dailyChartSubtitle">кг/день · поточний рік</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ЛІНІЯ</span>
+        <select id="dailyLineFilter" onchange="buildDailyChart()" style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none">
+          <option value="all">Всі лінії</option>
+          <option value="loc1">Локація 1</option>
+          <option value="loc2">Локація 2</option>
+          <option value="1">Лінія 1</option>
+          <option value="2">Лінія 2</option>
+          <option value="3">Лінія 3</option>
+          <option value="4">Лінія 4</option>
+          <option value="5">Лінія 5</option>
+          <option value="6">Лінія 6</option>
+          <option value="7">Лінія 7</option>
+          <option value="8">Лінія 8</option>
+          <option value="9">Лінія 9</option>
+          <option value="10">Лінія 10</option>
+        </select>
+      </div>
+    </div>
+    <div style="position:relative;height:280px">
+      <canvas id="dailyProdChart"></canvas>
+      <div id="dailyChartLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">⟳ завантаження...</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══════════════ QUALITY ══════════════ -->
@@ -1999,6 +2032,7 @@ function initProduction(){
   loadShiftData();
   loadDowntimeData();
   loadWeeklyAnalysis();
+  buildDailyChart();
 }
 async function loadProductionCharts(){
   const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
@@ -2538,7 +2572,7 @@ async function buildHeatmapWeekly(monthIdx){
         const nm=line.match(/\d+/);
         if(!nm) continue;
         const lineNum=parseInt(nm[0]);
-        if(lineNum<1||lineNum>8) continue; // тільки лінії 1-8
+        if(lineNum<1||lineNum>20) continue; // лінії 1-20
         line='ЛІНІЯ '+lineNum;
 
         const shift=String(row[1]||'').trim();
@@ -4423,6 +4457,191 @@ async function loadNormsFromSheets(){
     console.warn('loadNormsFromSheets:', e);
   }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// ГРАФІК ПРОДУКТИВНОСТІ ПО ДНЯХ
+// ══════════════════════════════════════════════════════════════════
+window._dailyRawData = null; // {date→{line→kg}}
+
+async function buildDailyChart(){
+  const canvas = document.getElementById('dailyProdChart');
+  const loading = document.getElementById('dailyChartLoading');
+  if(!canvas) return;
+
+  if(loading) loading.style.display='flex';
+
+  try {
+    // Завантажуємо дані якщо ще не кешовані
+    if(!window._dailyRawData){
+      const SID = '1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+      const url = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('_AllData_Product')}`;
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('fetch failed');
+      const txt = await r.text();
+      if(txt.includes('<html')) throw new Error('not public');
+      const rows = lParseCSV(txt);
+      window._dailyRawData = parseDailyData(rows);
+    }
+    renderDailyChart();
+  } catch(e) {
+    if(loading) loading.textContent = '⚠ ' + e.message;
+    console.warn('[dailyChart]', e);
+  }
+}
+
+function parseDailyData(rows){
+  // Структура _AllData_Product: A=Дата, B=Зміна, D=Вклад%, E=Лінія, H=ВесВклад
+  const agg = {}; // 'YYYY-MM-DD|ЛІНІЯ N|зміна' → {sumH, sumD}
+  const curYear = new Date().getFullYear();
+
+  for(let i=1; i<rows.length; i++){
+    const row = rows[i];
+    const dRaw = row[0]; if(!dRaw) continue;
+    const d = lParseDate(String(dRaw));
+    if(!d) continue;
+    // Тільки поточний рік
+    if(!d.startsWith(String(curYear))) continue;
+
+    const lineRaw = String(row[4]||'').toUpperCase().trim();
+    const nm = lineRaw.match(/\d+/); if(!nm) continue;
+    const ln = 'ЛІНІЯ ' + parseInt(nm[0]);
+    const shift = String(row[1]||'').trim();
+
+    let contrib = parseFloat(String(row[3]||'').replace('%','').replace(',','.'));
+    if(isNaN(contrib)||contrib<=0) continue;
+    if(contrib>1.5) contrib/=100;
+    const wh = parseFloat(String(row[7]||'').replace(',','.')); 
+    if(isNaN(wh)||wh<=0) continue;
+
+    const key = d+'|'+ln+'|'+shift;
+    if(!agg[key]) agg[key]={sumH:0,sumD:0,d,ln};
+    agg[key].sumH+=wh; agg[key].sumD+=contrib;
+  }
+
+  // Агрегуємо по даті+лінії
+  const result = {}; // date → {ln→kg}
+  Object.values(agg).forEach(({sumH,sumD,d,ln})=>{
+    const kg = sumD>0 ? Math.round(sumH/sumD) : 0;
+    if(kg<=0) return;
+    if(!result[d]) result[d]={};
+    result[d][ln] = (result[d][ln]||0) + kg;
+  });
+  return result;
+}
+
+function renderDailyChart(){
+  const canvas = document.getElementById('dailyProdChart');
+  const loading = document.getElementById('dailyChartLoading');
+  const sel = document.getElementById('dailyLineFilter');
+  const filter = sel ? sel.value : 'all';
+  const data = window._dailyRawData;
+  if(!data||!canvas){return;}
+
+  const LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
+  const LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
+
+  // Визначаємо які лінії показувати
+  let targetLines;
+  if(filter==='all')       targetLines = null; // сума всіх
+  else if(filter==='loc1') targetLines = LOC1;
+  else if(filter==='loc2') targetLines = LOC2;
+  else                     targetLines = ['ЛІНІЯ '+filter];
+
+  // Збираємо всі дати, сортуємо
+  const dates = Object.keys(data).sort();
+  if(!dates.length) return;
+
+  // Підрахунок по даті
+  const vals = dates.map(d=>{
+    const dayData = data[d]||{};
+    if(!targetLines){
+      return Object.values(dayData).reduce((s,v)=>s+v,0);
+    }
+    return targetLines.reduce((s,ln)=>s+(dayData[ln]||0),0);
+  });
+
+  // Форматуємо дати для осі X — скорочено
+  const labels = dates.map(d=>{
+    const p=d.split('-');
+    const UA={'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+               '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'};
+    return p[2]+' '+UA[p[1]];
+  });
+
+  // Subtitle
+  const sub = document.getElementById('dailyChartSubtitle');
+  if(sub){
+    const yr = new Date().getFullYear();
+    const filterLabel = filter==='all'?'всі лінії':filter==='loc1'?'Локація 1':filter==='loc2'?'Локація 2':'Лінія '+filter;
+    sub.textContent = `кг/день · ${yr} · ${filterLabel}`;
+  }
+
+  // Колір — для окремої лінії свій, для груп — синій
+  const COLORS = {
+    '1':'rgba(37,99,235,.7)','2':'rgba(14,165,233,.7)','3':'rgba(6,182,212,.7)',
+    '4':'rgba(16,185,129,.7)','5':'rgba(234,179,8,.7)','6':'rgba(249,115,22,.7)',
+    '7':'rgba(168,85,247,.7)','8':'rgba(236,72,153,.7)',
+    '9':'rgba(239,68,68,.7)','10':'rgba(132,204,22,.7)',
+  };
+  const color = filter==='all'||filter==='loc1'||filter==='loc2'
+    ? 'rgba(37,99,235,.65)'
+    : (COLORS[filter]||'rgba(37,99,235,.65)');
+
+  // Destroy існуючий chart
+  const existing = Chart.getChart ? Chart.getChart(canvas) : null;
+  if(existing) existing.destroy();
+
+  new Chart(canvas,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'кг/день',
+        data:vals,
+        backgroundColor:color,
+        borderWidth:0,
+        borderRadius:2,
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:{duration:300},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:ctx=>{
+            const i=ctx[0].dataIndex;
+            return dates[i]; // повна дата в тултипі
+          },
+          label:ctx=>{
+            const v=ctx.raw;
+            return (v>=1000?(v/1000).toFixed(2)+'т':v+' кг');
+          }
+        }}
+      },
+      scales:{
+        x:{
+          ...GR,
+          ticks:{
+            ...GR.ticks,
+            maxRotation:45,
+            autoSkip:true,
+            maxTicksLimit:30,
+          }
+        },
+        y:{
+          ...GR,
+          beginAtZero:true,
+          ticks:{...GR.ticks,callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}
+        }
+      }
+    }
+  });
+
+  if(loading) loading.style.display='none';
+}
+
 
 async function buildUtilHeatmap(){
   const wrap = document.getElementById('utilHeatmapWrap');
