@@ -549,7 +549,8 @@ def parse_production(rows):
     found_sebest = False
     for i, row in enumerate(rows):
         row_str = ' '.join(str(c) for c in row).lower()
-        if 'себестоимость 1 кг' in row_str or 'себестоимість 1 кг' in row_str:
+        if ('себестоимость 1 кг' in row_str or 'себестоимість 1 кг' in row_str
+                or ('ціна petg вироблено' in row_str) or ('цена petg' in row_str and '1 кг' in row_str)):
             found_sebest = True
             print(f"  Себестоимость header found at row {i}: {row[:6]}")
             if i+1 < len(rows):
@@ -1602,7 +1603,7 @@ if __name__ == '__main__':
         cpkg_pla  = [None] * MONTH_COUNT
         for i, row in enumerate(fin_rows):
             joined = ' '.join(str(c) for c in row).lower()
-            if 'себест' in joined and '1 кг' in joined:
+            if ('себест' in joined and '1 кг' in joined) or 'ціна petg вироблено' in joined:
                 print(f"  Sebest 1кг header at row {i}")
                 if i + 1 < len(fin_rows):
                     r = fin_rows[i + 1]

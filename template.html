@@ -357,10 +357,76 @@
       <span class="badge" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3)">НЕЗАБАРОМ · підключається CF</span>
     </div>
     <div id="cashCalendarWrap" style="overflow-x:auto;padding:4px 0">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding:32px">
-        ⟳ Тут буде Календар управленця після підключення CF
-      </div>
+      <div id="cashCalendarInner"></div>
     </div>
+    <script>
+    (function(){
+      var CF_MONTHS  = ["\u0421\u0456\u0447 26", "\u041b\u044e\u0442 26", "\u0411\u0435\u0440 26", "\u041a\u0432\u0456 26", "\u0422\u0440\u0430 26", "\u0427\u0435\u0440 26", "\u041b\u0438\u043f 26"];
+      var CF_BAL_S   = [413935, 1173648, 1030043, 1091091, 2346424, 7239465, 2212373];
+      var CF_BAL_E   = [1173648, 1030043, 1091091, 2346424, 7239465, 2212373, 1950775];
+      var CF_INCOME  = [9497014, 7038442, 17296477, 14408071, 27624426, 8673115, null];
+      var CF_OUT     = [4665510, 4730794, 13675125, 11188229, 19228798, 12718268, null];
+
+      function fmt(v){
+        if(v===null||v===undefined) return '<span style="color:var(--muted)">—</span>';
+        var m=v/1000000;
+        return (m>=1?m.toFixed(1)+' млн':(v/1000).toFixed(0)+' тис.');
+      }
+      function fmtBig(v){
+        if(!v) return '—';
+        return (v/1000000).toFixed(2)+' млн';
+      }
+
+      var html='<div style="display:grid;grid-template-columns:repeat('+CF_MONTHS.length+',1fr);gap:8px;min-width:700px">';
+
+      // Заголовки
+      CF_MONTHS.forEach(function(m,i){
+        var isDone = CF_INCOME[i]!==null;
+        html+='<div style="text-align:center;font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;'+(isDone?'color:var(--accent)':'color:var(--muted)')+'">'+m+'</div>';
+      });
+
+      // Залишок початок
+      CF_MONTHS.forEach(function(m,i){
+        html+='<div style="background:var(--surface2);border-radius:6px;padding:8px;border:1px solid var(--border)">'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px">ЗАЛИШОК ПОЧАТОК</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);font-weight:600">'+fmt(CF_BAL_S[i])+'</div>'
+          +'</div>';
+      });
+
+      // Дохід
+      CF_MONTHS.forEach(function(m,i){
+        var v=CF_INCOME[i];
+        html+='<div style="background:rgba(34,197,94,.07);border-radius:6px;padding:8px;border:1px solid rgba(34,197,94,.2)">'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--good);margin-bottom:4px">▲ ДОХІД</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--good);font-weight:600">'+fmt(v)+'</div>'
+          +'</div>';
+      });
+
+      // Витрати
+      CF_MONTHS.forEach(function(m,i){
+        var v=CF_OUT[i];
+        html+='<div style="background:rgba(239,68,68,.06);border-radius:6px;padding:8px;border:1px solid rgba(239,68,68,.18)">'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--bad);margin-bottom:4px">▼ ВИТРАТИ</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--bad);font-weight:600">'+fmt(v)+'</div>'
+          +'</div>';
+      });
+
+      // Залишок кінець
+      CF_MONTHS.forEach(function(m,i){
+        var be=CF_BAL_E[i]; var bs=CF_BAL_S[i];
+        var clr=be>=bs?'var(--good)':'var(--warn)';
+        html+='<div style="background:var(--surface);border-radius:6px;padding:8px;border:2px solid var(--border)">'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px">ЗАЛИШОК КІНЕЦЬ</div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:13px;color:'+clr+';font-weight:700">'+fmt(be)+'</div>'
+          +'</div>';
+      });
+
+      html+='</div>';
+
+      var wrap=document.getElementById('cashCalendarInner');
+      if(wrap) wrap.innerHTML=html;
+    })();
+    </script>
   </div>
   <div style="display:none">
     <canvas id="finOverviewChart"></canvas>
@@ -748,31 +814,33 @@
   </div>
   <!-- Об'єднаний графік НФ + Брак + Виробництво -->
   <div class="card" style="margin-bottom:14px">
-    <div class="card-header" style="flex-wrap:wrap;gap:8px">
-      <div>
-        <div class="card-title">НФ та Брак по місяцях</div>
-        <div class="card-subtitle" id="qChartSubtitle">% від обсягу · PETG та PLA</div>
+    <div class="card-header" style="flex-wrap:wrap;gap:8px;align-items:flex-start">
+      <div style="display:flex;gap:4px;flex-direction:column">
+        <div style="display:flex;gap:4px" id="qFilterBtns">
+          <button class="month-btn active" onclick="setQFilter('all',this)">Все</button>
+          <button class="month-btn" onclick="setQFilter('petg',this)">PETG</button>
+          <button class="month-btn" onclick="setQFilter('pla',this)">PLA</button>
+        </div>
+        <div class="card-subtitle" id="qChartSubtitle" style="margin-top:2px">% від обсягу · PETG та PLA</div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap" id="qFilterBtns">
-        <button class="month-btn active" onclick="setQFilter('all',this)">Все</button>
-        <button class="month-btn" onclick="setQFilter('petg',this)">PETG</button>
-        <button class="month-btn" onclick="setQFilter('pla',this)">PLA</button>
-      </div>
+      <div style="margin-left:auto"><div class="card-title">НФ та Брак по місяцях</div></div>
     </div>
-    <!-- Верхній міні-графік: Виробництво кг (80-100% зони) -->
+    <!-- Верхній графік: Виробництво тонни -->
     <div style="padding:6px 0 2px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ВИРОБНИЦТВО · тонн</div>
-    <div style="height:100px;position:relative;margin-bottom:2px">
+    <div style="height:180px;position:relative;margin-bottom:4px">
       <canvas id="qProdChart"></canvas>
     </div>
-    <!-- Розрив -->
-    <div style="display:flex;align-items:center;gap:8px;padding:3px 0">
+    <!-- Розрив шкали -->
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
       <div style="flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--border) 0,var(--border) 6px,transparent 6px,transparent 12px)"></div>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);white-space:nowrap">— розрив шкали —</span>
       <div style="flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--border) 0,var(--border) 6px,transparent 6px,transparent 12px)"></div>
     </div>
-    <!-- Нижній графік: НФ і Брак % -->
-    <div style="padding:2px 0 6px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">НФ · БРАК · %</div>
-    <div class="cw-lg"><canvas id="qNfWasteChart"></canvas></div>
+    <!-- Нижній графік: НФ + Брак % -->
+    <div style="padding:4px 0 6px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">НФ · БРАК · %</div>
+    <div style="height:180px;position:relative">
+      <canvas id="qNfWasteChart"></canvas>
+    </div>
   </div>
   <!-- Приховані canvas для сумісності -->
   <div style="display:none">
@@ -1832,8 +1900,8 @@ const NF_PLA={{PLA_NF}};
 const W_PETG={{PETG_WASTE}};
 const W_PLA={{PLA_WASTE}};
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
-const CPKG_PETG=[251.38,null,340.62,312.49,322.08,null,null,null,null,null,null,null,null,null];
-const CPKG_PLA=[283.35,null,558.41,374.31,386.91,null,null,null,null,null,null,null,null,null];
+const CPKG_PETG={{COST_PETG_KG}};
+const CPKG_PLA={{COST_PLA_KG}};
 const FIN_INCOME=/*INCOME*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_EXPENSES=/*EXPENSES*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
@@ -2900,9 +2968,17 @@ function initQuality(){
   // ── Будуємо графіки ─────────────────────────────────────────
   function buildQCharts(){
     var f = window._qFilter||'all';
-    var labels = filterLabels()||MS;
-    var nfPetg=NF_PETG, nfPla=NF_PLA, wPetg=W_PETG, wPla=W_PLA;
-    var prodPetg=PETG_ALL, prodPla=PLA_ALL;
+    // Обмежуємо дані тільки до останнього non-null місяця (не показуємо майбутні)
+    var rawLabels = filterLabels()||MS;
+    var rawNfP=NF_PETG, rawNfL=NF_PLA, rawWP=W_PETG, rawWL=W_PLA;
+    var rawPP=PETG_ALL, rawPL=PLA_ALL;
+    // Знаходимо індекс останнього місяця з даними
+    var lastIdx=rawPP.length-1;
+    for(var li=rawPP.length-1;li>=0;li--){ if(rawPP[li]!==null&&rawPP[li]!==undefined&&+rawPP[li]>0){lastIdx=li;break;} }
+    var labels=rawLabels.slice(0,lastIdx+1);
+    var nfPetg=rawNfP.slice(0,lastIdx+1), nfPla=rawNfL.slice(0,lastIdx+1);
+    var wPetg=rawWP.slice(0,lastIdx+1), wPla=rawWL.slice(0,lastIdx+1);
+    var prodPetg=rawPP.slice(0,lastIdx+1), prodPla=rawPL.slice(0,lastIdx+1);
 
     // Вибираємо дані по фільтру
     var ds_nf=[], ds_waste=[], ds_prod=[];
@@ -3177,15 +3253,17 @@ async function loadOperatorData(){
         const iOp=hdr.findIndex(h=>h.includes('оператор')||h.includes('operator')); if(iOp>=0) ci_op=iOp;
         const iContrib=hdr.findIndex(h=>h.includes('вклад')); if(iContrib>=0) ci_contrib=iContrib;
         const iLine=hdr.findIndex(h=>h.includes('лін')||h.includes('лини')||h==='line'); if(iLine>=0) ci_line=iLine;
-        const iW=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг')||h.includes('weight')); if(iW>=0) ci_weight=iW;
+        // Шукаємо "вес кг" або "вага кг" - може бути з уточненням "(вклад)"
+        const iW=hdr.findIndex(h=>(h.includes('вес кг')||h.includes('вага кг')||h.includes('weight'))&&!h.includes('нф')&&!h.includes('відх')&&!h.includes('зап')); if(iW>=0) ci_weight=iW;
         break;
       }
     }
-    console.log(`parseOps: dataStart=${dataStart} ci_date=${ci_date} ci_op=${ci_op} ci_weight=${ci_weight} total=${rows.length}`);
-    // Debug first 3 data rows
+    console.log(`parseOps: dataStart=${dataStart} ci_date=${ci_date} ci_op=${ci_op} ci_contrib=${ci_contrib} ci_weight=${ci_weight} total=${rows.length}`);
+    // Debug перший рядок заголовку і перші 3 рядки даних
+    if(rows[dataStart-1]) console.log('  HDR:', rows[dataStart-1].slice(0,12).map((h,i)=>i+':'+h).join(' | '));
     for(let di=dataStart;di<Math.min(dataStart+3,rows.length);di++){
       const dr=rows[di];
-      console.log(`  row[${di}]: date=${JSON.stringify(dr[ci_date])} op=${JSON.stringify(dr[ci_op])} w=${JSON.stringify(dr[ci_weight])}`);
+      console.log(`  row[${di}]: date=${JSON.stringify(dr[ci_date])} op=${JSON.stringify(dr[ci_op])} contrib=${JSON.stringify(dr[ci_contrib])} w=${JSON.stringify(dr[ci_weight])} ym=${dr[ci_date]?lParseDate(String(dr[ci_date]||'')):'?'}`);
     }
     for(let i=dataStart;i<rows.length;i++){
       const row=rows[i]; if(!row||row.length<3) continue;
