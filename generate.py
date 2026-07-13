@@ -549,8 +549,7 @@ def parse_production(rows):
     found_sebest = False
     for i, row in enumerate(rows):
         row_str = ' '.join(str(c) for c in row).lower()
-        if ('себестоимость 1 кг' in row_str or 'себестоимість 1 кг' in row_str
-                or ('ціна petg вироблено' in row_str) or ('цена petg' in row_str and '1 кг' in row_str)):
+        if 'себестоимость 1 кг' in row_str or 'себестоимість 1 кг' in row_str:
             found_sebest = True
             print(f"  Себестоимость header found at row {i}: {row[:6]}")
             if i+1 < len(rows):
@@ -1599,23 +1598,53 @@ if __name__ == '__main__':
         print(f"  Income:   {data['income']}")
         print(f"  Expenses: {data['expenses']}")
 
+        # ── Собівартість з P&L (аркуш 'P&L 2026', рядки з '═ ЦІНА PETG/PLA ВИРОБЛЕНО') ──
         cpkg_petg = [None] * MONTH_COUNT
         cpkg_pla  = [None] * MONTH_COUNT
-        for i, row in enumerate(fin_rows):
-            joined = ' '.join(str(c) for c in row).lower()
-            if ('себест' in joined and '1 кг' in joined) or 'ціна petg вироблено' in joined:
-                print(f"  Sebest 1кг header at row {i}")
-                if i + 1 < len(fin_rows):
-                    r = fin_rows[i + 1]
-                    for j, mk in enumerate(MONTH_ORDER):
-                        ci = col_map_grn.get(mk)
-                        if ci is not None and ci < len(r): cpkg_petg[j] = f(r[ci])
-                if i + 2 < len(fin_rows):
-                    r = fin_rows[i + 2]
-                    for j, mk in enumerate(MONTH_ORDER):
-                        ci = col_map_grn.get(mk)
-                        if ci is not None and ci < len(r): cpkg_pla[j] = f(r[ci])
-                break
+        PNL_SHEET_ID = os.environ.get('PNL_SHEET_ID', '1kIwx30hqxuT7HDq0fq7shxyxvwv2zO3V2aP_ey0NtFw')
+        try:
+            pnl_rows = fetch_csv(PNL_SHEET_ID, 'P&L 2026')
+            print(f"  P&L 2026: {len(pnl_rows)} rows")
+            pnl_col_map, _ = detect_month_columns(pnl_rows)
+            print(f"  P&L col_map: {pnl_col_map}")
+            found_petg = found_pla = False
+            # З ПДВ секція починається після рядка '📘 З ПДВ' (~R126)
+            # Беремо ДРУГУ появу 'ціна petg вироблено' (перша — без ПДВ, друга — з ПДВ)
+            in_vat_section = False
+            for i, row in enumerate(pnl_rows):
+                if not row: continue
+                label = str(row[1] if len(row) > 1 else row[0]).strip()
+                label_low = label.lower()
+                # Детектуємо початок секції З ПДВ
+                if 'з пдв' in label_low or 'з пдв' in ' '.join(str(c) for c in row).lower():
+                    in_vat_section = True
+                    print(f"  VAT section starts at row [{i}]")
+                    continue
+                if not in_vat_section:
+                    continue
+                # В секції З ПДВ шукаємо рядки собівартості
+                if not found_petg and 'ціна petg вироблено' in label_low:
+                    cpkg_petg = extract_row_by_month(row, pnl_col_map)
+                    print(f"  PETG cost (з ПДВ) row [{i}]: {label} → {cpkg_petg}")
+                    found_petg = True
+                elif not found_pla and 'ціна pla вироблено' in label_low:
+                    cpkg_pla = extract_row_by_month(row, pnl_col_map)
+                    print(f"  PLA cost (з ПДВ) row [{i}]: {label} → {cpkg_pla}")
+                    found_pla = True
+                if found_petg and found_pla:
+                    break
+            if not found_petg:
+                print(f"  WARNING: ЦІНА PETG ВИРОБЛЕНО not found in P&L — trying _AllData_Sebest fallback")
+                for i, row in enumerate(fin_rows):
+                    joined = ' '.join(str(c) for c in row).lower()
+                    if 'себест' in joined and '1 кг' in joined:
+                        if i + 1 < len(fin_rows):
+                            cpkg_petg = extract_row_by_month(fin_rows[i+1], col_map_grn)
+                        if i + 2 < len(fin_rows):
+                            cpkg_pla = extract_row_by_month(fin_rows[i+2], col_map_grn)
+                        break
+        except Exception as epnl:
+            print(f"  WARNING P&L cost fetch: {epnl}")
         print(f"  Cost PETG: {cpkg_petg}")
         print(f"  Cost PLA:  {cpkg_pla}")
         data["cost_petg_kg"] = [round(v, 2) if v else None for v in cpkg_petg]
