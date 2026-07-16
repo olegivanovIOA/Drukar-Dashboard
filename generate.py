@@ -1938,40 +1938,56 @@ if __name__ == '__main__':
         print(f"  Cost PLA:  {cpkg_pla}")
         data["cost_petg_kg"] = [round(v, 2) if v else None for v in cpkg_petg]
         data["cost_pla_kg"]  = [round(v, 2) if v else None for v in cpkg_pla]
-
-        # ── Календар управлінця (Огляд, низ) — тепер напряму з P&L (без ПДВ-переносу,
-        #    без хардкоду). Раніше цей блок був статичним плейсхолдером, вручну
-        #    вписаним у template.html ("НЕЗАБАРОМ підключається CF") — тепер бере
-        #    Дохід/Залишки прямо з рядків P&L, Витрати = Дохід − EBITDA (тобто
-        #    Собівартість + Операційні витрати разом, до податків). ──
-        try:
-            row_income = get_row(pnl_rows, 'доходи')
-            row_ebitda = get_row(pnl_rows, 'ebitda (операційний прибуток)')
-            row_bal_s  = get_row(pnl_rows, 'залишок на початок місяця')
-            row_bal_e  = get_row(pnl_rows, 'залишок на кінець місяця')
-            arr_income = extract_row_by_month(row_income, pnl_col_map) if row_income else [None] * MONTH_COUNT
-            arr_ebitda = extract_row_by_month(row_ebitda, pnl_col_map) if row_ebitda else [None] * MONTH_COUNT
-            arr_bal_s  = extract_row_by_month(row_bal_s,  pnl_col_map) if row_bal_s  else [None] * MONTH_COUNT
-            arr_bal_e  = extract_row_by_month(row_bal_e,  pnl_col_map) if row_bal_e  else [None] * MONTH_COUNT
-
-            UA_CAL = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
-                      '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
-            cal_idx = [i for i, ym in enumerate(MONTH_ORDER) if arr_income[i] is not None]
-            data['cal_labels']    = [f"{UA_CAL[MONTH_ORDER[i][5:7]]} {MONTH_ORDER[i][2:4]}" for i in cal_idx]
-            data['cal_bal_start'] = [round(arr_bal_s[i]) if arr_bal_s[i] is not None else None for i in cal_idx]
-            data['cal_bal_end']   = [round(arr_bal_e[i]) if arr_bal_e[i] is not None else None for i in cal_idx]
-            data['cal_income']    = [round(arr_income[i]) if arr_income[i] is not None else None for i in cal_idx]
-            data['cal_out']       = [round(arr_income[i] - arr_ebitda[i]) if arr_ebitda[i] is not None else None for i in cal_idx]
-            print(f"  Календар управлінця (з P&L): {data['cal_labels']}")
-            print(f"    income={data['cal_income']}")
-            print(f"    out={data['cal_out']}")
-            print(f"    bal_start={data['cal_bal_start']}")
-            print(f"    bal_end={data['cal_bal_end']}")
-        except Exception as ecal:
-            print(f"  WARNING Календар управлінця: {ecal}")
-            data['cal_labels'] = data['cal_bal_start'] = data['cal_bal_end'] = data['cal_income'] = data['cal_out'] = []
     except Exception as e:
         print(f"WARNING _AllData_Sebest: {e}")
+        import traceback; traceback.print_exc()
+
+    # ── 2b. Календар управлінця (Огляд, низ) — незалежний блок з власним
+    #    фетчем P&L, щоб НЕ залежати від успіху блоку 2 вище (_AllData_Sebest/
+    #    собівартість). Раніше цей блок був статичним плейсхолдером у
+    #    template.html ("НЕЗАБАРОМ підключається CF") — тепер бере Дохід/
+    #    Залишки прямо з рядків P&L; Витрати = Дохід − EBITDA (Собівартість +
+    #    Операційні витрати разом, до податків). ──
+    data['cal_labels'] = data['cal_bal_start'] = data['cal_bal_end'] = data['cal_income'] = data['cal_out'] = []
+    try:
+        _cal_pnl_id = os.environ.get('PNL_SHEET_ID', '1kIwx30hqxuT7HDq0fq7shxyxvwv2zO3V2aP_ey0NtFw')
+        cal_pnl_rows = fetch_csv(_cal_pnl_id, 'P&L 2026')
+        print(f"  Календар: P&L 2026 fetched, {len(cal_pnl_rows)} rows")
+        cal_col_map, _ = detect_month_columns(cal_pnl_rows)
+        print(f"  Календар: col_map = {cal_col_map}")
+
+        row_income = get_row(cal_pnl_rows, 'доходи')
+        row_ebitda = get_row(cal_pnl_rows, 'ebitda (операційний прибуток)')
+        row_bal_s  = get_row(cal_pnl_rows, 'залишок на початок місяця')
+        row_bal_e  = get_row(cal_pnl_rows, 'залишок на кінець місяця')
+        print(f"  Календар: рядки знайдено — доходи={row_income is not None}, "
+              f"ebitda={row_ebitda is not None}, bal_start={row_bal_s is not None}, bal_end={row_bal_e is not None}")
+
+        arr_income = extract_row_by_month(row_income, cal_col_map) if row_income else [None] * MONTH_COUNT
+        arr_ebitda = extract_row_by_month(row_ebitda, cal_col_map) if row_ebitda else [None] * MONTH_COUNT
+        arr_bal_s  = extract_row_by_month(row_bal_s,  cal_col_map) if row_bal_s  else [None] * MONTH_COUNT
+        arr_bal_e  = extract_row_by_month(row_bal_e,  cal_col_map) if row_bal_e  else [None] * MONTH_COUNT
+        print(f"  Календар: arr_income = {arr_income}")
+
+        UA_CAL = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                  '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+        cal_idx = [i for i, ym in enumerate(MONTH_ORDER) if arr_income[i] is not None]
+        data['cal_labels']    = [f"{UA_CAL[MONTH_ORDER[i][5:7]]} {MONTH_ORDER[i][2:4]}" for i in cal_idx]
+        data['cal_bal_start'] = [round(arr_bal_s[i]) if arr_bal_s[i] is not None else None for i in cal_idx]
+        data['cal_bal_end']   = [round(arr_bal_e[i]) if arr_bal_e[i] is not None else None for i in cal_idx]
+        data['cal_income']    = [round(arr_income[i]) if arr_income[i] is not None else None for i in cal_idx]
+        data['cal_out']       = [round(arr_income[i] - arr_ebitda[i]) if arr_ebitda[i] is not None else None for i in cal_idx]
+        print(f"  Календар управлінця (з P&L): {data['cal_labels']}")
+        print(f"    income={data['cal_income']}")
+        print(f"    out={data['cal_out']}")
+        print(f"    bal_start={data['cal_bal_start']}")
+        print(f"    bal_end={data['cal_bal_end']}")
+        if not cal_idx:
+            print("  WARNING Календар: 0 місяців з даними — перевір, чи не змінились назви рядків "
+                  "'Доходи'/'EBITDA (Операційний прибуток)'/'Залишок на початок/кінець місяця' у P&L, "
+                  f"або чи не порожній col_map. Заголовок [1]: {cal_pnl_rows[1] if len(cal_pnl_rows)>1 else '—'}")
+    except Exception as ecal:
+        print(f"  WARNING Календар управлінця: {ecal}")
         import traceback; traceback.print_exc()
 
     # ── 3. Калькулятор ─────────────────────────────────────────
