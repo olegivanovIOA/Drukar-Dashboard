@@ -1000,6 +1000,38 @@ def parse_retail(rows):
     }
 
 
+def _pnl_num(v):
+    """
+    Надійний парсер чисел саме для gviz CSV-експорту P&L: клітинки з форматом
+    '#,##0' (Доходи, EBITDA, Залишки — усі великі суми) приходять як ТЕКСТ з
+    комою-розділювачем тисяч, напр. "7,643,149". Загальна функція f() робить
+    replace(',', '.') розраховуючи на ДЕСЯТКОВУ кому (напр. "12,5" → 12.5) —
+    і ламає "7,643,149" на "7.643.149" (кілька крапок → parse fail → None).
+    Тут розрізняємо: кома-тисячі (групи РІВНО по 3 цифри) → прибираємо коми;
+    інакше (напр. "12,5") → кома як десяткова, замінюємо на крапку.
+    """
+    import re
+    s = str(v).strip().replace('\xa0', '').replace(' ', '')
+    if not s: return None
+    if re.match(r'^-?\d{1,3}(,\d{3})+(\.\d+)?$', s):
+        s = s.replace(',', '')
+    else:
+        s = s.replace(',', '.')
+    try:
+        return float(s)
+    except:
+        return None
+
+def _cal_extract_row_by_month(row, col_map):
+    """Як extract_row_by_month(), але через _pnl_num() замість f() — для
+    великих сум з P&L (Доходи/EBITDA/Залишки), де f() ламається на комах-тисячах."""
+    result = [None] * MONTH_COUNT
+    for i, month_key in enumerate(MONTH_ORDER):
+        ci = col_map.get(month_key)
+        if ci is not None and row and ci < len(row):
+            result[i] = _pnl_num(row[ci])
+    return result
+
 def parse_sales_from_journal(rows):
     """
     Парсить продажі з Журналу Відвантажень (SHIP_SHEET_ID, лист "Відвантаження") —
@@ -1963,10 +1995,10 @@ if __name__ == '__main__':
         print(f"  Календар: рядки знайдено — доходи={row_income is not None}, "
               f"ebitda={row_ebitda is not None}, bal_start={row_bal_s is not None}, bal_end={row_bal_e is not None}")
 
-        arr_income = extract_row_by_month(row_income, cal_col_map) if row_income else [None] * MONTH_COUNT
-        arr_ebitda = extract_row_by_month(row_ebitda, cal_col_map) if row_ebitda else [None] * MONTH_COUNT
-        arr_bal_s  = extract_row_by_month(row_bal_s,  cal_col_map) if row_bal_s  else [None] * MONTH_COUNT
-        arr_bal_e  = extract_row_by_month(row_bal_e,  cal_col_map) if row_bal_e  else [None] * MONTH_COUNT
+        arr_income = _cal_extract_row_by_month(row_income, cal_col_map) if row_income else [None] * MONTH_COUNT
+        arr_ebitda = _cal_extract_row_by_month(row_ebitda, cal_col_map) if row_ebitda else [None] * MONTH_COUNT
+        arr_bal_s  = _cal_extract_row_by_month(row_bal_s,  cal_col_map) if row_bal_s  else [None] * MONTH_COUNT
+        arr_bal_e  = _cal_extract_row_by_month(row_bal_e,  cal_col_map) if row_bal_e  else [None] * MONTH_COUNT
         print(f"  Календар: arr_income = {arr_income}")
 
         UA_CAL = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
