@@ -361,67 +361,57 @@
     </div>
     <script>
     (function(){
+      var CF_YM      = {{CAL_YM}};
       var CF_MONTHS  = {{CAL_LABELS}};
       var CF_BAL_S   = {{CAL_BAL_START}};
       var CF_BAL_E   = {{CAL_BAL_END}};
       var CF_INCOME  = {{CAL_INCOME}};
       var CF_OUT     = {{CAL_OUT}};
+      var N = CF_MONTHS.length;
+
+      // Поточний місяць клієнта (YYYY-MM) — для підсвітки колонки "зараз"
+      var _now = new Date();
+      var CUR_YM = _now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
 
       function fmt(v){
         if(v===null||v===undefined) return '<span style="color:var(--muted)">—</span>';
         var m=v/1000000;
         return (m>=1?m.toFixed(1)+' млн':(v/1000).toFixed(0)+' тис.');
       }
-      function fmtBig(v){
-        if(!v) return '—';
-        return (v/1000000).toFixed(2)+' млн';
-      }
 
-      var html='<div style="display:grid;grid-template-columns:repeat('+CF_MONTHS.length+',1fr);gap:8px;min-width:700px">';
+      var cols = '148px repeat('+N+', minmax(0,1fr))';
+      var html = '<div style="display:grid;grid-template-columns:'+cols+';gap:1px;font-family:IBM Plex Mono,monospace">';
 
-      // Заголовки
+      // ── Заголовок: порожня кутова клітинка + місяці ──
+      html += '<div></div>';
       CF_MONTHS.forEach(function(m,i){
-        var isDone = CF_INCOME[i]!==null;
-        html+='<div style="text-align:center;font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;'+(isDone?'color:var(--accent)':'color:var(--muted)')+'">'+m+'</div>';
+        var isCur = CF_YM[i]===CUR_YM;
+        var hasData = CF_INCOME[i]!==null;
+        html += '<div style="text-align:center;font-size:10px;font-weight:700;padding:3px 2px;'
+          + (isCur ? 'color:#fff;background:var(--accent);border-radius:4px 4px 0 0'
+                   : (hasData ? 'color:var(--accent)' : 'color:var(--muted)'))
+          + '">' + m + (isCur ? ' ●' : '') + '</div>';
       });
 
-      // Залишок початок
-      CF_MONTHS.forEach(function(m,i){
-        html+='<div style="background:var(--surface2);border-radius:6px;padding:8px;border:1px solid var(--border)">'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px">ЗАЛИШОК ПОЧАТОК</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);font-weight:600">'+fmt(CF_BAL_S[i])+'</div>'
-          +'</div>';
+      // ── Рядки: підпис зліва + значення по місяцях ──
+      var rows = [
+        {label:'Залишок початок', arr:CF_BAL_S, bg:'transparent', fg:'var(--text)', bold:600},
+        {label:'▲ Дохід',         arr:CF_INCOME, bg:'rgba(34,197,94,.07)', fg:'var(--good)', bold:600},
+        {label:'▼ Витрати',       arr:CF_OUT,    bg:'rgba(239,68,68,.06)', fg:'var(--bad)',  bold:600},
+        {label:'Залишок кінець',  arr:CF_BAL_E, bg:'var(--surface2)', fg:'var(--text)', bold:700}
+      ];
+      rows.forEach(function(r,ri){
+        html += '<div style="font-size:10px;color:var(--muted);padding:6px 8px;display:flex;align-items:center;border-top:1px solid var(--border)">'+r.label+'</div>';
+        CF_MONTHS.forEach(function(m,i){
+          var isCur = CF_YM[i]===CUR_YM;
+          var v = r.arr[i];
+          var extraBorder = isCur ? 'border-left:2px solid var(--accent);border-right:2px solid var(--accent)'+(ri===rows.length-1?';border-bottom:2px solid var(--accent);border-radius:0 0 4px 4px':'') : '';
+          html += '<div style="text-align:center;font-size:11px;font-weight:'+r.bold+';color:'+r.fg+';background:'+(isCur?'rgba(37,99,235,.08)':r.bg)+';padding:6px 4px;border-top:1px solid var(--border);'+extraBorder+'">'+fmt(v)+'</div>';
+        });
       });
 
-      // Дохід
-      CF_MONTHS.forEach(function(m,i){
-        var v=CF_INCOME[i];
-        html+='<div style="background:rgba(34,197,94,.07);border-radius:6px;padding:8px;border:1px solid rgba(34,197,94,.2)">'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--good);margin-bottom:4px">▲ ДОХІД</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--good);font-weight:600">'+fmt(v)+'</div>'
-          +'</div>';
-      });
-
-      // Витрати
-      CF_MONTHS.forEach(function(m,i){
-        var v=CF_OUT[i];
-        html+='<div style="background:rgba(239,68,68,.06);border-radius:6px;padding:8px;border:1px solid rgba(239,68,68,.18)">'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--bad);margin-bottom:4px">▼ ВИТРАТИ</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--bad);font-weight:600">'+fmt(v)+'</div>'
-          +'</div>';
-      });
-
-      // Залишок кінець
-      CF_MONTHS.forEach(function(m,i){
-        var be=CF_BAL_E[i]; var bs=CF_BAL_S[i];
-        var clr=be>=bs?'var(--good)':'var(--warn)';
-        html+='<div style="background:var(--surface);border-radius:6px;padding:8px;border:2px solid var(--border)">'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px">ЗАЛИШОК КІНЕЦЬ</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:13px;color:'+clr+';font-weight:700">'+fmt(be)+'</div>'
-          +'</div>';
-      });
-
-      html+='</div>';
+      html += '</div>';
+      html += '<div style="font-size:9px;color:var(--muted);margin-top:6px;padding:0 4px">● — поточний місяць · Витрати = Дохід − EBITDA (собівартість + операційні витрати, до податків) · млн грн</div>';
 
       var wrap=document.getElementById('cashCalendarInner');
       if(wrap) wrap.innerHTML=html;

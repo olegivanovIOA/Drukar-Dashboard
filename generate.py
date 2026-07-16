@@ -1710,6 +1710,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{COST_PETG_KG}}':    jv(data['cost_petg_kg']),
         '{{COST_PLA_KG}}':     jv(data['cost_pla_kg']),
         '{{CAL_LABELS}}':      jv(data.get('cal_labels', [])),
+        '{{CAL_YM}}':          jv(data.get('cal_ym', [])),
         '{{CAL_BAL_START}}':   jv(data.get('cal_bal_start', [])),
         '{{CAL_BAL_END}}':     jv(data.get('cal_bal_end', [])),
         '{{CAL_INCOME}}':      jv(data.get('cal_income', [])),
@@ -1980,7 +1981,7 @@ if __name__ == '__main__':
     #    template.html ("НЕЗАБАРОМ підключається CF") — тепер бере Дохід/
     #    Залишки прямо з рядків P&L; Витрати = Дохід − EBITDA (Собівартість +
     #    Операційні витрати разом, до податків). ──
-    data['cal_labels'] = data['cal_bal_start'] = data['cal_bal_end'] = data['cal_income'] = data['cal_out'] = []
+    data['cal_labels'] = data['cal_bal_start'] = data['cal_bal_end'] = data['cal_income'] = data['cal_out'] = data['cal_ym'] = []
     try:
         _cal_pnl_id = os.environ.get('PNL_SHEET_ID', '1kIwx30hqxuT7HDq0fq7shxyxvwv2zO3V2aP_ey0NtFw')
         cal_pnl_rows = fetch_csv(_cal_pnl_id, 'P&L 2026')
@@ -2003,7 +2004,11 @@ if __name__ == '__main__':
 
         UA_CAL = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
                   '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
-        cal_idx = [i for i, ym in enumerate(MONTH_ORDER) if arr_income[i] is not None]
+        # Фіксований діапазон Січ-Гру 2026 (як у графіку виробництва вище) —
+        # НЕ обрізаємо по наявності даних, щоб стовпці місяців збігались з
+        # виробничим графіком і не "розтягувались" на всю ширину при 7 місяцях.
+        cal_idx = [i for i, ym in enumerate(MONTH_ORDER) if ym.startswith('2026-')]
+        data['cal_ym']        = [MONTH_ORDER[i] for i in cal_idx]
         data['cal_labels']    = [f"{UA_CAL[MONTH_ORDER[i][5:7]]} {MONTH_ORDER[i][2:4]}" for i in cal_idx]
         data['cal_bal_start'] = [round(arr_bal_s[i]) if arr_bal_s[i] is not None else None for i in cal_idx]
         data['cal_bal_end']   = [round(arr_bal_e[i]) if arr_bal_e[i] is not None else None for i in cal_idx]
