@@ -1677,6 +1677,11 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{PROFIT}}':          jv(data['profit']),
         '{{COST_PETG_KG}}':    jv(data['cost_petg_kg']),
         '{{COST_PLA_KG}}':     jv(data['cost_pla_kg']),
+        '{{CAL_LABELS}}':      jv(data.get('cal_labels', [])),
+        '{{CAL_BAL_START}}':   jv(data.get('cal_bal_start', [])),
+        '{{CAL_BAL_END}}':     jv(data.get('cal_bal_end', [])),
+        '{{CAL_INCOME}}':      jv(data.get('cal_income', [])),
+        '{{CAL_OUT}}':         jv(data.get('cal_out', [])),
         '{{CALC_PETG_PRICE}}': str(calc['petg_price']),
         '{{CALC_PLA_PRICE}}':  str(calc['pla_price']),
         '{{CALC_WASTE_PCT}}':  str(calc['waste_pct']),
@@ -1933,6 +1938,38 @@ if __name__ == '__main__':
         print(f"  Cost PLA:  {cpkg_pla}")
         data["cost_petg_kg"] = [round(v, 2) if v else None for v in cpkg_petg]
         data["cost_pla_kg"]  = [round(v, 2) if v else None for v in cpkg_pla]
+
+        # ── Календар управлінця (Огляд, низ) — тепер напряму з P&L (без ПДВ-переносу,
+        #    без хардкоду). Раніше цей блок був статичним плейсхолдером, вручну
+        #    вписаним у template.html ("НЕЗАБАРОМ підключається CF") — тепер бере
+        #    Дохід/Залишки прямо з рядків P&L, Витрати = Дохід − EBITDA (тобто
+        #    Собівартість + Операційні витрати разом, до податків). ──
+        try:
+            row_income = get_row(pnl_rows, 'доходи')
+            row_ebitda = get_row(pnl_rows, 'ebitda (операційний прибуток)')
+            row_bal_s  = get_row(pnl_rows, 'залишок на початок місяця')
+            row_bal_e  = get_row(pnl_rows, 'залишок на кінець місяця')
+            arr_income = extract_row_by_month(row_income, pnl_col_map) if row_income else [None] * MONTH_COUNT
+            arr_ebitda = extract_row_by_month(row_ebitda, pnl_col_map) if row_ebitda else [None] * MONTH_COUNT
+            arr_bal_s  = extract_row_by_month(row_bal_s,  pnl_col_map) if row_bal_s  else [None] * MONTH_COUNT
+            arr_bal_e  = extract_row_by_month(row_bal_e,  pnl_col_map) if row_bal_e  else [None] * MONTH_COUNT
+
+            UA_CAL = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                      '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+            cal_idx = [i for i, ym in enumerate(MONTH_ORDER) if arr_income[i] is not None]
+            data['cal_labels']    = [f"{UA_CAL[MONTH_ORDER[i][5:7]]} {MONTH_ORDER[i][2:4]}" for i in cal_idx]
+            data['cal_bal_start'] = [round(arr_bal_s[i]) if arr_bal_s[i] is not None else None for i in cal_idx]
+            data['cal_bal_end']   = [round(arr_bal_e[i]) if arr_bal_e[i] is not None else None for i in cal_idx]
+            data['cal_income']    = [round(arr_income[i]) if arr_income[i] is not None else None for i in cal_idx]
+            data['cal_out']       = [round(arr_income[i] - arr_ebitda[i]) if arr_ebitda[i] is not None else None for i in cal_idx]
+            print(f"  Календар управлінця (з P&L): {data['cal_labels']}")
+            print(f"    income={data['cal_income']}")
+            print(f"    out={data['cal_out']}")
+            print(f"    bal_start={data['cal_bal_start']}")
+            print(f"    bal_end={data['cal_bal_end']}")
+        except Exception as ecal:
+            print(f"  WARNING Календар управлінця: {ecal}")
+            data['cal_labels'] = data['cal_bal_start'] = data['cal_bal_end'] = data['cal_income'] = data['cal_out'] = []
     except Exception as e:
         print(f"WARNING _AllData_Sebest: {e}")
         import traceback; traceback.print_exc()
