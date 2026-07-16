@@ -14,6 +14,10 @@ CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4W
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
 RETAIL_SHEET_ID   = os.environ.get("RETAIL_SHEET_ID",   "1W4mHhbIy43xxTuTQA2nl1atYag8ynlkHpbY_Fx6JUdk")
+# Журнал Відвантажень — об'єднаний реєстр ТОВ(Стрім)+ФОП(Роздріб)+Easy(Изи), лист "Відвантаження".
+# З 07.2026 вкладка "Продажі" рахується САМЕ з нього (замість _AllData_$), бо _AllData_$
+# відстає від бухгалтера (той самий баг, що давав 0 доходу за минулі місяці в ПнЛ).
+SHIP_SHEET_ID     = os.environ.get("SHIP_SHEET_ID",     "1oy23YacYq6O7MajCcBf_HIWnRyFSyRgdrI5_uPE9ZVk")
 
 # ── Middle dashboard config ─────────────────────────────────────────────────
 DEFAULT_CONFIG = {
@@ -996,10 +1000,290 @@ def parse_retail(rows):
     }
 
 
+def parse_sales_from_journal(rows):
+    """
+    Парсить продажі з Журналу Відвантажень (SHIP_SHEET_ID, лист "Відвантаження") —
+    об'єднаний реєстр ТОВ(Стрім)+ФОП(Роздріб)+Easy(Изи). Повертає ТОЧНО ТУ Ж
+    структуру, що й parse_sales() (з _AllData_$) — щоб не чіпати нічого нижче
+    за течією (template.html, main()).
+
+    Чому перехід з _AllData_$ на Журнал: _AllData_$ відстає від бухгалтера і
+    давав занижений/нульовий дохід за щойно завершені місяці (той самий баг,
+    що ламав П&Л — Червень показував 0 замість факту). Журнал Відвантажень
+    веде облік по факту відвантаження (дата+сума), без затримки бухобліку.
+
+    Мапінг колонок реального листа (перевірено на живому файлі):
+      'Дата відвантаження', 'Назва товару', 'Маса, кг', 'Сума, грн', 'Джерело'.
+    Колонка "Джерело" містить коди:
+      SRC1 = Роздріб (ФОП)      → канал "Розница"
+      SRC2 = Опт (Стрім, ТОВ)   → канал "Опт", підканал opt1
+      SRC3 = Опт2 (Изи, Easy)   → канал "Опт", підканал opt2
+    (Це узгоджено з тим самим мапінгом, що вже використано в PnL_Generator.gs
+    та Balance_Generator.gs для доходу ТОВ/ФОП/Easy.)
+    """
+    from collections import defaultdict
+    import re
+
+    if not rows or len(rows) < 2:
+        print("  WARNING: журнал відвантажень порожній")
+        return {}
+
+    header = [str(c or '').strip().lower() for c in rows[0]]
+    def find_col(*needles):
+        for i, h in enumerate(header):
+            if all(n in h for n in needles):
+                return i
+        return None
+
+    col_date = find_col('дата', 'відвантаж')
+    col_name = find_col('назва', 'товар')
+    col_kg   = find_col('маса')
+    col_sum  = find_col('сума')
+    col_src  = find_col('джерело')
+
+    if col_date is None or col_sum is None:
+        print(f"  WARNING: не знайдено колонки Дата відвантаження/Сума у журналі. Заголовок: {header}")
+        return {}
+
+    data_rows = []
+    for row in rows[1:]:
+        if len(row) <= max(col_date, col_sum): continue
+        date_raw = str(row[col_date]).strip()
+        if not date_raw: continue
+        try:
+            from datetime import datetime as dt
+            d = None
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d.%m.%Y', '%m/%d/%Y'):
+                try: d = dt.strptime(date_raw[:10], fmt); break
+                except: pass
+            if d is None:
+                parts = date_raw.split('/')
+                if len(parts) == 3:
+                    p0, p1, p2 = int(parts[0]), int(parts[1]), int(parts[2])
+                    if p2 > 1000: d = dt(p2, p0, p1)
+                    else: d = dt(p2, p1, p0)
+            if d is None: continue
+            if d.year < 2020: continue
+        except: continue
+
+        try: revenue = float(str(row[col_sum]).replace(',', '.').replace(' ', '').replace('\xa0', '')) if row[col_sum] else 0
+        except: revenue = 0
+        kg = 0.0
+        if col_kg is not None and len(row) > col_kg:
+            try: kg = float(str(row[col_kg]).replace(',', '.').replace(' ', '').replace('\xa0', '')) if row[col_kg] else 0
+            except: kg = 0
+        if revenue <= 0 and kg <= 0: continue
+
+        product = str(row[col_name]).strip() if col_name is not None and len(row) > col_name else ''
+        src_code = str(row[col_src]).strip().upper() if col_src is not None and len(row) > col_src else ''
+
+        if src_code == 'SRC1':
+            channel, op_type = 'Розница', 'Роздріб'
+        elif src_code == 'SRC2':
+            channel, op_type = 'Опт', 'СТРИМТЕХНО'
+        elif src_code == 'SRC3':
+            channel, op_type = 'Опт', 'EASY'
+        else:
+            continue  # невизначене джерело — пропускаємо (не вигадуємо канал)
+
+        plastic = 'PETG' if 'PETG' in product.upper() else ('PLA' if 'PLA' in product.upper() else '')
+        ym = d.strftime('%Y-%m')
+        data_rows.append({'ym': ym, 'channel': channel, 'product': product, 'plastic': plastic,
+                           'revenue': revenue, 'kg': kg, 'op_type': op_type})
+
+    if not data_rows:
+        print("  WARNING: no sales data parsed from journal")
+        return {}
+
+    return _sales_rows_to_result(data_rows)
+
+
+def _sales_rows_to_result(data_rows):
+    """Спільна частина parse_sales/parse_sales_from_journal: перетворює вже
+    розпарсені рядки {ym, channel, product, plastic, revenue, kg, op_type}
+    на фінальний словник result — ІДЕНТИЧНИЙ формат для обох джерел."""
+    from collections import defaultdict
+    import re as _rsk
+
+    months_sorted = sorted(set(r['ym'] for r in data_rows))
+
+    monthly_opt = defaultdict(float)
+    monthly_ret = defaultdict(float)
+    monthly_opt1_kg = defaultdict(float)
+    monthly_opt2_kg = defaultdict(float)
+    monthly_ret_kg  = defaultdict(float)
+
+    def get_kg_channel(op_type):
+        t = str(op_type).strip()
+        if 'СТРИМТЕХНО' in t or 'Стримтехно' in t: return 'opt1'
+        if 'EASY' in t or 'Easy' in t:               return 'opt2'
+        if 'Розниц' in t or 'розниц' in t:           return 'ret'
+        return None
+
+    for r in data_rows:
+        if r['channel'] == 'Опт':     monthly_opt[r['ym']] += r['revenue']
+        elif r['channel'] == 'Розница': monthly_ret[r['ym']] += r['revenue']
+        ch = get_kg_channel(r.get('op_type', ''))
+        if ch == 'opt1': monthly_opt1_kg[r['ym']] += r['kg']
+        elif ch == 'opt2': monthly_opt2_kg[r['ym']] += r['kg']
+        elif ch == 'ret':  monthly_ret_kg[r['ym']]  += r['kg']
+
+    def mk_labels(months):
+        UA_SHORT = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер','07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+        out = []
+        for m in months:
+            y, mo = m.split('-')
+            out.append(f"{UA_SHORT[mo]} {y[2:]}")
+        return out
+
+    labels = mk_labels(months_sorted)
+    sales_opt = [round(monthly_opt.get(m, 0)) for m in months_sorted]
+    sales_ret = [round(monthly_ret.get(m, 0)) for m in months_sorted]
+
+    prod_rev = defaultdict(float)
+    for r in data_rows: prod_rev[r['product']] += r['revenue']
+    top10 = sorted(prod_rev.items(), key=lambda x: -x[1])[:10]
+
+    petg_rev = defaultdict(float); petg_kg = defaultdict(float)
+    pla_rev  = defaultdict(float); pla_kg  = defaultdict(float)
+    for r in data_rows:
+        if r['plastic'] == 'PETG' and r['kg'] > 0:
+            petg_rev[r['ym']] += r['revenue']; petg_kg[r['ym']] += r['kg']
+        elif r['plastic'] == 'PLA' and r['kg'] > 0:
+            pla_rev[r['ym']] += r['revenue']; pla_kg[r['ym']] += r['kg']
+
+    petg_months = sorted(m for m in months_sorted if petg_kg.get(m, 0) > 0)
+    pla_months  = sorted(m for m in months_sorted if pla_kg.get(m, 0) > 0)
+
+    petg_price = [round(petg_rev[m]/petg_kg[m], 2) for m in petg_months]
+    pla_price  = [round(pla_rev[m]/pla_kg[m], 2)  for m in pla_months]
+
+    total_opt = sum(monthly_opt.values())
+    total_ret = sum(monthly_ret.values())
+
+    from datetime import datetime as _now_dt
+    current_ym = _now_dt.utcnow().strftime('%Y-%m')
+    closed_months = [m for m in months_sorted if m < current_ym]
+    search_months = closed_months if closed_months else months_sorted
+    best_ym  = max(search_months, key=lambda m: monthly_opt.get(m,0)+monthly_ret.get(m,0))
+    best_tot = monthly_opt.get(best_ym,0) + monthly_ret.get(best_ym,0)
+    best_o   = monthly_opt.get(best_ym,0)
+    best_r   = monthly_ret.get(best_ym,0)
+    UA_FULL  = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+    by, bm   = best_ym.split('-')
+    best_label = f"{UA_FULL[bm]} {by}"
+
+    donut_by_month = {}
+    for m in months_sorted:
+        donut_by_month[m] = [round(monthly_opt.get(m,0)), round(monthly_ret.get(m,0))]
+
+    sales_opt1_kg = [round(monthly_opt1_kg.get(m, 0) / 1000, 3) for m in months_sorted]
+    sales_opt2_kg = [round(monthly_opt2_kg.get(m, 0) / 1000, 3) for m in months_sorted]
+    sales_ret_kg  = [round(monthly_ret_kg.get(m, 0)  / 1000, 3) for m in months_sorted]
+
+    def _norm_sku(p):
+        m = _rsk.search(r'(PETG|PLA)\s+(\d+[.,]?\d*)', str(p), _rsk.IGNORECASE)
+        if not m: return None
+        w = str(float(m.group(2).replace(',', '.'))).rstrip('0').rstrip('.')
+        return f"{m.group(1).upper()} {w}кг"
+
+    price_sum = {'PETG': 0.0, 'PLA': 0.0}
+    price_cnt = {'PETG': 0,   'PLA': 0}
+    for r in data_rows:
+        if r['kg'] > 0 and r['revenue'] > 0:
+            pl = 'PETG' if 'PETG' in r['plastic'].upper() else ('PLA' if 'PLA' in r['plastic'].upper() else None)
+            if pl:
+                price_sum[pl] += r['revenue'] / r['kg']
+                price_cnt[pl] += 1
+    avg_price = {pl: (price_sum[pl]/price_cnt[pl] if price_cnt[pl] else 330.0) for pl in price_sum}
+    print(f"  Avg price PETG={avg_price['PETG']:.1f}, PLA={avg_price['PLA']:.1f} грн/кг")
+
+    from collections import defaultdict as _dd2
+    sku_opt = _dd2(lambda: [0.0] * MONTH_COUNT)
+    sku_ret = _dd2(lambda: [0.0] * MONTH_COUNT)
+    zero_kg_cnt = 0; zero_kg_rev = 0.0
+
+    for r in data_rows:
+        sku = _norm_sku(r['product'])
+        if not sku: continue
+        try:
+            mi = MONTH_ORDER.index(r['ym'])
+        except ValueError:
+            continue
+
+        kg = r['kg']
+        if kg <= 0 and r['revenue'] > 0:
+            pl = 'PETG' if sku.startswith('PETG') else 'PLA'
+            kg = r['revenue'] / avg_price[pl]
+            zero_kg_cnt += 1
+            zero_kg_rev += r['revenue']
+
+        if kg <= 0: continue
+
+        if r['channel'] == 'Опт':
+            sku_opt[sku][mi] += kg
+        elif r['channel'] == 'Розница':
+            sku_ret[sku][mi] += kg
+
+    print(f"  Zero-kg rows fixed: {zero_kg_cnt}, revenue covered: {round(zero_kg_rev):,} грн")
+
+    all_skus = sorted(
+        set(list(sku_opt.keys()) + list(sku_ret.keys())),
+        key=lambda s: (0 if s.startswith('PETG') else 1,
+                       float(_rsk.search(r'(\d+\.?\d*)', s).group(1)) if _rsk.search(r'(\d+\.?\d*)', s) else 0)
+    )
+    print(f"  SKU sales keys: {all_skus}")
+
+    for mk in ['2025-11','2026-04']:
+        if mk in MONTH_ORDER:
+            mi = MONTH_ORDER.index(mk)
+            tot_o = sum(sku_opt[sk][mi] for sk in all_skus)
+            tot_r = sum(sku_ret[sk][mi] for sk in all_skus)
+            print(f"  {mk}: Опт={round(tot_o):,} кг, Роздр={round(tot_r):,} кг")
+
+    sku_sales_opt = {sk: [round(v, 1) if v > 0 else None for v in sku_opt[sk]] for sk in all_skus}
+    sku_sales_ret = {sk: [round(v, 1) if v > 0 else None for v in sku_ret[sk]] for sk in all_skus}
+
+    result = {
+        'sales_labels':      labels,
+        'sales_months':      months_sorted,
+        'sales_opt':         sales_opt,
+        'sales_ret':         sales_ret,
+        'sales_opt1_kg':     sales_opt1_kg,
+        'sales_opt2_kg':     sales_opt2_kg,
+        'sales_ret_kg':      sales_ret_kg,
+        'top_labels':        [x[0] for x in top10],
+        'top_data':          [round(x[1]) for x in top10],
+        'petg_price_labels': mk_labels(petg_months),
+        'petg_avg_price':    petg_price,
+        'pla_price_labels':  mk_labels(pla_months),
+        'pla_avg_price':     pla_price,
+        'total_opt':         round(total_opt),
+        'total_ret':         round(total_ret),
+        'best_month_label':  best_label,
+        'best_month_total':  round(best_tot/1e6, 1),
+        'best_month_opt':    round(best_o/1e6, 1),
+        'best_month_ret':    round(best_r/1e6, 1),
+        'donut_by_month':    donut_by_month,
+        'sku_sales_opt':     sku_sales_opt,
+        'sku_sales_ret':     sku_sales_ret,
+        'sku_list':          all_skus,
+    }
+    print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
+    return result
+
+
 def parse_sales(rows):
     """
     Парсит продажи из листа _AllData_$ — выторг по каналам по месяцам,
     топ продуктов и средние цены PETG/PLA.
+
+    ПРИМІТКА (07.2026): вкладка "Продажі" на дашборді тепер живиться з
+    parse_sales_from_journal() (Журнал Відвантажень), а не звідси — _AllData_$
+    відставав від бухгалтера і давав занижений дохід за останні місяці.
+    Функція лишена як є (для довідки/можливого відкату), у main() більше
+    не викликається для вкладки "Продажі".
     """
     from collections import defaultdict
     import re
@@ -1665,10 +1949,13 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"WARNING calc ext: {e}")
 
-    # ── 4. Продажі (_AllData_$) ────────────────────────────────
+    # ── 4. Продажі (Журнал Відвантажень — з 07.2026, замість _AllData_$) ──────
+    # Журнал вже об'єднує ТОВ(Стрім)+ФОП(Роздріб)+Easy(Изи) з датою відвантаження,
+    # без затримки бухобліку (_AllData_$ давав занижений/0 дохід за останні місяці —
+    # той самий баг, що ламав П&Л). Формат результату ідентичний parse_sales().
     sales = None
     try:
-        sales = parse_sales(fetch_csv(SHEET_ID, "_AllData_$"))
+        sales = parse_sales_from_journal(fetch_csv(SHIP_SHEET_ID, "Відвантаження"))
         if sales and 'donut_by_month' in sales:
             for i, ym in enumerate(MONTH_ORDER):
                 if data['income'][i] is None and ym in sales['donut_by_month']:
@@ -1679,10 +1966,14 @@ if __name__ == '__main__':
         print(f"WARNING sales: {e}")
 
     # ── 4b. Роздрібні продажі (окремий Google Sheet) ──────────
-    # RETAIL_SHEET_ID = 1W4mHhbIy43xxTuTQA2nl1atYag8ynlkHpbY_Fx6JUdk, лист "2026"
+    # ВИМКНЕНО з 07.2026: Журнал Відвантажень (крок 4 вище) вже містить роздріб
+    # як джерело SRC1 — повторний мерж звідси задвоював би роздрібні кг/виручку.
+    # Лишаю код на випадок відкату до _AllData_$ (parse_sales); просто не заходимо
+    # в блок, якщо sales вже прийшли з журналу.
+    _RETAIL_MERGE_ENABLED = False
     try:
-        retail_rows = fetch_csv(RETAIL_SHEET_ID, "2026")
-        retail = parse_retail(retail_rows)
+        retail_rows = fetch_csv(RETAIL_SHEET_ID, "2026") if _RETAIL_MERGE_ENABLED else None
+        retail = parse_retail(retail_rows) if retail_rows else None
         if retail and sales:
             from collections import defaultdict as _ddr
             # Мержимо роздрібні кг у sku_sales_ret (додаємо до існуючих wholesale retail)
