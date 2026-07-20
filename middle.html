@@ -233,7 +233,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 20.07.2026 20:23 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 20.07.2026 22:03 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1890,9 +1890,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 const MS=['Лис 25','Гру 25','Січ 26','Лют 26','Бер 26','Кві 26','Тра 26','Чер 26','Лип 26','Сер 26','Вер 26','Жов 26','Лис 26','Гру 26'];const MF=['Листопад 2025','Грудень 2025','Січень 2026','Лютий 2026','Березень 2026','Квітень 2026','Травень 2026','Червень 2026','Липень 2026','Серпень 2026','Вересень 2026','Жовтень 2026','Листопад 2026','Грудень 2026'];
-const PETG_ALL=[21339.5,23162.8,19124.9,25768.0,37850.7,45084.2,55837.6,48887.3,42063.8,null,null,null,null,null];
+const PETG_ALL=[21339.5,23162.8,19124.9,25768.0,37850.7,45084.2,55837.6,48887.3,42060.7,null,null,null,null,null];
 const PLA_ALL=[724.7,3501.7,5319.7,6983.2,9267.0,5851.9,7943.3,14931.7,12418.1,null,null,null,null,null];
-const TOTAL_ALL=[22064.2,26664.5,24444.6,32751.2,47117.7,50936.1,63780.9,63819.0,54481.9,null,null,null,null,null];
+const TOTAL_ALL=[22064.2,26664.5,24444.6,32751.2,47117.7,50936.1,63780.9,63819.0,54478.8,null,null,null,null,null];
 const NF_PCT=[4.67,3.29,3.7,1.78,3.6,1.89,1.22,1.73,1.37,null,null,null,null,null];
 const NF_PETG=[4.77,3.0,3.32,1.82,3.24,1.96,1.15,1.38,1.19,null,null,null,null,null];
 const NF_PLA=[1.96,5.23,5.1,1.64,5.06,1.4,1.68,2.9,2.01,null,null,null,null,null];
@@ -1939,7 +1939,7 @@ const HM_NORMS={"ЛІНІЯ 1":{"PETG 2.5":151.0,"PETG 3.0":193.0},"ЛІНІЯ 2
 const SKU_SALES_OPT={"PETG 2.5кг":[3660.0,9112.5,7860.0,5207.5,7495.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[990.0,6954.0,3357.0,5496.0,9144.0,28959.0,36942.0,33807.0,14919.0,null,null,null,null,null],"PLA 2.5кг":[null,null,null,1480.0,7475.0,null,null,null,null,null,null,null,null,null],"PLA 3кг":[915.0,3480.0,5091.0,4260.0,1452.0,5451.0,2592.0,16383.0,7794.0,null,null,null,null,null]};
 const SKU_SALES_RET={"PETG 2.5кг":[null,null,null,null,3006.0,null,null,null,null,null,null,null,null,null],"PETG 3кг":[2811.0,504.0,8538.0,7161.0,10506.0,16899.0,13224.0,9859.0,8253.0,null,null,null,null,null],"PLA 2.5кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"PLA 3кг":[null,null,null,null,null,null,null,null,null,null,null,null,null,null]};
 const SKU_LIST=["PETG 2.5кг","PETG 3кг","PLA 2.5кг","PLA 3кг"]; // {line: {vid: norm_kg_per_shift}}
-const PROD_BY_SKU={"PETG 2.5кг":[7649.3,9081.3,8224.1,8186.5,13285.2,null,null,null,null,null,null,null,null,null],"PETG 3кг":[13690.3,14081.5,10900.7,16446.9,24049.8,44532.9,54789.2,48339.0,41153.4,null,null,null,null,null],"PETG 3кг RED":[null,null,null,1134.6,515.7,390.1,874.7,548.3,910.3,null,null,null,null,null],"PETG 1кг":[null,null,null,null,null,161.2,173.7,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,1631.4,7442.2,null,null,null,null,null,null,null,null,null],"PLA 3кг":[724.7,3501.7,5319.7,5351.8,1824.8,5851.9,7943.3,14931.7,12418.1,null,null,null,null,null]};
+const PROD_BY_SKU={"PETG 2.5кг":[7649.3,9081.3,8224.1,8186.5,13285.2,null,null,null,null,null,null,null,null,null],"PETG 3кг":[13690.3,14081.5,10900.7,16446.9,24049.8,44532.9,54789.2,48339.0,41150.4,null,null,null,null,null],"PETG 3кг RED":[null,null,null,1134.6,515.7,390.1,874.7,548.3,910.3,null,null,null,null,null],"PETG 1кг":[null,null,null,null,null,161.2,173.7,null,null,null,null,null,null,null],"PLA 2.5кг":[null,null,null,1631.4,7442.2,null,null,null,null,null,null,null,null,null],"PLA 3кг":[724.7,3501.7,5319.7,5351.8,1824.8,5851.9,7943.3,14931.7,12418.1,null,null,null,null,null]};
 const PROD_SKU_LIST=["PETG 2.5кг","PETG 3кг","PETG 3кг RED","PETG 1кг","PLA 2.5кг","PLA 3кг"];
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
