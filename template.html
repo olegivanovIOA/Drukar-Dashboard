@@ -3974,20 +3974,46 @@ function lRenderResults(filtered, errors) {
   <div class="section-title" style="margin-bottom:10px">Рекорди по лініях — Топ-${lTopN} на лінію</div>`;
   for (const k of keys) {
     const {line,loc,records} = byLine[k];
-    const sorted = [...records].sort((a,b)=>b.weight-a.weight).slice(0,lTopN);
+    // ── Джерело ("Аналіз вкладів") дає ОДИН РЯДОК НА ОПЕРАТОРА, який
+    //    зробив внесок у зміну — не один рядок на зміну лінії. weight
+    //    для кожного оператора вже перерахований на ПОВНУ масу лінії за
+    //    зміну (wRaw/contrib), тож без групування та сама зміна з 3
+    //    операторами потрапляла в ТОП-N як 3 окремі "рекорди" з
+    //    однаковою вагою. Групуємо по (дата+зміна) — рекорд лінії за
+    //    зміну = ОДИН запис, з об'єднаним списком операторів. ──
+    const byShift = {};
+    for (const r of records) {
+      const sk = r.date + '|' + r.shift;
+      if (!byShift[sk]) {
+        byShift[sk] = {date:r.date, shift:r.shift, vid:r.vid, weights:[r.weight], ops:[r.ops].filter(Boolean)};
+      } else {
+        byShift[sk].weights.push(r.weight);
+        if (r.ops) byShift[sk].ops.push(r.ops);
+      }
+    }
+    const shiftRecords = Object.values(byShift).map(s => ({
+      date: s.date, shift: s.shift, vid: s.vid,
+      // Невеликі розбіжності округлення (wRaw/contrib) між операторами
+      // однієї зміни згладжуємо середнім — значення й так мають бути
+      // майже ідентичними, бо це та сама повна маса лінії за зміну.
+      weight: s.weights.reduce((a,b)=>a+b,0) / s.weights.length,
+      ops: s.ops.join(', '),
+      opsCount: s.ops.length,
+    }));
+    const sorted = shiftRecords.sort((a,b)=>b.weight-a.weight).slice(0,lTopN);
     const lc = loc.includes('1') ? 'loc1' : 'loc2';
     html += `<div class="line-block">
       <div class="line-block-hdr">
         <span class="lname">${line}</span>
         <span class="lb lb-${lc}">${loc}</span>
-        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">${records.length} змін · max ${sorted[0].weight.toFixed(1)} кг</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">${shiftRecords.length} змін · max ${sorted[0].weight.toFixed(1)} кг</span>
       </div>
       <table>
         <thead><tr>
           <th style="width:36px">#</th>
           <th style="text-align:right">Маса лінії, кг</th>
           <th>Дата</th><th>Зміна</th><th>Вид</th>
-          <th style="text-align:right">Вклад</th><th>Оператор(и)</th>
+          <th style="text-align:right">Операторів</th><th>Оператор(и)</th>
         </tr></thead>
         <tbody>`;
     const medals = ['🥇','🥈','🥉'];
@@ -4000,7 +4026,7 @@ function lRenderResults(filtered, errors) {
         <td style="color:var(--muted)">${r.date}</td>
         <td style="color:var(--muted)">${r.shift}</td>
         <td style="color:var(--warn)">${r.vid}</td>
-        <td style="text-align:right;color:var(--muted)">${r.contrib}%</td>
+        <td style="text-align:right;color:var(--muted)">${r.opsCount||1}</td>
         <td style="color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.ops}">${r.ops||'—'}</td>
       </tr>`;
     }
