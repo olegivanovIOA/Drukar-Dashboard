@@ -3908,7 +3908,7 @@ function lParseAllData(rows, label) {
       date: dStr, shift: g(ci.shift)||'?',
       line: (g(ci.line)||'?').toUpperCase().replace('ЛИНИЯ','ЛІНІЯ'),
       vid:  g(ci.vid)||'?',
-      weight: wReal, contrib: Math.round(contrib*100),
+      weight: wReal, rawWeight: wRaw, contrib: Math.round(contrib*100),
       loc: label, ops: g(ci.ops)||''
     });
   }
@@ -3995,22 +3995,32 @@ function lRenderResults(filtered, errors) {
     //    операторами потрапляла в ТОП-N як 3 окремі "рекорди" з
     //    однаковою вагою. Групуємо по (дата+зміна) — рекорд лінії за
     //    зміну = ОДИН запис, з об'єднаним списком операторів. ──
+    //
+    // 🆕 ФІКС (07.2026): раніше тут ділили wRaw/contrib НА КОЖНОГО
+    //    оператора і УСЕРЕДНЮВАЛИ — але Google Sheets віддає "Вклад %"
+    //    через CSV-export ЗАОКРУГЛЕНИМ до відображуваного формату
+    //    (напр. "33%" замість реальних 33.33%), тож wRaw/0.33 систематично
+    //    ЗАВИЩУВАВ вагу (напр. 63.57/0.33=192.64 замість справжніх
+    //    63.57/0.33333=190.71 — точнісінько ті самі "+2кг", що помітив
+    //    власник). Тепер замість ділення на (неточний) відсоток просто
+    //    СУМУЄМО сирі H кожного оператора зміни — це коректно за
+    //    визначенням (Σcontrib операторів зміни = 100%) і НЕ залежить
+    //    від точності округлення відсотка в Google Sheets взагалі.
     const byShift = {};
     for (const r of records) {
       const sk = r.date + '|' + r.shift;
       if (!byShift[sk]) {
-        byShift[sk] = {date:r.date, shift:r.shift, vid:r.vid, weights:[r.weight], ops:[r.ops].filter(Boolean)};
+        byShift[sk] = {date:r.date, shift:r.shift, vid:r.vid, rawWeights:[r.rawWeight], ops:[r.ops].filter(Boolean)};
       } else {
-        byShift[sk].weights.push(r.weight);
+        byShift[sk].rawWeights.push(r.rawWeight);
         if (r.ops) byShift[sk].ops.push(r.ops);
       }
     }
     const shiftRecords = Object.values(byShift).map(s => ({
       date: s.date, shift: s.shift, vid: s.vid,
-      // Невеликі розбіжності округлення (wRaw/contrib) між операторами
-      // однієї зміни згладжуємо середнім — значення й так мають бути
-      // майже ідентичними, бо це та сама повна маса лінії за зміну.
-      weight: s.weights.reduce((a,b)=>a+b,0) / s.weights.length,
+      // Сума сирих H по всіх операторах зміни = повна маса лінії за
+      // зміну — коректно навіть якщо Вклад% в джерелі округлений.
+      weight: Math.round(s.rawWeights.reduce((a,b)=>a+b,0) * 100) / 100,
       ops: s.ops.join(', '),
       opsCount: s.ops.length,
     }));
