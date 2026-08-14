@@ -24,6 +24,11 @@ RETAIL_SHEET_ID   = os.environ.get("RETAIL_SHEET_ID",   "1W4mHhbIy43xxTuTQA2nl1a
 # З 07.2026 вкладка "Продажі" рахується САМЕ з нього (замість _AllData_$), бо _AllData_$
 # відстає від бухгалтера (той самий баг, що давав 0 доходу за минулі місяці в ПнЛ).
 SHIP_SHEET_ID     = os.environ.get("SHIP_SHEET_ID",     "1oy23YacYq6O7MajCcBf_HIWnRyFSyRgdrI5_uPE9ZVk")
+# 🆕 "9 слоёв" — тижневий Календар Грошей (лист "12_Календар_Грошей") для нового
+# віджета на Огляді. ⚠️ ID нижче — найкраще припущення з пам'яті чатів, ПЕРЕВІР
+# і за потреби виправ (або передай через env NINE_LAYERS_SHEET_ID) — якщо ID
+# невірний, віджет просто покаже "немає даних" (safe fallback), нічого не зламає.
+NINE_LAYERS_SHEET_ID = os.environ.get("NINE_LAYERS_SHEET_ID", "1sVlHuAq_Nyio-2no4nL1mYhbIiBwtfsCi5rCMbJJtvc")
 
 # ── Middle dashboard config ─────────────────────────────────────────────────
 DEFAULT_CONFIG = {
@@ -100,6 +105,71 @@ def fetch_xlsx(sheet_id, dest_path, retries=3, timeout=90):
             if attempt < retries:
                 import time; time.sleep(5 * attempt)
     raise last_err
+
+def _mc9sl_parse_date(s):
+    """Парсить дату з клітинки gviz-CSV листа '12_Календар_Грошей' — Google по-різному
+    форматує дати залежно від локалі/формату клітинки, тому пробуємо кілька варіантів."""
+    s = (s or '').strip()
+    if not s:
+        return None
+    for fmt in ('%d.%m.%Y', '%d.%m.%y', '%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y'):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+def _mc9sl_num(v):
+    try:
+        return float(str(v).replace(' ', '').replace('\xa0', '').replace(',', '.'))
+    except (ValueError, TypeError):
+        return 0.0
+
+def parse_money_calendar_9sl(cal_rows, dash_rows, sales_rows):
+    """Парсить тижневий Календар Грошей з '9 слоёв' — 1-в-1 повторює логіку
+    getMoneyCalendarData_() з MoneyLayerAndCalendar.gs: рядки 9/10/11 (Приходи),
+    13/14/15/16/17 (Витрати), 19 (Баланс), 20 (Наростаючий залишок) листа
+    '12_Календар_Грошей', + тоннаж з '10_Свод_Дашборд' (10.15, ряд.28) і
+    '04_Продажи' (4.2, ряд.10). Індекси нижче — 0-based (рядок X у Sheets = X-1 тут)."""
+    def cell(rows, r, c):
+        try:
+            return rows[r][c]
+        except IndexError:
+            return ''
+
+    date_row = cal_rows[6] if len(cal_rows) > 6 else []  # рядок 7 = дати тижнів
+    week_cols = []
+    for c, v in enumerate(date_row):
+        d = _mc9sl_parse_date(v)
+        if d:
+            week_cols.append((c, d))
+
+    anchor = round(_mc9sl_num(cell(cal_rows, 2, 1)))  # B3
+
+    R_PROFIT, R_EXT, R_IN = 8, 9, 10          # рядки 9,10,11
+    R_RAW, R_CAPEX, R_OPEX, R_RES, R_OUT = 12, 13, 14, 15, 16  # рядки 13-17
+    R_DELTA, R_CUM = 18, 19                    # рядки 19,20
+    DASH_SHIP_ROW = 27   # '10_Свод_Дашборд', 10.15 (ряд.28)
+    SALES_NEW_ROW = 9    # '04_Продажи', 4.2 (ряд.10)
+
+    weeks = []
+    for c, d in week_cols:
+        weeks.append({
+            'date':          d.isoformat(),
+            'profit':        round(_mc9sl_num(cell(cal_rows, R_PROFIT, c))),
+            'external':      round(_mc9sl_num(cell(cal_rows, R_EXT, c))),
+            'inTotal':       round(_mc9sl_num(cell(cal_rows, R_IN, c))),
+            'shipmentsTons': round(_mc9sl_num(cell(dash_rows, DASH_SHIP_ROW, c)), 1),
+            'newSalesTons':  round(_mc9sl_num(cell(sales_rows, SALES_NEW_ROW, c)), 1),
+            'rawmat':        round(_mc9sl_num(cell(cal_rows, R_RAW, c))),
+            'capex':         round(_mc9sl_num(cell(cal_rows, R_CAPEX, c))),
+            'opex':          round(_mc9sl_num(cell(cal_rows, R_OPEX, c))),
+            'reserve':       round(_mc9sl_num(cell(cal_rows, R_RES, c))),
+            'outTotal':      round(_mc9sl_num(cell(cal_rows, R_OUT, c))),
+            'delta':         round(_mc9sl_num(cell(cal_rows, R_DELTA, c))),
+            'cumulative':    round(_mc9sl_num(cell(cal_rows, R_CUM, c))),
+        })
+    return {'weeks': weeks, 'anchor': anchor}
 
 def f(v, default=None):
     try:
@@ -1728,6 +1798,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{HM_LABELS}}':       jv(hm_labels or []),
         '{{HM_NORMS}}':        jv(line_norms or {}),
         '{{HM_DATA}}':         jv(hm_data or {}),
+        '{{MC_DATA}}':         jv({'weeks': data.get('mc_weeks', []), 'anchor': data.get('mc_anchor', 0), 'retailPrice': 415}),
     }
     if sales:
         # FC_FACT: {місяць_номер: тонни} для прогнозу — ВИРОБНИЦТВО з журналів
@@ -2037,6 +2108,27 @@ if __name__ == '__main__':
                   f"або чи не порожній col_map. Заголовок [1]: {cal_pnl_rows[1] if len(cal_pnl_rows)>1 else '—'}")
     except Exception as ecal:
         print(f"  WARNING Календар управлінця: {ecal}")
+        import traceback; traceback.print_exc()
+
+    # ── 2c. Тижневий Календар Грошей (з "9 слоёв", лист "12_Календар_Грошей") —
+    #    незалежний блок за тим самим патерном, що й Календар управлінця вище:
+    #    власний try/except, дефолтна заглушка [] / 0 — щоб збій НІКОЛИ не лишав
+    #    сирий {{MC_DATA}} у фінальному HTML (та сама помилка, що зламала forecast). ──
+    data['mc_weeks'] = []
+    data['mc_anchor'] = 0
+    try:
+        cal_rows_9sl   = fetch_csv(NINE_LAYERS_SHEET_ID, '12_Календар_Грошей')
+        dash_rows_9sl  = fetch_csv(NINE_LAYERS_SHEET_ID, '10_Свод_Дашборд')
+        sales_rows_9sl = fetch_csv(NINE_LAYERS_SHEET_ID, '04_Продажи')
+        mc = parse_money_calendar_9sl(cal_rows_9sl, dash_rows_9sl, sales_rows_9sl)
+        data['mc_weeks']  = mc['weeks']
+        data['mc_anchor'] = mc['anchor']
+        print(f"  Календар Грошей (9 слоёв): {len(mc['weeks'])} тижнів, якір={mc['anchor']} грн")
+        if not mc['weeks']:
+            print("  WARNING Календар Грошей (9 слоёв): 0 тижнів розпізнано — перевір "
+                  "NINE_LAYERS_SHEET_ID і формат дат у рядку 7 листа '12_Календар_Грошей'.")
+    except Exception as emc:
+        print(f"  WARNING Календар Грошей (9 слоёв): {emc}")
         import traceback; traceback.print_exc()
 
     # ── 3. Калькулятор ─────────────────────────────────────────
