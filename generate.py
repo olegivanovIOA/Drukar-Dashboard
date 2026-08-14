@@ -158,49 +158,95 @@ def _mc9sl_num(v):
     except (ValueError, TypeError):
         return 0.0
 
+def _mc9sl_find_row(rows, keywords):
+    """Шукає рядок за текстом у колонці A АБО B (як findRowInFile_ у .gs-скриптах) —
+    приймає список варіантів ключового слова (перший, що знайдеться, вигравав).
+    НЕ залежить від номера рядка — критично важливо, бо gviz-CSV експорт, як
+    підтвердила діагностика (лог від 14.08), стискає/пропускає рядки і фіксовані
+    індекси з .gs-скрипта (рядок 7, рядок 9 тощо) там більше не збігаються з
+    реальною позицією в експортованому CSV."""
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    kws = [k.lower() for k in keywords]
+    for row in rows:
+        a = str(row[0]).lower() if len(row) > 0 else ''
+        b = str(row[1]).lower() if len(row) > 1 else ''
+        if any(kw in a or kw in b for kw in kws):
+            return row
+    return None
+
+def _mc9sl_find_date_row(rows):
+    """Рядок з датами тижнів = той, що має найбільше клітинок, розпізнаних як
+    дата — не залежить від номера рядка (та сама причина, що й вище)."""
+    best_row, best_count = None, 2  # поріг 2 — щоб випадкові збіги (напр. в сумах
+                                     # з комами-роздільниками тисяч) не переплутались
+                                     # з реальним рядком дат, де збігів завжди багато
+    for row in rows:
+        cnt = sum(1 for v in row if _mc9sl_parse_date(v))
+        if cnt > best_count:
+            best_count, best_row = cnt, row
+    return best_row
+
 def parse_money_calendar_9sl(cal_rows, dash_rows, sales_rows):
-    """Парсить тижневий Календар Грошей з '9 слоёв' — 1-в-1 повторює логіку
-    getMoneyCalendarData_() з MoneyLayerAndCalendar.gs: рядки 9/10/11 (Приходи),
-    13/14/15/16/17 (Витрати), 19 (Баланс), 20 (Наростаючий залишок) листа
-    '12_Календар_Грошей', + тоннаж з '10_Свод_Дашборд' (10.15, ряд.28) і
-    '04_Продажи' (4.2, ряд.10). Індекси нижче — 0-based (рядок X у Sheets = X-1 тут)."""
-    def cell(rows, r, c):
+    """Парсить тижневий Календар Грошей з '9 слоёв' — той самий набір показників,
+    що й getMoneyCalendarData_() з MoneyLayerAndCalendar.gs (Виручка/Залучені/
+    РАЗОМ ПРИХОДИ, Сировина/CAPEX/ОПЕКСи/Фонд/РАЗОМ ВИТРАТИ, Баланс тижня,
+    Наростаючий залишок) + тоннаж з '10_Свод_Дашборд' (10.15) і '04_Продажи'
+    (4.2) — але шукає кожен рядок ЗА ТЕКСТОМ підпису, а не за номером рядка."""
+    def cell(row, c):
+        if not row:
+            return ''
         try:
-            return rows[r][c]
+            return row[c]
         except IndexError:
             return ''
 
-    date_row = cal_rows[6] if len(cal_rows) > 6 else []  # рядок 7 = дати тижнів
+    date_row = _mc9sl_find_date_row(cal_rows) or []
     week_cols = []
     for c, v in enumerate(date_row):
         d = _mc9sl_parse_date(v)
         if d:
             week_cols.append((c, d))
 
-    anchor = round(_mc9sl_num(cell(cal_rows, 2, 1)))  # B3
+    row_anchor    = _mc9sl_find_row(cal_rows, 'залишок каси на старт')
+    row_profit    = _mc9sl_find_row(cal_rows, 'виручка (відвантаження')
+    row_external  = _mc9sl_find_row(cal_rows, 'залучені кошти')
+    row_in_total  = _mc9sl_find_row(cal_rows, 'разом приходи')
+    row_rawmat    = _mc9sl_find_row(cal_rows, 'сировина, грн')
+    row_capex     = _mc9sl_find_row(cal_rows, 'capex (')
+    row_opex      = _mc9sl_find_row(cal_rows, 'опекси операційні')
+    row_reserve   = _mc9sl_find_row(cal_rows, 'фонд стабільності')
+    row_out_total = _mc9sl_find_row(cal_rows, 'разом витрати')
+    row_delta     = _mc9sl_find_row(cal_rows, 'баланс тижня')
+    row_cum       = _mc9sl_find_row(cal_rows, 'наростаючий залишок')
+    # "10.15"/"4.2" — числові коди можуть прийти з комою замість крапки (укр. локаль)
+    row_shipments = _mc9sl_find_row(dash_rows, ['10.15', '10,15'])
+    row_newsales  = _mc9sl_find_row(sales_rows, ['4.2', '4,2'])
 
-    R_PROFIT, R_EXT, R_IN = 8, 9, 10          # рядки 9,10,11
-    R_RAW, R_CAPEX, R_OPEX, R_RES, R_OUT = 12, 13, 14, 15, 16  # рядки 13-17
-    R_DELTA, R_CUM = 18, 19                    # рядки 19,20
-    DASH_SHIP_ROW = 27   # '10_Свод_Дашборд', 10.15 (ряд.28)
-    SALES_NEW_ROW = 9    # '04_Продажи', 4.2 (ряд.10)
+    print(f"  Календар Грошей (9 слоёв): рядки знайдено — дата={date_row!=[]}, "
+          f"виручка={row_profit is not None}, разом_приходи={row_in_total is not None}, "
+          f"сировина={row_rawmat is not None}, разом_витрати={row_out_total is not None}, "
+          f"баланс={row_delta is not None}, залишок={row_cum is not None}, "
+          f"відвантаження_план={row_shipments is not None}, нові_продажі={row_newsales is not None}")
+
+    anchor = round(_mc9sl_num(cell(row_anchor, 1))) if row_anchor else 0
 
     weeks = []
     for c, d in week_cols:
         weeks.append({
             'date':          d.isoformat(),
-            'profit':        round(_mc9sl_num(cell(cal_rows, R_PROFIT, c))),
-            'external':      round(_mc9sl_num(cell(cal_rows, R_EXT, c))),
-            'inTotal':       round(_mc9sl_num(cell(cal_rows, R_IN, c))),
-            'shipmentsTons': round(_mc9sl_num(cell(dash_rows, DASH_SHIP_ROW, c)), 1),
-            'newSalesTons':  round(_mc9sl_num(cell(sales_rows, SALES_NEW_ROW, c)), 1),
-            'rawmat':        round(_mc9sl_num(cell(cal_rows, R_RAW, c))),
-            'capex':         round(_mc9sl_num(cell(cal_rows, R_CAPEX, c))),
-            'opex':          round(_mc9sl_num(cell(cal_rows, R_OPEX, c))),
-            'reserve':       round(_mc9sl_num(cell(cal_rows, R_RES, c))),
-            'outTotal':      round(_mc9sl_num(cell(cal_rows, R_OUT, c))),
-            'delta':         round(_mc9sl_num(cell(cal_rows, R_DELTA, c))),
-            'cumulative':    round(_mc9sl_num(cell(cal_rows, R_CUM, c))),
+            'profit':        round(_mc9sl_num(cell(row_profit, c))),
+            'external':      round(_mc9sl_num(cell(row_external, c))),
+            'inTotal':       round(_mc9sl_num(cell(row_in_total, c))),
+            'shipmentsTons': round(_mc9sl_num(cell(row_shipments, c)), 1),
+            'newSalesTons':  round(_mc9sl_num(cell(row_newsales, c)), 1),
+            'rawmat':        round(_mc9sl_num(cell(row_rawmat, c))),
+            'capex':         round(_mc9sl_num(cell(row_capex, c))),
+            'opex':          round(_mc9sl_num(cell(row_opex, c))),
+            'reserve':       round(_mc9sl_num(cell(row_reserve, c))),
+            'outTotal':      round(_mc9sl_num(cell(row_out_total, c))),
+            'delta':         round(_mc9sl_num(cell(row_delta, c))),
+            'cumulative':    round(_mc9sl_num(cell(row_cum, c))),
         })
     return {'weeks': weeks, 'anchor': anchor}
 
