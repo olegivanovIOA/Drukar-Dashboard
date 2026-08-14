@@ -247,7 +247,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.08.2026 14:22 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.08.2026 14:48 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -432,6 +432,329 @@
     })();
     </script>
   </div>
+  <!-- ── Тижневий Календар Грошей (з "9 слоёв", лист "12_Календар_Грошей") ── -->
+  <style>
+    .mc9sl-legend{display:flex;gap:12px;font-size:11px;color:var(--muted);align-items:center}
+    .mc9sl-legend span{display:inline-flex;align-items:center;gap:4px}
+    .mc9sl-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .mc9sl-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .mc9sl-toggle button{border:none;background:var(--surface);padding:5px 12px;cursor:pointer;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+    .mc9sl-toggle button.active{background:var(--accent);color:#fff}
+    .mc9sl-scroller{overflow-x:auto;padding-bottom:8px;position:relative;margin-top:10px}
+    .mc9sl-timeline{position:relative;display:flex;gap:12px;padding:24px 4px 26px;min-width:max-content}
+    .mc9sl-col{width:180px;flex:0 0 auto;position:relative}
+    .mc9sl-col-inner{display:grid;grid-template-rows:160px 52px 138px;row-gap:0;position:relative;z-index:1}
+    .mc9sl-card{border-radius:8px;padding:8px 10px;font-size:11.5px;overflow:hidden;font-family:'IBM Plex Mono',monospace}
+    .mc9sl-card.income{background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.3);align-self:end;margin-bottom:7px}
+    .mc9sl-card.expense{background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.25);align-self:start;margin-top:7px}
+    .mc9sl-card .line{display:flex;justify-content:space-between;padding:1px 0;color:var(--text)}
+    .mc9sl-card .line .lbl{color:var(--muted)}
+    .mc9sl-card .total{font-weight:700;border-top:1px dashed var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between}
+    .mc9sl-card.income .total{color:var(--good)}
+    .mc9sl-card.expense .total{color:var(--bad)}
+    .mc9sl-card .layers{border-top:1px dashed var(--border);margin-top:4px;padding-top:4px}
+    .mc9sl-card .layers .line{color:var(--muted);font-size:10.5px}
+    .mc9sl-card .layers .line b{color:var(--text)}
+    .mc9sl-card.empty{color:var(--muted);text-align:center;font-style:italic}
+    .mc9sl-axis{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace}
+    .mc9sl-axis-date{font-weight:700;font-size:11.5px;color:var(--text)}
+    .mc9sl-axis-week{font-size:10px;color:var(--muted)}
+    .mc9sl-axis-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);margin:4px 0}
+    .mc9sl-col.today .mc9sl-axis-dot{background:var(--accent3);box-shadow:0 0 0 4px rgba(249,115,22,.25)}
+    .mc9sl-axis-line{position:absolute;left:0;right:0;top:186px;height:2px;background:var(--border);z-index:0}
+    .mc9sl-todayline{position:absolute;width:0;border-left:2px dashed var(--accent3);z-index:6;pointer-events:none;display:none}
+    .mc9sl-todaylabel{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:#fff;background:var(--accent3);padding:2px 7px;border-radius:9px;white-space:nowrap;font-weight:700;font-family:'IBM Plex Mono',monospace}
+    .mc9sl-bottomrow{display:flex;gap:12px;margin-top:4px;min-width:max-content;padding-left:4px;padding-right:4px}
+    .mc9sl-bottomcol{width:180px;flex:0 0 auto;text-align:center}
+    .mc9sl-bottomval{font-weight:700;font-size:12px;padding:4px 0;border-radius:5px;font-family:'IBM Plex Mono',monospace}
+    .mc9sl-bottomval.pos{background:rgba(22,163,74,.1);color:var(--good)}
+    .mc9sl-bottomval.neg{background:rgba(220,38,38,.1);color:var(--bad)}
+    .mc9sl-bottomlbl{font-size:9.5px;color:var(--muted);margin-top:2px}
+    .mc9sl-cum{background:var(--accent);color:#fff}
+    .mc9sl-chartwrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--surface)}
+    .mc9sl-tooltip{position:absolute;background:var(--text);color:var(--surface);font-size:10.5px;padding:4px 8px;border-radius:6px;pointer-events:none;display:none;white-space:nowrap;z-index:20}
+  </style>
+  <div class="card" style="margin-top:14px">
+    <div class="card-header">
+      <div><div class="card-title">💰 Календар Грошей (тижневий)</div>
+      <div class="card-subtitle">З файлу «9 слоёв» · план по тижнях</div></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="mc9sl-legend">
+          <span><span class="mc9sl-dot" style="background:var(--good)"></span>Приходи</span>
+          <span><span class="mc9sl-dot" style="background:var(--bad)"></span>Витрати</span>
+          <span><span class="mc9sl-dot" style="background:var(--accent3);box-shadow:0 0 0 3px rgba(249,115,22,.25)"></span>Сьогодні</span>
+        </div>
+        <div class="mc9sl-toggle">
+          <button id="mc9slBtnWeek" class="active">Тиждень</button>
+          <button id="mc9slBtnMonth">Місяць</button>
+        </div>
+      </div>
+    </div>
+    <div class="mc9sl-scroller" id="mc9slScroller">
+      <div class="mc9sl-timeline" id="mc9slTimeline"></div>
+      <div class="mc9sl-bottomrow" id="mc9slBottomRow"></div>
+      <div class="mc9sl-todayline" id="mc9slTodayLine"><div class="mc9sl-todaylabel">● Сьогодні</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin:16px 0 6px;color:var(--text)">📈 Наростаючий залишок каси + Баланс періоду</div>
+    <div class="mc9sl-chartwrap" id="mc9slChartWrap" style="position:relative">
+      <div id="mc9slChartHolder"></div>
+      <div class="mc9sl-tooltip" id="mc9slTooltip"></div>
+    </div>
+    <div style="font-size:9px;color:var(--muted);margin-top:6px">Джерело: «9 слоёв» → «12_Календар_Грошей» (тижневий план, автооновлення разом з рештою дашборда). Редагування («Пісочниця сценаріїв») лишається лише в самій Google-таблиці.</div>
+  </div>
+  <script>
+  (function(){
+    var MC = {"weeks":[],"anchor":0,"retailPrice":415};
+    var weeks = (MC.weeks || []).map(function(w){ return Object.assign({}, w); });
+    var mode = 'week';
+
+    if(!weeks.length){
+      var scr = document.getElementById('mc9slScroller');
+      if(scr) scr.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Немає даних — перевір NINE_LAYERS_SHEET_ID і доступ до файлу «9 слоёв» / лист «12_Календар_Грошей».</div>';
+      var ch = document.getElementById('mc9slChartHolder');
+      if(ch) ch.innerHTML = '';
+      return;
+    }
+
+    var fmt = function(n){ var v=Math.round(n); return (v<0?'-':'')+Math.abs(v).toLocaleString('uk-UA'); };
+    var fmtT = function(n){ return (Math.round(n*10)/10).toLocaleString('uk-UA'); };
+    var todayStr = new Date().toISOString().slice(0,10);
+
+    function monthLabel(dateStr){ var d=new Date(dateStr+'T00:00:00'); return d.toLocaleDateString('uk-UA',{month:'short',year:'2-digit'}); }
+    function weekLabel(dateStr){ var d=new Date(dateStr+'T00:00:00'); return d.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'}); }
+
+    var SUM_KEYS = ['profit','external','inTotal','shipmentsTons','newSalesTons','rawmat','capex','opex','reserve','outTotal','delta'];
+    function aggregateMonths(list){
+      var map={}, order=[];
+      list.forEach(function(w){
+        var d=new Date(w.date+'T00:00:00');
+        var key=d.getFullYear()+'-'+(d.getMonth()+1);
+        if(!map[key]){
+          map[key]=Object.assign({},w,{date:w.date,isMonth:true,weeksCount:0});
+          order.push(key);
+          SUM_KEYS.forEach(function(k){map[key][k]=0;});
+        }
+        SUM_KEYS.forEach(function(k){map[key][k]+=(w[k]||0);});
+        map[key].cumulative=w.cumulative;
+        map[key].weeksCount++;
+      });
+      return order.map(function(k){return map[k];});
+    }
+
+    function isTodayItem_(w){
+      var t=new Date(todayStr+'T00:00:00');
+      var d0=new Date(w.date+'T00:00:00'); var d1;
+      if(mode==='week'){ d1=new Date(d0); d1.setDate(d1.getDate()+7); }
+      else { d1=new Date(d0.getFullYear(),d0.getMonth()+1,1); }
+      return t>=d0 && t<d1;
+    }
+
+    function cutoffDate_(){ var t=new Date(); return new Date(t.getFullYear(), t.getMonth()-1, 1); }
+
+    function render(){
+      var cutoff=cutoffDate_();
+      var visible=weeks.filter(function(w){return new Date(w.date+'T00:00:00')>=cutoff;});
+      var list = mode==='week' ? visible : aggregateMonths(visible);
+      var timeline=document.getElementById('mc9slTimeline');
+      var bottomRow=document.getElementById('mc9slBottomRow');
+      if(!timeline || !bottomRow) return;
+      timeline.innerHTML=''; bottomRow.innerHTML='';
+
+      var lineEl=document.createElement('div'); lineEl.className='mc9sl-axis-line'; timeline.appendChild(lineEl);
+      var todayColEl=null;
+
+      list.forEach(function(w){
+        var isToday=isTodayItem_(w);
+        var col=document.createElement('div'); col.className='mc9sl-col'+(isToday?' today':'');
+        var inner=document.createElement('div'); inner.className='mc9sl-col-inner';
+
+        var incCard=document.createElement('div'); incCard.className='mc9sl-card income';
+        if(w.inTotal===0 && w.profit===0 && w.external===0 && !w.shipmentsTons && !w.newSalesTons){
+          incCard.classList.add('empty'); incCard.textContent='немає даних';
+        } else {
+          var h='';
+          if(w.profit) h+='<div class="line"><span class="lbl">Виручка</span><span>'+fmt(w.profit)+'</span></div>';
+          if(w.external) h+='<div class="line"><span class="lbl">Залучені</span><span>'+fmt(w.external)+'</span></div>';
+          h+='<div class="total"><span>РАЗОМ</span><span>'+fmt(w.inTotal)+'</span></div>';
+          if(w.shipmentsTons||w.newSalesTons){
+            h+='<div class="layers">';
+            if(w.shipmentsTons) h+='<div class="line">Відвантаження: <b>'+fmtT(w.shipmentsTons)+' т</b></div>';
+            if(w.newSalesTons) h+='<div class="line">Нові продажі: <b>'+fmtT(w.newSalesTons)+' т</b></div>';
+            h+='</div>';
+          }
+          incCard.innerHTML=h;
+        }
+        inner.appendChild(incCard);
+
+        var axis=document.createElement('div'); axis.className='mc9sl-axis';
+        axis.innerHTML='<div class="mc9sl-axis-date">'+(mode==='week'?weekLabel(w.date):monthLabel(w.date))+'</div>'+
+          '<div class="mc9sl-axis-dot"></div>'+
+          '<div class="mc9sl-axis-week">'+(mode==='week'?weekLabel(w.date):(w.weeksCount+' тижн.'))+'</div>';
+        inner.appendChild(axis);
+
+        var expCard=document.createElement('div'); expCard.className='mc9sl-card expense';
+        if(w.outTotal===0){ expCard.classList.add('empty'); expCard.textContent='немає даних'; }
+        else {
+          var h2='';
+          if(w.rawmat) h2+='<div class="line"><span class="lbl">Сировина</span><span>'+fmt(w.rawmat)+'</span></div>';
+          if(w.capex) h2+='<div class="line"><span class="lbl">CAPEX</span><span>'+fmt(w.capex)+'</span></div>';
+          if(w.opex) h2+='<div class="line"><span class="lbl">ОПЕКСи</span><span>'+fmt(w.opex)+'</span></div>';
+          if(w.reserve) h2+='<div class="line"><span class="lbl">Фонд 20.3%</span><span>'+fmt(w.reserve)+'</span></div>';
+          h2+='<div class="total"><span>РАЗОМ</span><span>'+fmt(w.outTotal)+'</span></div>';
+          expCard.innerHTML=h2;
+        }
+        inner.appendChild(expCard);
+
+        col.appendChild(inner); timeline.appendChild(col);
+        if(isToday) todayColEl=col;
+
+        var bcol=document.createElement('div'); bcol.className='mc9sl-bottomcol';
+        var deltaClass = w.delta>=0?'pos':'neg';
+        bcol.innerHTML='<div class="mc9sl-bottomval '+deltaClass+'">'+fmt(w.delta)+'</div>'+
+          '<div class="mc9sl-bottomlbl">Баланс періоду</div>'+
+          '<div class="mc9sl-bottomval mc9sl-cum">'+fmt(w.cumulative)+'</div>'+
+          '<div class="mc9sl-bottomlbl">Залишок каси</div>';
+        bottomRow.appendChild(bcol);
+      });
+
+      updateTodayLine_(todayColEl);
+      renderChart_(list);
+    }
+
+    function updateTodayLine_(todayColEl){
+      var lineEl=document.getElementById('mc9slTodayLine');
+      if(!lineEl) return;
+      if(!todayColEl){ lineEl.style.display='none'; return; }
+      var scroller=document.getElementById('mc9slScroller');
+      var timeline=document.getElementById('mc9slTimeline');
+      var bottomRow=document.getElementById('mc9slBottomRow');
+      var sRect=scroller.getBoundingClientRect();
+      var cRect=todayColEl.getBoundingClientRect();
+      var tRect=timeline.getBoundingClientRect();
+      var bRect=bottomRow.getBoundingClientRect();
+      var left=(cRect.left-sRect.left)+scroller.scrollLeft+cRect.width/2;
+      var top=(tRect.top-sRect.top)+scroller.scrollTop-16;
+      var height=(bRect.bottom-tRect.top)+16;
+      lineEl.style.left=left+'px'; lineEl.style.top=top+'px'; lineEl.style.height=height+'px'; lineEl.style.display='block';
+    }
+
+    function fmtShort_(n){
+      var abs=Math.abs(n);
+      if(abs>=1000000) return (n/1000000).toFixed(1)+'М';
+      if(abs>=1000) return (n/1000).toFixed(0)+'к';
+      return Math.round(n).toString();
+    }
+
+    function renderChart_(list){
+      var holder=document.getElementById('mc9slChartHolder');
+      if(!holder) return;
+      if(!list||!list.length){ holder.innerHTML=''; return; }
+
+      var stepX=72, padL=64, padR=18, padT=16, padB=30;
+      var cumH=170, gapH=30, barH=110;
+      var plotW=Math.max(360,(list.length-1)*stepX);
+      var svgW=plotW+padL+padR;
+      var svgH=padT+cumH+gapH+barH+padB;
+      var xAt=function(i){ return padL+(list.length<=1?0:i*stepX); };
+
+      var cumTop=padT, cumBottom=padT+cumH;
+      var cumValues=list.map(function(w){return w.cumulative;});
+      var cMin=Math.min(0,Math.min.apply(null,cumValues)), cMax=Math.max(0,Math.max.apply(null,cumValues));
+      if(cMin===cMax){ cMin-=1; cMax+=1; }
+      var cPad=(cMax-cMin)*0.08; cMin-=cPad; cMax+=cPad;
+      var cRange=cMax-cMin;
+      var yCum=function(v){ return cumTop+cumH-((v-cMin)/cRange)*cumH; };
+      var zeroYCum=yCum(0);
+
+      var linePath='', greenAreaPath='', redAreaPath='';
+      list.forEach(function(w,i){ var px=xAt(i),py=yCum(w.cumulative); linePath+=(i===0?'M':'L')+px.toFixed(1)+' '+py.toFixed(1)+' '; });
+      list.forEach(function(w,i){ var px=xAt(i),py=yCum(Math.max(0,w.cumulative)); greenAreaPath+=(i===0?'M':'L')+px.toFixed(1)+' '+py.toFixed(1)+' '; });
+      greenAreaPath+='L'+xAt(list.length-1).toFixed(1)+' '+zeroYCum.toFixed(1)+' L'+xAt(0).toFixed(1)+' '+zeroYCum.toFixed(1)+' Z';
+      list.forEach(function(w,i){ var px=xAt(i),py=yCum(Math.min(0,w.cumulative)); redAreaPath+=(i===0?'M':'L')+px.toFixed(1)+' '+py.toFixed(1)+' '; });
+      redAreaPath+='L'+xAt(list.length-1).toFixed(1)+' '+zeroYCum.toFixed(1)+' L'+xAt(0).toFixed(1)+' '+zeroYCum.toFixed(1)+' Z';
+
+      var barTop=cumBottom+gapH, barMid=barTop+barH/2;
+      var deltaAbsMax=Math.max(1,Math.max.apply(null,list.map(function(w){return Math.abs(w.delta);})))*1.15;
+      var yBar=function(v){ return barMid-(v/deltaAbsMax)*(barH/2); };
+      var barWidth=Math.min(36,stepX*0.6);
+
+      var svg='<svg width="'+svgW+'" height="'+svgH+'" viewBox="0 0 '+svgW+' '+svgH+'">';
+      svg+='<text x="'+padL+'" y="'+(barTop-8)+'" font-size="10.5" font-weight="700" fill="#8b93a5">Баланс періоду</text>';
+
+      [cMin,0,cMax].forEach(function(v){
+        var y=yCum(v);
+        svg+='<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(svgW-padR)+'" y2="'+y.toFixed(1)+'" stroke="rgba(128,128,128,.15)" stroke-width="1"/>';
+        svg+='<text x="'+(padL-8)+'" y="'+(y+4).toFixed(1)+'" font-size="9.5" fill="#8b93a5" text-anchor="end">'+fmtShort_(v)+'</text>';
+      });
+      if(cMin<0 && cMax>0){
+        svg+='<line x1="'+padL+'" y1="'+zeroYCum.toFixed(1)+'" x2="'+(svgW-padR)+'" y2="'+zeroYCum.toFixed(1)+'" stroke="#9aa0a6" stroke-width="1.5"/>';
+      }
+      svg+='<path d="'+greenAreaPath+'" fill="rgba(22,163,74,.16)" stroke="none"/>';
+      svg+='<path d="'+redAreaPath+'" fill="rgba(220,38,38,.16)" stroke="none"/>';
+      svg+='<path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="2.5"/>';
+
+      svg+='<line x1="'+padL+'" y1="'+barMid.toFixed(1)+'" x2="'+(svgW-padR)+'" y2="'+barMid.toFixed(1)+'" stroke="#9aa0a6" stroke-width="1"/>';
+      svg+='<text x="'+(padL-8)+'" y="'+(barMid+3).toFixed(1)+'" font-size="9" fill="#8b93a5" text-anchor="end">0</text>';
+
+      var labelEvery=Math.max(1,Math.ceil(list.length/12));
+      list.forEach(function(w,i){
+        var px=xAt(i);
+        var isToday=isTodayItem_(w);
+
+        var pyCum=yCum(w.cumulative);
+        var cumColor=w.cumulative>=0?'#16a34a':'#dc2626';
+        var cumLabelY=(i%2===0)?pyCum-10:pyCum+18;
+        svg+='<text x="'+px.toFixed(1)+'" y="'+cumLabelY.toFixed(1)+'" font-size="9" font-weight="700" fill="'+cumColor+'" text-anchor="middle">'+fmtShort_(w.cumulative)+'</text>';
+        svg+='<circle cx="'+px.toFixed(1)+'" cy="'+pyCum.toFixed(1)+'" r="'+(isToday?5:3)+'" fill="'+(isToday?'#f97316':'#2563eb')+'" stroke="#fff" stroke-width="1.5" data-idx="'+i+'" data-series="cum" class="mc9sl-pt"/>';
+
+        var pyBar=yBar(w.delta);
+        var barColor=w.delta>=0?'#16a34a':'#dc2626';
+        var barY=Math.min(barMid,pyBar), barH2=Math.abs(pyBar-barMid);
+        svg+='<rect x="'+(px-barWidth/2).toFixed(1)+'" y="'+barY.toFixed(1)+'" width="'+barWidth.toFixed(1)+'" height="'+Math.max(1,barH2).toFixed(1)+'" fill="'+barColor+'" opacity="0.85" rx="2" data-idx="'+i+'" data-series="bar" class="mc9sl-pt"/>';
+        var barLabelY=w.delta>=0?(pyBar-6):(pyBar+12);
+        svg+='<text x="'+px.toFixed(1)+'" y="'+barLabelY.toFixed(1)+'" font-size="8.5" font-weight="700" fill="'+barColor+'" text-anchor="middle">'+fmtShort_(w.delta)+'</text>';
+
+        if(i%labelEvery===0 || i===list.length-1){
+          svg+='<text x="'+px.toFixed(1)+'" y="'+(svgH-8)+'" font-size="9.5" fill="#8b93a5" text-anchor="middle">'+(mode==='week'?weekLabel(w.date):monthLabel(w.date))+'</text>';
+        }
+        if(isToday){
+          svg+='<line x1="'+px.toFixed(1)+'" y1="'+padT+'" x2="'+px.toFixed(1)+'" y2="'+(svgH-padB)+'" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,3"/>';
+        }
+      });
+
+      svg+='</svg>';
+      holder.innerHTML=svg;
+
+      var tooltip=document.getElementById('mc9slTooltip');
+      holder.querySelectorAll('.mc9sl-pt').forEach(function(pt){
+        pt.addEventListener('mouseenter', function(){
+          var idx=+pt.getAttribute('data-idx');
+          var series=pt.getAttribute('data-series');
+          var w=list[idx];
+          var dateLbl = mode==='week'?weekLabel(w.date):monthLabel(w.date);
+          tooltip.textContent = series==='cum' ? (dateLbl+' · Залишок: '+fmt(w.cumulative)+' грн') : (dateLbl+' · Баланс: '+fmt(w.delta)+' грн');
+          tooltip.style.display='block';
+          var wrapRect=document.getElementById('mc9slChartWrap').getBoundingClientRect();
+          var ptRect=pt.getBoundingClientRect();
+          tooltip.style.left=(ptRect.left-wrapRect.left+8)+'px';
+          tooltip.style.top=(ptRect.top-wrapRect.top-24)+'px';
+        });
+        pt.addEventListener('mouseleave', function(){ tooltip.style.display='none'; });
+      });
+    }
+
+    var btnWeek=document.getElementById('mc9slBtnWeek'), btnMonth=document.getElementById('mc9slBtnMonth');
+    if(btnWeek) btnWeek.onclick=function(){
+      mode='week'; btnWeek.classList.add('active'); if(btnMonth) btnMonth.classList.remove('active'); render();
+    };
+    if(btnMonth) btnMonth.onclick=function(){
+      mode='month'; btnMonth.classList.add('active'); if(btnWeek) btnWeek.classList.remove('active'); render();
+    };
+    window.addEventListener('resize', function(){ updateTodayLine_(document.querySelector('.mc9sl-col.today')); });
+
+    render();
+  })();
+  </script>
   <div style="display:none">
     <canvas id="finOverviewChart"></canvas>
     <canvas id="nfOvChart"></canvas>
