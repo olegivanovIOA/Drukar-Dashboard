@@ -158,6 +158,13 @@ def _mc9sl_num(v):
     except (ValueError, TypeError):
         return 0.0
 
+def _mc9sl_norm(s):
+    """Той самий norm_() патерн, що і в .gs-скриптах цього проєкту: Google Sheets
+    іноді підставляє NBSP (\\xa0) замість звичайного пробілу — це ламає substring-
+    порівняння один в один так само, як ламало === у .gs. Схлопуємо будь-які
+    пробільні символи в один звичайний пробіл перед порівнянням."""
+    return re.sub(r'\s+', ' ', str(s).replace('\xa0', ' ')).strip()
+
 def _mc9sl_find_row(rows, keywords):
     """Шукає рядок за текстом у колонці A АБО B (як findRowInFile_ у .gs-скриптах) —
     приймає список варіантів ключового слова (перший, що знайдеться, вигравав).
@@ -167,10 +174,10 @@ def _mc9sl_find_row(rows, keywords):
     реальною позицією в експортованому CSV."""
     if isinstance(keywords, str):
         keywords = [keywords]
-    kws = [k.lower() for k in keywords]
+    kws = [_mc9sl_norm(k).lower() for k in keywords]
     for row in rows:
-        a = str(row[0]).lower() if len(row) > 0 else ''
-        b = str(row[1]).lower() if len(row) > 1 else ''
+        a = _mc9sl_norm(row[0]).lower() if len(row) > 0 else ''
+        b = _mc9sl_norm(row[1]).lower() if len(row) > 1 else ''
         if any(kw in a or kw in b for kw in kws):
             return row
     return None
@@ -209,12 +216,12 @@ def parse_money_calendar_9sl(cal_rows, dash_rows, sales_rows):
             week_cols.append((c, d))
 
     row_anchor    = _mc9sl_find_row(cal_rows, 'залишок каси на старт')
-    row_profit    = _mc9sl_find_row(cal_rows, 'виручка (відвантаження')
+    row_profit    = _mc9sl_find_row(cal_rows, 'виручка')
     row_external  = _mc9sl_find_row(cal_rows, 'залучені кошти')
     row_in_total  = _mc9sl_find_row(cal_rows, 'разом приходи')
-    row_rawmat    = _mc9sl_find_row(cal_rows, 'сировина, грн')
-    row_capex     = _mc9sl_find_row(cal_rows, 'capex (')
-    row_opex      = _mc9sl_find_row(cal_rows, 'опекси операційні')
+    row_rawmat    = _mc9sl_find_row(cal_rows, 'сировина')
+    row_capex     = _mc9sl_find_row(cal_rows, 'capex')
+    row_opex      = _mc9sl_find_row(cal_rows, 'опекси')
     row_reserve   = _mc9sl_find_row(cal_rows, 'фонд стабільності')
     row_out_total = _mc9sl_find_row(cal_rows, 'разом витрати')
     row_delta     = _mc9sl_find_row(cal_rows, 'баланс тижня')
