@@ -185,6 +185,17 @@ def get_row(rows, keyword):
             return row
     return None
 
+def get_row_any(rows, keywords):
+    """Як get_row(), але пробує кілька варіантів формулювання по черзі — повертає
+    (row, matched_keyword) першого, що знайшовся, або (None, None). Потрібно, бо
+    підписи рядків у P&L періодично змінюються (напр. порядок слів EBITDA/EBIT),
+    і жорсткий однин рядок-ключ мовчки перестає матчитись."""
+    for kw in keywords:
+        row = get_row(rows, kw)
+        if row is not None:
+            return row, kw
+    return None, None
+
 def pct(v):
     if v is None: return None
     return round(v*100, 2) if abs(v) <= 1.5 else round(v, 2)
@@ -2073,11 +2084,16 @@ if __name__ == '__main__':
         print(f"  Календар: col_map = {cal_col_map}")
 
         row_income = get_row(cal_pnl_rows, 'доходи')
-        row_ebitda = get_row(cal_pnl_rows, 'ebitda (операційний прибуток)')
+        row_ebitda, ebitda_kw = get_row_any(cal_pnl_rows, [
+            'ebitda (операційний прибуток)',
+            'операційний прибуток (ebitda)',
+            'ebitda',
+        ])
         row_bal_s  = get_row(cal_pnl_rows, 'залишок на початок місяця')
         row_bal_e  = get_row(cal_pnl_rows, 'залишок на кінець місяця')
         print(f"  Календар: рядки знайдено — доходи={row_income is not None}, "
-              f"ebitda={row_ebitda is not None}, bal_start={row_bal_s is not None}, bal_end={row_bal_e is not None}")
+              f"ebitda={row_ebitda is not None} (matched keyword: {ebitda_kw!r}), "
+              f"bal_start={row_bal_s is not None}, bal_end={row_bal_e is not None}")
 
         arr_income = _cal_extract_row_by_month(row_income, cal_col_map) if row_income else [None] * MONTH_COUNT
         arr_ebitda = _cal_extract_row_by_month(row_ebitda, cal_col_map) if row_ebitda else [None] * MONTH_COUNT
