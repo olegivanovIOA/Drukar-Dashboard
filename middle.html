@@ -247,7 +247,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.08.2026 15:00 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 14.08.2026 15:24 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1194,20 +1194,6 @@
 <!-- ══════════════ COSTS ══════════════ -->
 <div id="tab-costs" class="tab-content" data-tab-id="costs">
   <div class="section-title">Фінансовий аналіз</div>
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-header"><div><div class="card-title">Структура собівартості · виберіть місяць</div><div class="card-subtitle">Статті витрат у грн та % від загальних витрат</div></div></div>
-    <div class="month-switcher" id="costMonthSwitcher">
-      <button class="month-btn active" onclick="setCostMonth('nov',this)">Листопад 2025</button>
-      <button class="month-btn" onclick="setCostMonth('jan',this)">Січень 2026</button>
-      <button class="month-btn" onclick="setCostMonth('feb',this)">Лютий 2026</button>
-      <button class="month-btn" onclick="setCostMonth('mar',this)">Березень 2026</button>
-      <button class="month-btn" onclick="setCostMonth('avg',this)" style="border-color:var(--accent2);color:var(--accent2)">∅ Середнє</button>
-    </div>
-    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start">
-      <table><thead><tr><th>Стаття витрат</th><th style="text-align:right">Сума, грн</th><th>%</th></tr></thead><tbody id="costTableBody"></tbody></table>
-      <div style="height:270px;position:relative"><canvas id="costBreakChart"></canvas></div>
-    </div>
-  </div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><div><div class="card-title">Доход та Витрати</div><div class="card-subtitle">грн · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="incExpChart"></canvas></div></div>
     <div class="card"><div class="card-header"><div><div class="card-title">Собівартість 1 кг</div><div class="card-subtitle">PETG та PLA, грн/кг · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="costPerKgChart"></canvas></div></div>
@@ -2263,12 +2249,6 @@ const PETG_PRICE_LABELS=["Вер 24","Жов 24","Лис 24","Гру 24","Січ
 const PETG_AVG_PRICE=[417.88,96.3,0.0,0.0,230.46,329.33,480.5,628.73,149.79,281.35,0.0,606.52,315.92,421.75,266.23,312.17,772.98,766.07,506.85,351.58,351.43,358.5,388.69];
 const PLA_PRICE_LABELS=["Лис 24","Гру 24","Січ 25","Лют 25","Бер 25","Кві 25","Тра 25","Чер 25","Лип 25","Сер 25","Жов 25","Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26","Чер 26","Лип 26","Сер 26"];
 const PLA_AVG_PRICE=[0.0,0.0,386.33,386.33,386.33,887.3,6.2,743.1,0.0,849.63,239.06,492.4,1128.28,470.38,729.79,394.44,352.0,2436.79,628.4,748.06,606.97];
-const COSTS={
-  nov:{total:5162269,items:[['Сировина',3852332,0.7462],['Електроенергія',367800,0.0712],['Адмін/Загал',426500,0.0826],['Податки',82410,0.0160],['ЗП оператори',184000,0.0356],['Логістика',115000,0.0223],['Пакування',24000,0.0046],['Амортизація',75000,0.0145],['Ремонт',10000,0.0019],['Інші накладні',5227,0.0010],['Реклама',20000,0.0039]]},
-  jan:{total:9401989,items:[['Сировина',5709119,0.6072],['Електроенергія',435602,0.0463],['Адмін/Загал',417114,0.0444],['Податки',1338586,0.1424],['ЗП оператори',182680,0.0194],['Логістика',143737,0.0153],['Пакування',40560,0.0043],['Амортизація',900391,0.0958],['Ремонт',183059,0.0195],['Інші накладні',39491,0.0042],['Реклама',11650,0.0012]]},
-  feb:{total:10531310,items:[['Сировина',5917091,0.5619],['Електроенергія',709850,0.0674],['Адмін/Загал',585786,0.0556],['Податки',2259806,0.2146],['ЗП оператори',283260,0.0269],['Логістика',90600,0.0086],['Пакування',97040,0.0092],['Амортизація',187950,0.0178],['Ремонт',136962,0.0130],['Інші накладні',89065,0.0085],['Реклама',173900,0.0165]]},
-  mar:{total:15813597,items:[['Сировина',8783606,0.5554],['Електроенергія',684883,0.0433],['Адмін/Загал',1407282,0.0890],['Податки',1148808,0.0726],['ЗП оператори',637450,0.0403],['Логістика',201400,0.0127],['Пакування',100800,0.0064],['Амортизація',2263726,0.1432],['Ремонт',399055,0.0252],['Реклама',186587,0.0118]]}
-};
 const OP_ALL=[["Щербакова Олена",10223.1],["Макалюк Вікторія",9466.3],["Макалюк Володимир",9400.6],["Ременчук Юлія",8304.3],["Бараш Костянтин",8103.8],["Пивовар Олександр",4661.2],["Гарбар Денис",3326.1],["Бондарчук Дмитро",3278.5],["Пінчук Олександр",3226.0],["Нужда Олексій",2502.9],["Криволапчук Олександр",1192.2],["Хімич Богдан",1183.7],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Степанчук Владислав",1054.1],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6],["Борисов Дмитро",372.5]];
 const OP_BY_MONTH={"2025-11":[["Макалюк Вікторія",2611.6],["Макалюк Володимир",2448.5],["Бондарчук Дмитро",2066.1],["Щербакова Олена",1613.7],["Ременчук Юлія",1548.2],["Бараш Костянтин",1287.6],["Степанчук Владислав",1054.1],["Борисов Дмитро",103.4]],"2025-12":[["Ременчук Юлія",2641.3],["Макалюк Володимир",2398.3],["Бараш Костянтин",2281.3],["Щербакова Олена",2171.2],["Пінчук Олександр",1476.7],["Макалюк Вікторія",1412.8],["Бондарчук Дмитро",1212.4],["Пивовар Олександр",838.1],["Борисов Дмитро",169.5]],"2026-01":[["Макалюк Вікторія",2468.8],["Щербакова Олена",2337.1],["Макалюк Володимир",1901.9],["Ременчук Юлія",1524.8],["Бараш Костянтин",1477.4],["Пивовар Олександр",1297.3],["Гарбар Денис",577.8],["Пінчук Олександр",522.5],["Нужда Олексій",322.3]],"2026-02":[["Щербакова Олена",2384.7],["Бараш Костянтин",2077.3],["Макалюк Вікторія",1859.0],["Макалюк Володимир",1541.6],["Гарбар Денис",1518.9],["Пивовар Олександр",1517.9],["Ременчук Юлія",1516.7],["Нужда Олексій",1368.7],["Пінчук Олександр",1226.8],["Хімич Богдан",314.8],["Борисов Дмитро",99.7]],"2026-03":[["Щербакова Олена",1716.4],["Гарбар Денис",1229.4],["Криволапчук Олександр",1192.2],["Макалюк Вікторія",1114.1],["Макалюк Володимир",1110.2],["Кирилюк Олександр",1104.0],["Середа Андрій",1074.1],["Ременчук Юлія",1073.3],["Пивовар Олександр",1007.9],["Бараш Костянтин",980.2],["Хімич Богдан",868.9],["Якубенко Владислав",852.8],["Нестер Сергій",828.1],["Нужда Олексій",811.9],["Хоменко Артем",645.0],["Дацюк Олександр",591.6],["Міненко Іван",535.6]]};
 const HM_LABELS=["Лис 25","Гру 25","Січ 26","Лют 26","Бер 26","Кві 26","Тра 26","Чер 26","Лип 26","Сер 26"];
@@ -2326,7 +2306,7 @@ function polyTrend(data, deg=2){
     return data.map((_,i)=>i<xMin||i>xMax?null:+Math.max(0,poly(i)).toFixed(1));
   } catch(e){ console.warn('polyTrend error:',e); return trendline(data); }
 }
-let opCI=null,costCI=null;
+let opCI=null;
 const rendered={};
 function safeCreateChart(canvasId,config){
   var canvas=document.getElementById(canvasId);
@@ -2387,7 +2367,7 @@ function initTab(id){
   if(id==='production') safeInit(id, initProduction);
   if(id==='ito') safeInit(id, initIto);
   else if(id==='quality') safeInit(id, initQuality);
-  else if(id==='costs') safeInit(id, ()=>requestAnimationFrame(()=>{initCosts();setCostMonth('nov',document.querySelector('#costMonthSwitcher .month-btn'));}));
+  else if(id==='costs') safeInit(id, ()=>requestAnimationFrame(()=>{initCosts();}));
   else if(id==='operators') safeInit(id, ()=>{
     const opMonths = Object.keys(OP_BY_MONTH).sort();
     const curYm = new Date().toISOString().slice(0,7);
@@ -3425,55 +3405,6 @@ function initCosts(){
       }
     });
   })();
-}
-function setCostMonth(key,btn){
-  document.querySelectorAll('#costMonthSwitcher .month-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  let d;
-  if(key==='avg'){
-    const keys=Object.keys(COSTS);
-    const allItems={};
-    keys.forEach(k=>{
-      COSTS[k].items.forEach(([name,sum,pct])=>{
-        if(!allItems[name]) allItems[name]={sum:0,pct:0,cnt:0};
-        allItems[name].sum+=sum; allItems[name].pct+=pct; allItems[name].cnt++;
-      });
-    });
-    const avgTotal=keys.reduce((s,k)=>s+COSTS[k].total,0)/keys.length;
-    const avgItems=Object.entries(allItems).map(([name,v])=>[name,Math.round(v.sum/v.cnt),v.pct/v.cnt]);
-    d={total:Math.round(avgTotal),items:avgItems};
-  } else {
-    d=COSTS[key];
-  }
-  const tbody=document.getElementById('costTableBody');
-  tbody.innerHTML='';
-  d.items.forEach(([name,sum,pct])=>{
-    tbody.innerHTML+=`<tr><td>${name}</td><td style="text-align:right">${sum.toLocaleString('uk-UA')}</td><td style="color:${name==='Сировина'?'var(--accent2)':'var(--text)'}">${(pct*100).toFixed(1)}%</td></tr>`;
-  });
-  tbody.innerHTML+=`<tr style="border-top:1px solid var(--border)"><td style="color:var(--accent);font-weight:600">РАЗОМ</td><td style="text-align:right;color:var(--accent)">${d.total.toLocaleString('uk-UA')}</td><td style="color:var(--accent)">100%</td></tr>`;
-  if(costCI) costCI.destroy();
-  const BAR_COLORS=['#2563eb','#0ea5e9','#ff6b47','#b47bff','#16a34a','#ffb347','#ff9999','#64748b','#94947b','#7b9494','#c8b400'];
-  costCI=safeCreateChart('costBreakChart',{
-    type:'bar',
-    data:{labels:d.items.map(i=>i[0]),datasets:[{label:'%',data:d.items.map(i=>+(i[2]*100).toFixed(1)),backgroundColor:BAR_COLORS,borderWidth:0,borderRadius:3}]},
-    options:{
-      indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{...GR,max:Math.ceil(Math.max(...d.items.map(i=>i[2]*100))*1.3/5)*5,ticks:{...GR.ticks,callback:v=>v+'%'}},
-        y:{...GR,ticks:{...GR.ticks,font:{size:9}}}
-      },
-      animation:{onComplete:function(){
-        const ctx=this.ctx; ctx.save();
-        ctx.font='10px IBM Plex Mono,monospace'; ctx.fillStyle='#64748b'; ctx.textBaseline='middle';
-        this.data.datasets[0].data.forEach((val,i)=>{
-          const meta=this.getDatasetMeta(0); const bar=meta.data[i];
-          if(bar&&val>0) ctx.fillText(val.toFixed(1)+'%', bar.x+5, bar.y);
-        });
-        ctx.restore();
-      }}
-    }
-  });
 }
 function opFilterYear(year, btn){
   ['opYearAll','opYear2025','opYear2026'].forEach(id=>{
