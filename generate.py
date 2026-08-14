@@ -2,6 +2,12 @@
 generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
+
+BUILD: 2026-08-14 14:20 — fix: добавлен fallback '{{FC_FACT}}'/'{{FC_LAST_M}}'
+в else-ветку (когда sales не загрузился). Без него неудачный fetch_csv листа
+"Відвантаження" оставлял сырые {{FC_FACT}}/{{FC_LAST_M}} в опубликованном
+index.html → невалидный JS → падал весь <script>-блок дашборда целиком
+(не только вкладка "Прогноз").
 """
 import os, requests, io, csv, json
 from datetime import datetime
@@ -1786,6 +1792,12 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         })
     else:
         subs.update({
+            # FC_FACT/FC_LAST_M fallback — БЕЗ цього, якщо sales не завантажився
+            # (напр. впав fetch_csv листа "Відвантаження"), у фінальному HTML
+            # лишаються сирі {{FC_FACT}}/{{FC_LAST_M}} → невалідний JS → падає
+            # весь <script>-блок дашборда, а не тільки вкладка "Прогноз".
+            '{{FC_FACT}}':            '{}',
+            '{{FC_LAST_M}}':          '0',
             '{{SALES_LABELS}}':       '[]',
             '{{SALES_OPT}}':          '[]',
             '{{SALES_RET}}':          '[]',
