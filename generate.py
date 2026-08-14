@@ -9,7 +9,7 @@ BUILD: 2026-08-14 14:20 — fix: добавлен fallback '{{FC_FACT}}'/'{{FC_L
 index.html → невалидный JS → падал весь <script>-блок дашборда целиком
 (не только вкладка "Прогноз").
 """
-import os, requests, io, csv, json
+import os, requests, io, csv, json, re
 from datetime import datetime
 
 SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA")
@@ -107,17 +107,50 @@ def fetch_xlsx(sheet_id, dest_path, retries=3, timeout=90):
     raise last_err
 
 def _mc9sl_parse_date(s):
-    """Парсить дату з клітинки gviz-CSV листа '12_Календар_Грошей' — Google по-різному
-    форматує дати залежно від локалі/формату клітинки, тому пробуємо кілька варіантів."""
+    """Розпізнає дату з клітинки gviz-CSV максимально гнучко. Раніше пробували
+    5 фіксованих форматів ('%d.%m.%Y' тощо) — це дало 0 розпізнаних тижнів на
+    живому файлі: реальний текстовий формат дати з gviz-CSV виявився не в
+    жодному з них (Google рендерить дату по-різному залежно від локалі/формату
+    клітинки — вгадати конкретний рядок наперед ненадійно). Замість списку
+    фіксованих форматів — витягуємо три числові групи регуляркою і самі
+    визначаємо, яка з них рік (4-значна, або >31), а серед двох інших — день
+    (>12, якщо є) і місяць. Це коректно розбирає більшість поширених варіантів
+    ('06.07.2026', '2026-07-06', '7/6/2026', '06/07/26' тощо) без залежності
+    від точного роздільника чи порядку."""
     s = (s or '').strip()
     if not s:
         return None
-    for fmt in ('%d.%m.%Y', '%d.%m.%y', '%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y'):
+
+    # 🆕 Відомий "гвіз"-глюк: дата-клітинки БЕЗ явного текстового формату іноді
+    # експортуються буквально як "Date(2026,6,6)" (синтаксис конструктора JS
+    # Date, місяць 0-based) замість форматованого рядка — перевіряємо це ПЕРШИМ.
+    md = re.match(r'^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})', s)
+    if md:
         try:
-            return datetime.strptime(s, fmt).date()
+            return datetime(int(md.group(1)), int(md.group(2)) + 1, int(md.group(3))).date()
         except ValueError:
-            continue
-    return None
+            return None
+
+    m = re.match(r'^(\d{1,4})\D(\d{1,4})\D(\d{2,4})', s)
+    if not m:
+        return None
+    g1, g2, g3 = m.group(1), m.group(2), m.group(3)
+    a, b, c = int(g1), int(g2), int(g3)
+
+    if len(g1) == 4 or a > 31:
+        year, month, day = a, b, c
+    else:
+        # рік не на початку — за замовчуванням вважаємо його ОСТАННІМ (день.місяць.рік,
+        # 2- чи 4-значний), бо це найпоширеніша форма і збігається з укр. локаллю книги.
+        year = c
+        day, month = a, b
+
+    if year < 100:
+        year += 2000
+    try:
+        return datetime(year, month, day).date()
+    except ValueError:
+        return None
 
 def _mc9sl_num(v):
     try:
@@ -2141,8 +2174,10 @@ if __name__ == '__main__':
         data['mc_anchor'] = mc['anchor']
         print(f"  Календар Грошей (9 слоёв): {len(mc['weeks'])} тижнів, якір={mc['anchor']} грн")
         if not mc['weeks']:
-            print("  WARNING Календар Грошей (9 слоёв): 0 тижнів розпізнано — перевір "
-                  "NINE_LAYERS_SHEET_ID і формат дат у рядку 7 листа '12_Календар_Грошей'.")
+            _sample_row7 = cal_rows_9sl[6] if len(cal_rows_9sl) > 6 else []
+            _sample_cells = [c for c in _sample_row7 if str(c).strip()][:5]
+            print("  WARNING Календар Грошей (9 слоёв): 0 тижнів розпізнано. "
+                  f"Зразок непорожніх клітинок рядка 7 (мають бути дати): {_sample_cells!r}")
     except Exception as emc:
         print(f"  WARNING Календар Грошей (9 слоёв): {emc}")
         import traceback; traceback.print_exc()
