@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-26 17:40 — таблиця кг/год: підсвітка max (зелений) / min (червоний) по кожному виду серед ліній.
+<!-- BUILD: 2026-09-26 23:30 — мобільна версія: шапка/вкладки, сітки в 1–2 колонки, таблиці зі скролом і липкою першою колонкою, широкі графіки у горизонтальний скрол.
+     BUILD: 2026-09-26 17:40 — таблиця кг/год: підсвітка max (зелений) / min (червоний) по кожному виду серед ліній.
      BUILD: 2026-09-26 17:10 — підписи «год · %» на графіках простоїв (причини, лінії); шкала місяців під тижнями на графіку кг/год.
      BUILD: 2026-09-26 15:30 — Виробництво: структура простоїв (зовн./внутр./техн.) + кг/год по видах + виправлена «Зведена по причинах» (фільтр рік/місяць/тиждень); Товар: денні дані, фільтр рік/місяць/тиждень, прибрано «Залишок»; нові вкладки Проєкти і Ресурси -->
 <meta charset="UTF-8">
@@ -137,7 +138,7 @@
   .scenario-key{color:var(--muted)}
   .scenario-val{color:var(--text)}
   @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.grid-3{grid-template-columns:1fr 1fr}.calc-wrap{grid-template-columns:1fr}}
-  @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr};#quoteText{font-size:11px;-webkit-line-clamp:2}.grid-2,.grid-3,.grid-31,.calc-wrap{grid-template-columns:1fr}.main{padding:14px}.scenarios-grid{grid-template-columns:1fr}
+  @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr}#quoteText{font-size:11px;-webkit-line-clamp:2}.grid-2,.grid-3,.grid-31,.calc-wrap{grid-template-columns:1fr}.main{padding:14px}.scenarios-grid{grid-template-columns:1fr}
     /* Широкі багатоколонкові таблиці (виробництво, P&L-подібні тощо) —
        раніше не мали обгортки з горизонтальним скролом (окрім
        #heatmapWrap для теплокарти) і або стискали колонки до
@@ -145,8 +146,9 @@
        самій table вмикає горизонтальний скрол, не чіпаючи внутрішню
        розмітку tr/td (стандартний, широко вживаний CSS-прийом). Діє
        ЛИШЕ нижче 700px — десктоп/планшет не зачіпає. */
-    table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
-    thead,tbody{display:table;width:100%}
+    /* 🆕 2026-09-26: замість display:block на table (він розривав thead і tbody
+       на дві окремі таблиці → заголовки не збігалися з колонками) таблиці
+       обгортаються в .tbl-scroll скриптом mobileLayout() */
   }
   @media(max-width:480px){
     .kpi-row{grid-template-columns:1fr!important}
@@ -281,6 +283,91 @@
   .prj-tl .today{position:absolute;top:0;bottom:0;width:2px;background:var(--bad)}
   .prj-tl-lbl{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px}
   @media(max-width:900px){.prj-grid{grid-template-columns:1fr}.prj-facts{grid-template-columns:1fr}}
+
+  /* ══ 🆕 2026-09-26 МОБІЛЬНИЙ ШАР (≤760px) ═══════════════════════════════════
+     .m-stack / .m-kpi / .m-chart / .tbl-scroll проставляє скрипт mobileLayout()
+     одразу після розмітки (див. кінець .main). Десктоп не зачіпається. */
+  .tbl-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .m-chart-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media(max-width:760px){
+    html,body{max-width:100%}
+    body{-webkit-text-size-adjust:100%}
+    /* Шапка: не липка, логотип + фільтр року/місяця на всю ширину */
+    header{position:static;flex-wrap:wrap;padding:10px 12px 8px;gap:8px;box-shadow:none}
+    header .logo{font-size:22px;letter-spacing:3px}
+    header .header-meta{display:none}
+    header>div:nth-child(2){flex:1 1 100%!important;padding:0!important;flex-wrap:wrap;overflow:visible!important;gap:6px!important}
+    header #filterYear,header #filterMonth{padding:7px 26px 7px 10px!important;font-size:13px!important}
+    header>div:nth-child(2)>span:first-child{display:none}
+    #quoteText{flex:1 1 100%!important;font-size:11px!important;-webkit-line-clamp:2!important;color:var(--muted)!important;font-weight:400!important}
+    header>div:nth-child(2)>div:last-child{flex:1 1 100%!important;min-width:0!important;border-left:none!important;padding-left:0!important}
+    header>div:nth-child(2)>div:last-child>div{flex:1 1 0!important;min-width:0!important;padding:6px 8px!important;gap:6px!important}
+    #filterYear{flex:0 1 84px;min-width:0}
+    #filterMonth{flex:1 1 0;min-width:0}
+    #filterBadge{display:none}
+    /* Вкладки: одна липка стрічка з горизонтальним скролом */
+    .tabs{position:sticky;top:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:6px 8px 0!important;gap:2px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;z-index:120}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{flex:0 0 auto;white-space:nowrap;font-size:11px!important;padding:9px 12px!important}
+    /* Основа */
+    .main{padding:10px!important}
+    .card{padding:12px!important;min-width:0}
+    .card-header{flex-wrap:wrap;gap:8px}
+    .card-header>div:last-child{max-width:100%}
+    .section-title{font-size:10px;margin-top:14px!important}
+    /* Сітки з розмітки → одна колонка; KPI-ряди → 2 колонки */
+    .m-stack{grid-template-columns:minmax(0,1fr)!important}
+    .m-stack>*{grid-row:auto!important;grid-column:auto!important;min-width:0}
+    .kpi-row,.m-kpi{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+    .kpi-card{padding:10px 12px!important;min-width:0}
+    .kpi-row>.kpi-card:last-child:nth-child(odd),.m-kpi>.kpi-card:last-child:nth-child(odd){grid-column:1/-1}
+    .kpi-value{font-size:24px!important;overflow-wrap:anywhere}
+    .kpi-label,.kpi-unit{overflow-wrap:anywhere}
+    /* Панелі фільтрів */
+    .pf-bar,.main div[style*="border-radius:8px"][style*="display:flex"][style*="flex-wrap:wrap"]{padding:10px!important;gap:8px!important}
+    /* Підпис фільтра — окремим рядком над своїми кнопками/селектом */
+    .pf-lbl,.main div[style*="flex-wrap:wrap"]>span[style*="letter-spacing:1.5px"]{flex:1 1 100%;margin:4px 0 -4px}
+    .pf-sep,.main div[style*="width:1px;height:20px"],.main div[style*="width:1px;height:16px"]{display:none!important}
+    .pf-badge,.main [id$="Badge"]{margin-left:0!important;white-space:normal!important;flex:1 1 100%}
+    .main .filter-select,.main select{max-width:100%;flex:1 1 130px;min-width:0;font-size:13px!important;padding-top:7px!important;padding-bottom:7px!important}
+    .topn-btn,.month-btn{padding:7px 10px!important;font-size:11px!important}
+    .res-search{min-width:0!important;max-width:100%!important;flex:1 1 100%;font-size:14px}
+    /* Таблиці: скрол всередині картки, перша колонка «прилипає» */
+    .tbl-scroll{margin:0 -2px}
+    .tbl-scroll table{min-width:100%}
+    .tbl-scroll th,.tbl-scroll td{white-space:nowrap}
+    .tbl-scroll tbody td:first-child,.tbl-scroll thead th:first-child{position:sticky;left:0;background:var(--surface);z-index:1;box-shadow:1px 0 0 var(--border);white-space:normal;min-width:96px;max-width:150px}
+    .tbl-scroll tr[style*="background"] td:first-child{background:inherit}
+    .unit-row-total td:first-child,.unit-row-total td{background:var(--surface2)!important}
+    /* Товар: липка лише клітинка SKU (rowspan); підпис показника і роздільники — звичайні */
+    .tbl-scroll #prodTbody td:first-child:not([rowspan]){position:static!important;box-shadow:none!important;min-width:0!important;max-width:none!important;background:transparent}
+    #prodTbody td[rowspan]{font-size:14px!important;padding:6px 8px!important;max-width:92px;white-space:normal;line-height:1.15}
+    #prodThead th{min-width:0!important}
+    #prodTable{min-width:0!important}
+    td.kph-max:first-child,td.kph-min:first-child{background:inherit}
+    th{font-size:9px!important;padding:6px 8px!important}
+    td{font-size:11px!important;padding:6px 8px!important}
+    /* Графіки: широкі — у горизонтальний скрол, решта — трохи вищі */
+    .m-chart-scroll{margin:0 -4px;padding-bottom:4px}
+    .cw{height:210px!important}.cw-lg{height:260px!important}
+    /* Теплові карти */
+    #heatmapWrap,#utilHeatmapWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    /* Склад: поле вебхука на всю ширину */
+    #inv_webhook{width:100%!important;font-size:12px!important}
+    #tab-inventory div:has(>#inv_webhook){flex:1 1 100%;min-width:0}
+        /* Проєкти / Ресурси */
+    .prj-grid,.res-grid{grid-template-columns:minmax(0,1fr)!important}
+    .prj-card{padding:14px!important}
+    .prj-facts{grid-template-columns:1fr 1fr!important}
+    .prj-detail table{font-size:10px}
+    /* Легенди та примітки */
+    .legend-item{white-space:normal}
+    .note-line{font-size:10px;line-height:1.6}
+  }
+  @media(max-width:420px){
+    .prj-facts{grid-template-columns:1fr!important}
+    .kpi-value{font-size:21px!important}
+  }
 </style>
 </head>
 <body>
@@ -2129,6 +2216,84 @@
   <div class="note-line">ℹ Список редагується у файлі <b>resources.json</b> у репозиторії дашборду: група → посилання (назва, URL, опис). Після push зміни з'являться з наступним оновленням.</div>
 </div>
 </div><!-- /main -->
+<script>
+// ══ 🆕 2026-09-26 mobileLayout(): мобільна «причіска» ═════════════════════
+// Виконується синхронно ОДРАЗУ після розмітки (до створення графіків), тому
+// Chart.js відразу бачить правильні розміри контейнерів. На десктопі — нічого.
+(function(){
+  var MQ = window.matchMedia('(max-width:760px)');
+  // Широкі графіки → горизонтальний скрол з мінімальною шириною полотна
+  var WIDE = { kphChart:780, waTrendChart:680, dtLineChart:540, forecastChart:640,
+               salesMonthChart:560, opChart:560, opShiftChart:560, okrPersonHistChart:560 };
+  var KEEP_GRID = { okrStats:1, invThrGrid:1 };
+  function markGrids(){
+    document.querySelectorAll('.main [style*="grid-template-columns"]').forEach(function(el){
+      if(el.classList.contains('hmap-grid') || KEEP_GRID[el.id] || el.dataset.mDone) return;
+      if(el.classList.contains('kpi-row')){ el.dataset.mDone = 1; return; }
+      var kids = Array.prototype.filter.call(el.children, function(c){ return c.nodeType === 1; });
+      var allKpi = kids.length > 1 && kids.every(function(c){ return c.classList.contains('kpi-card'); });
+      el.classList.add(allKpi ? 'm-kpi' : 'm-stack');
+      el.dataset.mDone = 1;
+    });
+  }
+  function wrapCharts(){
+    Object.keys(WIDE).forEach(function(id){
+      document.querySelectorAll('canvas#' + id).forEach(function(cv){
+        var box = cv.parentElement;
+        if(!box || box.dataset.mChart) return;
+        box.dataset.mChart = 1;
+        var sc = document.createElement('div');
+        sc.className = 'm-chart-scroll';
+        box.parentNode.insertBefore(sc, box);
+        sc.appendChild(box);
+        box.style.minWidth = WIDE[id] + 'px';
+      });
+    });
+  }
+  function isScrollable(el){
+    while(el && el !== document.body){
+      var ox = getComputedStyle(el).overflowX;
+      if(ox === 'auto' || ox === 'scroll' || el.classList.contains('tbl-scroll')) return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+  function wrapTables(root){
+    (root || document).querySelectorAll('.main table').forEach(function(t){
+      if(t.dataset.mWrap) return;
+      t.dataset.mWrap = 1;
+      var par = t.parentElement;
+      if(par && /(auto|scroll)/.test(getComputedStyle(par).overflowX)){ par.classList.add('tbl-scroll'); return; }
+      if(isScrollable(par)) return;
+      var w = document.createElement('div');
+      w.className = 'tbl-scroll';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  }
+  function run(){
+    if(!MQ.matches) return;
+    markGrids(); wrapCharts(); wrapTables();
+    if(typeof Chart !== 'undefined'){ Chart.defaults.font.size = 10; }
+  }
+  window.mobileLayout = run;
+  run();
+  // Таблиці, що з'являються пізніше (innerHTML у вкладках) — обгортаємо з дебаунсом
+  var tmr = null;
+  var mo = new MutationObserver(function(){
+    if(!MQ.matches) return;
+    clearTimeout(tmr);
+    tmr = setTimeout(function(){ wrapTables(); markGrids(); }, 120);
+  });
+  var mainEl = document.querySelector('.main');
+  if(mainEl) mo.observe(mainEl, { childList:true, subtree:true });
+  // Активна вкладка завжди видима у стрічці вкладок
+  document.addEventListener('click', function(e){
+    var t = e.target.closest && e.target.closest('.tabs .tab');
+    if(t && MQ.matches) try{ t.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' }); }catch(_){}
+  });
+})();
+</script>
 <script>
 // ══════════════════════════════════════════════════════════════════
 // DASHBOARD MODE + GLOBAL FILTER + ADMIN PANEL
@@ -6497,6 +6662,7 @@ var DPF = (function(){
       if(badge) badge.textContent = ''; return;
     }
     var cols = columns(), N = cols.length;
+    var MOBL = window.innerWidth <= 760;
     function colIdx(ds){ if(!DPF.match(ds, _period)) return -1; for(var i=0;i<N;i++) if(cols[i].match(ds)) return i; return -1; }
 
     // Агрегація: sku → {p:[], o:[], r:[], oe:[], re:[]}
@@ -6538,9 +6704,9 @@ var DPF = (function(){
       var a = A[sku], bg = si % 2 === 0 ? 'var(--surface)' : 'var(--surface2)';
       var color = sku.indexOf('PETG') === 0 ? 'var(--accent2)' : 'var(--good)';
       var defs = [
-        { label:'Вироблено',     arr:a.p, est:null, color:'var(--muted)' },
-        { label:'Продано Опт',   arr:a.o, est:a.oe, color:'var(--accent)' },
-        { label:'Продано Роздр', arr:a.r, est:a.re, color:'var(--good)' }
+        { label:'Вироблено',                    arr:a.p, est:null, color:'var(--muted)' },
+        { label: MOBL ? 'Опт' : 'Продано Опт',   arr:a.o, est:a.oe, color:'var(--accent)' },
+        { label: MOBL ? 'Роздріб' : 'Продано Роздр', arr:a.r, est:a.re, color:'var(--good)' }
       ];
       defs.forEach(function(d, ri){
         var tr = '<tr style="background:' + bg + '">';
@@ -6556,10 +6722,10 @@ var DPF = (function(){
       var P = tot('p'), O = tot('o'), R = tot('r'), OE = tot('oe'), RE = tot('re');
       var S = P.map(function(_, i){ return O[i] + R[i]; }), SE = P.map(function(_, i){ return OE[i] + RE[i]; });
       var tdefs = [
-        { label:'Вироблено',       arr:P, est:null, color:'var(--text)', bold:true },
-        { label:'Продано Опт',     arr:O, est:OE,   color:'var(--accent)' },
-        { label:'Продано Роздр',   arr:R, est:RE,   color:'var(--good)' },
-        { label:'Продано разом',   arr:S, est:SE,   color:'var(--text)', bold:true }
+        { label:'Вироблено',                            arr:P, est:null, color:'var(--text)', bold:true },
+        { label: MOBL ? 'Опт' : 'Продано Опт',           arr:O, est:OE,   color:'var(--accent)' },
+        { label: MOBL ? 'Роздріб' : 'Продано Роздр',     arr:R, est:RE,   color:'var(--good)' },
+        { label: MOBL ? 'Продано' : 'Продано разом',     arr:S, est:SE,   color:'var(--text)', bold:true }
       ];
       html += '<tr><td colspan="' + colSpan + '" style="height:3px;background:var(--border);padding:0"></td></tr>';
       tdefs.forEach(function(d, ri){
@@ -7147,7 +7313,16 @@ function dtBarLabelsPlugin(getText, horizontal){
         });
         if(edge == null) continue;
         if(horizontal){ ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, edge + 6, mid); }
-        else { ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(txt, mid, edge - 4); }
+        else {
+          ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          var slot = chart.chartArea.width / Math.max(1, n);
+          if(ctx.measureText(txt).width > slot - 4 && txt.indexOf(' · ') > 0){
+            // вузько (телефон) — у два рядки: години зверху, % знизу
+            var pr = txt.split(' · ');
+            ctx.fillText(pr[1], mid, edge - 3);
+            ctx.fillText(pr[0], mid, edge - 15);
+          } else ctx.fillText(txt, mid, edge - 4);
+        }
       }
       ctx.restore();
     }
@@ -7253,6 +7428,31 @@ function renderDowntime() {
   if(sub) sub.textContent = perTxt + ' · ' + rows.length + ' змін з простоєм або причиною';
 
   // ── Графік по причинах (колір = категорія) ──
+  // Телефон: «список» — назва причини і «год · %» над кожною смугою, смуга на всю ширину.
+  var DT_MOB = window.innerWidth <= 760;
+  var rcv = document.getElementById('dtReasonChart');
+  if(rcv && rcv.parentElement){
+    if(DT_MOB) rcv.parentElement.style.setProperty('height', Math.max(260, reasonEntries.length * 50 + 40) + 'px', 'important');
+    else rcv.parentElement.style.removeProperty('height');
+  }
+  function rTxt(i){ var h = reasonEntries[i] && reasonEntries[i][1].hours; return h ? _fmtH(h) + ' год · ' + _fmtP(totalH ? h/totalH*100 : null) : null; }
+  var dtReasonMobPlugin = {
+    id: 'dtReasonMob',
+    afterDatasetsDraw: function(chart){
+      if(!DT_MOB) return;
+      var ctx = chart.ctx, a = chart.chartArea, meta = chart.getDatasetMeta(0);
+      ctx.save(); ctx.textBaseline = 'bottom';
+      meta.data.forEach(function(el, i){
+        var top = el.y - el.height/2 - 4;
+        ctx.font = '400 11px "IBM Plex Sans", sans-serif'; ctx.fillStyle = '#1a202c'; ctx.textAlign = 'left';
+        ctx.fillText(reasonEntries[i][0], a.left, top);
+        var t = rTxt(i); if(!t) return;
+        ctx.font = '600 10px "IBM Plex Mono", monospace'; ctx.fillStyle = DT_CAT_META[reasonEntries[i][1].cat].color; ctx.textAlign = 'right';
+        ctx.fillText(t, a.right, top);
+      });
+      ctx.restore();
+    }
+  };
   safeCreateChart('dtReasonChart', {
     type: 'bar',
     data: {
@@ -7262,16 +7462,14 @@ function renderDowntime() {
         data: reasonEntries.map(function(e){ return Math.round(e[1].hours*10)/10; }),
         backgroundColor: reasonEntries.map(function(e){ return DT_CAT_META[e[1].cat].color + 'cc'; }),
         borderColor:     reasonEntries.map(function(e){ return DT_CAT_META[e[1].cat].color; }),
-        borderWidth: 1, borderRadius: 4
+        borderWidth: 1, borderRadius: 4,
+        barPercentage: DT_MOB ? 0.36 : 0.9, categoryPercentage: DT_MOB ? 1 : 0.8
       }]
     },
-    plugins: [dtBarLabelsPlugin(function(i){
-      var h = reasonEntries[i] && reasonEntries[i][1].hours; if(!h) return null;
-      return _fmtH(h) + ' год · ' + _fmtP(totalH ? h/totalH*100 : null);
-    }, true)],
+    plugins: DT_MOB ? [dtReasonMobPlugin] : [dtBarLabelsPlugin(rTxt, true)],
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      layout: { padding: { right: 118 } },
+      layout: { padding: DT_MOB ? { top: 16, right: 2 } : { right: 118 } },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: function(ctx) {
@@ -7284,7 +7482,7 @@ function renderDowntime() {
       },
       scales: {
         x: { ...GR, beginAtZero: true, ticks: { ...GR.ticks, maxRotation: 0, autoSkip: true, callback: function(v){ return v + ' год'; } } },
-        y: { ...GR, ticks: { ...GR.ticks, font: { size: 10 } } }
+        y: { ...GR, grid: { display: !DT_MOB, color: GR.grid.color }, ticks: { ...GR.ticks, display: !DT_MOB, font: { size: 10 } } }
       }
     }
   });
@@ -7310,7 +7508,7 @@ function renderDowntime() {
     }, false)],
     options: {
       responsive:true, maintainAspectRatio:false,
-      layout: { padding: { top: 18 } },
+      layout: { padding: { top: 6 } },
       plugins:{ legend:{ position:'top', labels:{ boxWidth:12 } },
         tooltip:{ callbacks:{ footer:function(items){
           var n = lineNos[items[0].dataIndex];
@@ -7318,7 +7516,7 @@ function renderDowntime() {
           return 'Разом ' + _fmtH(a.down) + ' год · ' + _fmtP(a.fund ? a.down/a.fund*100 : null) + ' фонду лінії';
         }}}
       },
-      scales:{ x:{ ...GR, stacked:true }, y:{ ...GR, stacked:true, beginAtZero:true, ticks:{ ...GR.ticks, callback:function(v){ return v + ' год'; } } } }
+      scales:{ x:{ ...GR, stacked:true, ticks:{ ...GR.ticks, maxRotation:0, autoSkip:false, font:{ size: window.innerWidth <= 760 ? 9 : 11 } } }, y:{ ...GR, stacked:true, beginAtZero:true, grace:'14%', ticks:{ ...GR.ticks, callback:function(v){ return v + ' год'; } } } }
     }
   });
 
