@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-26 17:10 — підписи «год · %» на графіках простоїв (причини, лінії); шкала місяців під тижнями на графіку кг/год.
+<!-- BUILD: 2026-09-26 17:40 — таблиця кг/год: підсвітка max (зелений) / min (червоний) по кожному виду серед ліній.
+     BUILD: 2026-09-26 17:10 — підписи «год · %» на графіках простоїв (причини, лінії); шкала місяців під тижнями на графіку кг/год.
      BUILD: 2026-09-26 15:30 — Виробництво: структура простоїв (зовн./внутр./техн.) + кг/год по видах + виправлена «Зведена по причинах» (фільтр рік/місяць/тиждень); Товар: денні дані, фільтр рік/місяць/тиждень, прибрано «Залишок»; нові вкладки Проєкти і Ресурси -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -236,6 +237,10 @@
   .unit-row-line td:first-child{padding-left:26px}
   .kph-cell{white-space:nowrap}
   .kph-cell small{display:block;font-size:9px;color:var(--muted);font-weight:400}
+  /* 🆕 max/min по стовпцю серед ліній: зелений — як «зростання» на біржі, червоний — приглушений */
+  td.kph-max{color:#15803d;background:rgba(22,163,74,.12);font-weight:700}
+  td.kph-min{color:#c24141;background:rgba(220,38,38,.08);font-weight:700}
+  td.kph-max small,td.kph-min small{color:inherit;opacity:.75}
   .est{color:var(--warn);font-weight:600;cursor:help}
   /* Ресурси */
   .res-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
@@ -996,6 +1001,7 @@
     <div class="card">
       <div class="card-header"><div><div class="card-title">Середній виробіток за період</div><div class="card-subtitle" id="kphTableSub">кг/год · під клітинкою — години роботи</div></div></div>
       <div style="overflow-x:auto"><table id="kphTable"><thead id="kphHead"></thead><tbody id="kphBody"><tr><td class="muted">⟳ завантаження...</td></tr></tbody></table></div>
+      <div class="note-line"><span style="color:#15803d;background:rgba(22,163,74,.12);padding:0 5px;border-radius:3px;font-weight:700">макс</span> <span style="color:#c24141;background:rgba(220,38,38,.08);padding:0 5px;border-radius:3px;font-weight:700">мін</span> — найкраща / найгірша лінія в кожному стовпці (серед ліній з даними; однакові значення підсвічуються всі).</div>
       <div class="note-line">ℹ кг/год = Σ ваги ÷ Σ «Часов работы линии» по змінах, де обидва значення заповнені. Якщо за зміну на лінії було кілька видів, години розподіляються пропорційно кг. «≈ кг/добу» = кг/год × 24 — орієнтир для планування випуску.</div>
       <div class="note-line" id="kphSuspect"></div>
     </div>
@@ -7538,19 +7544,45 @@ function kphRender(){
                             '<th class="num">Всі види</th><th class="num">≈ кг/добу</th></tr>';
   if(body){
     if(!units.length || !tVids.length){ body.innerHTML = '<tr><td class="muted">Немає даних за обраний період</td></tr>'; }
-    else body.innerHTML = units.map(function(u){
-      var us = perScope.filter(u.f), tot = [0,0];
-      var cells = tVids.map(function(v){
-        var a = [0,0];
-        us.forEach(function(s){ s.parts.forEach(function(p){ if(p.vid !== v) return; var x = _kphPart(p); if(x){ a[0] += x[0]; a[1] += x[1]; } }); });
-        tot[0] += a[0]; tot[1] += a[1];
-        return a[1] >= 1 ? '<td class="num kph-cell">' + (a[0]/a[1]).toFixed(2) + '<small>' + Math.round(a[1]) + ' год</small></td>' : '<td class="num muted">—</td>';
+    else {
+      // 1) рахуємо матрицю значень: юніт × (види + «Всі види»)
+      var M = units.map(function(u){
+        var us = perScope.filter(u.f), tot = [0,0];
+        var vals = tVids.map(function(v){
+          var a = [0,0];
+          us.forEach(function(s){ s.parts.forEach(function(p){ if(p.vid !== v) return; var x = _kphPart(p); if(x){ a[0] += x[0]; a[1] += x[1]; } }); });
+          tot[0] += a[0]; tot[1] += a[1];
+          return a[1] >= 1 ? { r: Math.round(a[0]/a[1]*100)/100, h: a[1] } : null;
+        });
+        vals.push(tot[1] >= 1 ? { r: Math.round(tot[0]/tot[1]*100)/100, h: tot[1] } : null);
+        return vals;
+      });
+      // 2) 🆕 max / min по кожному стовпцю — серед ЛІНІЙ (локації й виробництво — агрегати, не конкуренти).
+      //    Порівнюємо по показаному значенню (2 знаки) → однакові лідери підсвічуються всі.
+      //    Підсвітка лише якщо в стовпці ≥ 2 ліній з даними і max ≠ min.
+      var ext = M[0].map(function(_, ci){
+        var vs = [];
+        M.forEach(function(row, ri){ if(units[ri].lvl === 'line' && row[ci]) vs.push(row[ci].r); });
+        if(vs.length < 2) return null;
+        var mx = Math.max.apply(null, vs), mn = Math.min.apply(null, vs);
+        return mx === mn ? null : { max: mx, min: mn };
+      });
+      function mark(ri, ci){
+        var c = M[ri][ci], e = ext[ci];
+        if(!c || !e || units[ri].lvl !== 'line') return '';
+        return c.r === e.max ? ' kph-max' : (c.r === e.min ? ' kph-min' : '');
+      }
+      body.innerHTML = units.map(function(u, ri){
+        var row = M[ri], last = row.length - 1;
+        var cells = row.slice(0, last).map(function(c, ci){
+          return c ? '<td class="num kph-cell' + mark(ri, ci) + '">' + c.r.toFixed(2) + '<small>' + Math.round(c.h) + ' год</small></td>' : '<td class="num muted">—</td>';
+        }).join('');
+        var t = row[last];
+        return '<tr class="unit-row-' + u.lvl + '"><td>' + u.name + '</td>' + cells +
+          '<td class="num kph-cell' + mark(ri, last) + '" style="font-weight:700">' + (t ? t.r.toFixed(2) + '<small>' + Math.round(t.h) + ' год</small>' : '—') + '</td>' +
+          '<td class="num' + mark(ri, last) + '">' + (t ? Math.round(t.r*24).toLocaleString('uk-UA') : '—') + '</td></tr>';
       }).join('');
-      var r = tot[1] >= 1 ? tot[0]/tot[1] : null;
-      return '<tr class="unit-row-' + u.lvl + '"><td>' + u.name + '</td>' + cells +
-        '<td class="num kph-cell" style="font-weight:700">' + (r == null ? '—' : r.toFixed(2) + '<small>' + Math.round(tot[1]) + ' год</small>') + '</td>' +
-        '<td class="num">' + (r == null ? '—' : Math.round(r*24).toLocaleString('uk-UA')) + '</td></tr>';
-    }).join('');
+    }
   }
   var sp = document.getElementById('kphSuspect');
   if(sp){
