@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-26 15:30 — Виробництво: структура простоїв (зовн./внутр./техн.) + кг/год по видах + виправлена «Зведена по причинах» (фільтр рік/місяць/тиждень); Товар: денні дані, фільтр рік/місяць/тиждень, прибрано «Залишок»; нові вкладки Проєкти і Ресурси -->
+<!-- BUILD: 2026-09-26 17:10 — підписи «год · %» на графіках простоїв (причини, лінії); шкала місяців під тижнями на графіку кг/год.
+     BUILD: 2026-09-26 15:30 — Виробництво: структура простоїв (зовн./внутр./техн.) + кг/год по видах + виправлена «Зведена по причинах» (фільтр рік/місяць/тиждень); Товар: денні дані, фільтр рік/місяць/тиждень, прибрано «Залишок»; нові вкладки Проєкти і Ресурси -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DRUKAR — Виробничий Дашборд</title>
@@ -307,7 +308,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 26.09.2026 10:50 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 26.09.2026 11:00 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1054,12 +1055,12 @@
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
     <!-- Графік по причинах -->
     <div class="card">
-      <div class="card-header"><div><div class="card-title">Простої по причинах</div><div class="card-subtitle">Години простою · сортування ↓</div></div></div>
+      <div class="card-header"><div><div class="card-title">Простої по причинах</div><div class="card-subtitle">Години простою · % від усього простою · сортування ↓</div></div></div>
       <div class="cw-lg" style="position:relative"><canvas id="dtReasonChart"></canvas></div>
     </div>
     <!-- Графік по лініях -->
     <div class="card">
-      <div class="card-header"><div><div class="card-title">Простої по лініях</div><div class="card-subtitle">Год. простою + кількість подій</div></div></div>
+      <div class="card-header"><div><div class="card-title">Простої по лініях</div><div class="card-subtitle">Год. простою по категоріях · над стовпцем — всього і % від усього простою</div></div></div>
       <div class="cw-lg" style="position:relative"><canvas id="dtLineChart"></canvas></div>
     </div>
   </div>
@@ -7129,6 +7130,35 @@ function _dtAgg(slots){
 function _fmtH(v){ return v == null ? '—' : (Math.round(v*10)/10).toLocaleString('uk-UA'); }
 function _fmtP(v, d){ return v == null || !isFinite(v) ? '—' : v.toFixed(d == null ? 1 : d) + '%'; }
 
+// 🆕 Підписи на стовпцях «X год · Y%» (без зовнішніх бібліотек).
+// getText(index) → рядок або null; horizontal=true — підпис праворуч від бару, інакше — над стеком.
+function dtBarLabelsPlugin(getText, horizontal){
+  return {
+    id: 'dtBarLabels',
+    afterDatasetsDraw: function(chart){
+      var ctx = chart.ctx, n = (chart.data.labels || []).length;
+      ctx.save();
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#1a202c';
+      for(var i=0; i<n; i++){
+        var txt = getText(i); if(!txt) continue;
+        // крайня точка по всіх видимих датасетах (для стеку — верх стеку)
+        var edge = null, mid = null;
+        chart.data.datasets.forEach(function(ds, di){
+          var meta = chart.getDatasetMeta(di); if(meta.hidden || !meta.data[i]) return;
+          var el = meta.data[i], v = ds.data[i]; if(!v) return;
+          if(horizontal){ if(edge == null || el.x > edge) edge = el.x; mid = el.y; }
+          else { if(edge == null || el.y < edge) edge = el.y; mid = el.x; }
+        });
+        if(edge == null) continue;
+        if(horizontal){ ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, edge + 6, mid); }
+        else { ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(txt, mid, edge - 4); }
+      }
+      ctx.restore();
+    }
+  };
+}
+
 function renderDowntime() {
   var slotsAll = _dtSlotsFiltered();
   var rows = slotsAll.filter(function(r){ return (r.downtime > 0) || r.reason; });
@@ -7240,8 +7270,13 @@ function renderDowntime() {
         borderWidth: 1, borderRadius: 4
       }]
     },
+    plugins: [dtBarLabelsPlugin(function(i){
+      var h = reasonEntries[i] && reasonEntries[i][1].hours; if(!h) return null;
+      return _fmtH(h) + ' год · ' + _fmtP(totalH ? h/totalH*100 : null);
+    }, true)],
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 118 } },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: function(ctx) {
@@ -7253,7 +7288,7 @@ function renderDowntime() {
         }}}
       },
       scales: {
-        x: { ...GR, beginAtZero: true, ticks: { ...GR.ticks, callback: function(v){ return v + ' год'; } } },
+        x: { ...GR, beginAtZero: true, ticks: { ...GR.ticks, maxRotation: 0, autoSkip: true, callback: function(v){ return v + ' год'; } } },
         y: { ...GR, ticks: { ...GR.ticks, font: { size: 10 } } }
       }
     }
@@ -7272,8 +7307,15 @@ function renderDowntime() {
                  backgroundColor: DT_CAT_META[c].color + 'cc', borderColor: DT_CAT_META[c].color, borderWidth: 1, stack: 's' };
       })
     },
+    plugins: [dtBarLabelsPlugin(function(i){
+      var n = lineNos[i];
+      var h = rows.filter(function(r){ return r.lineNo === n; }).reduce(function(s,r){ return s + (r.downtime||0); }, 0);
+      if(!h) return null;
+      return _fmtH(h) + ' · ' + _fmtP(totalH ? h/totalH*100 : null, 0);
+    }, false)],
     options: {
       responsive:true, maintainAspectRatio:false,
+      layout: { padding: { top: 18 } },
       plugins:{ legend:{ position:'top', labels:{ boxWidth:12 } },
         tooltip:{ callbacks:{ footer:function(items){
           var n = lineNos[items[0].dataIndex];
@@ -7429,10 +7471,55 @@ function kphRender(){
     datasets.push({ label:v, data: keys.map(function(k){ return rate(k+'|'+v); }), borderColor:PAL[i%PAL.length], backgroundColor:PAL[i%PAL.length],
                     borderWidth:1.8, pointRadius:2.5, tension:.25, spanGaps:false });
   });
+  // 🆕 Шкала місяців під номерами тижнів: смуги-місяці через один + пунктирні межі + назва місяця.
+  // Тиждень відноситься до місяця свого четверга (ISO), тому межа ніколи не «розрізає» тиждень.
+  var monthOfKey = function(k){ return K.gran === 'w' ? DPF.addDays(k, 3).slice(0,7) : k.slice(0,7); };
+  var monthRuns = [];
+  keys.forEach(function(k, i){
+    var m = monthOfKey(k), last = monthRuns[monthRuns.length-1];
+    if(last && last.m === m) last.to = i; else monthRuns.push({ m:m, from:i, to:i });
+  });
+  var kphMonthPlugin = {
+    id: 'kphMonths',
+    beforeDatasetsDraw: function(chart){
+      if(K.gran !== 'w' || !monthRuns.length) return;
+      var x = chart.scales.x, a = chart.chartArea, ctx = chart.ctx, step = keys.length > 1 ? (x.getPixelForValue(1) - x.getPixelForValue(0)) : a.width;
+      ctx.save();
+      monthRuns.forEach(function(r, ri){
+        var l = Math.max(a.left, x.getPixelForValue(r.from) - step/2), rr = Math.min(a.right, x.getPixelForValue(r.to) + step/2);
+        if(ri % 2 === 1){ ctx.fillStyle = 'rgba(37,99,235,.045)'; ctx.fillRect(l, a.top, rr - l, a.bottom - a.top); }
+        if(ri > 0){
+          ctx.strokeStyle = 'rgba(100,116,139,.45)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+          ctx.beginPath(); ctx.moveTo(l, a.top); ctx.lineTo(l, x.bottom + 22); ctx.stroke(); ctx.setLineDash([]);
+        }
+      });
+      ctx.restore();
+    },
+    afterDraw: function(chart){
+      if(K.gran !== 'w' || !monthRuns.length) return;
+      var x = chart.scales.x, a = chart.chartArea, ctx = chart.ctx, step = keys.length > 1 ? (x.getPixelForValue(1) - x.getPixelForValue(0)) : a.width;
+      var multiYear = K.period.year === 'all';
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      monthRuns.forEach(function(r){
+        var l = Math.max(a.left, x.getPixelForValue(r.from) - step/2), rr = Math.min(a.right, x.getPixelForValue(r.to) + step/2), w = rr - l;
+        var full = DPF.monthLabel(r.m), short = DPF.monthLabel(r.m, true);
+        var txt = multiYear ? (w > 90 ? full : short) : (w > 70 ? full.split(' ')[0] : short.split(' ')[0]);
+        ctx.font = '600 10px "IBM Plex Mono", monospace';
+        if(ctx.measureText(txt).width > w - 4) txt = short.split(' ')[0];
+        if(ctx.measureText(txt).width > w - 2) return;
+        ctx.fillStyle = '#2563eb';
+        ctx.fillText(txt.toUpperCase(), l + w/2, x.bottom + 14);
+      });
+      ctx.restore();
+    }
+  };
   safeCreateChart('kphChart', {
     type:'line',
+    plugins: [kphMonthPlugin],
     data:{ labels: keys.map(function(k){ return K.gran === 'w' ? DPF.weekLabel(k, K.period.year === 'all' ? 'y' : true) : DPF.monthLabel(k, true); }), datasets:datasets },
     options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+      layout:{ padding:{ bottom: K.gran === 'w' ? 22 : 0 } },
       plugins:{ legend:{ position:'top', labels:{ boxWidth:12, font:{ size:10 } } },
         tooltip:{ callbacks:{
           title:function(items){ var k = keys[items[0].dataIndex]; return K.gran === 'w' ? DPF.weekLabel(k) : DPF.monthLabel(k); },
