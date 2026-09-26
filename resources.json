@@ -1,0 +1,66 @@
+{
+  "updated": "2026-09-26",
+  "_how_to_edit": "Додавайте посилання у потрібну групу: {\"title\": \"Назва\", \"url\": \"https://...\", \"desc\": \"Коротко: для чого і кому\"}. Нову групу — новим об'єктом у groups. Після push дашборд оновиться з наступним запуском GitHub Actions.",
+  "groups": [
+    {
+      "name": "Продажі",
+      "icon": "💰",
+      "desc": "Плани, відвантаження, реалізація",
+      "links": [
+        { "title": "B2B план продажів", "url": "https://docs.google.com/spreadsheets/d/1IKKB7NRWLzxK2KC0p1InAEqvlNsT3XiEeGFTGUyx3Go/edit", "desc": "План B2B-продажів по клієнтських сегментах і місяцях" },
+        { "title": "Реєстр відвантажень", "url": "https://docs.google.com/spreadsheets/d/1oy23YacYq6O7MajCcBf_HIWnRyFSyRgdrI5_uPE9ZVk/edit", "desc": "Усі відвантаження ТОВ / ФОП / Easy — джерело вкладки «Продажі» і «Товар»" },
+        { "title": "Реалізація ТОВ", "url": "https://docs.google.com/spreadsheets/d/124AErY0bMYHuv2H1vjkSAerEOTgZV7OgR51N0op5r-4/edit", "desc": "Бухгалтерська реалізація ТОВ «Друкар Продакшн»" }
+      ]
+    },
+    {
+      "name": "Маркетинг",
+      "icon": "📣",
+      "desc": "Сайти, соцмережі, контент, виставки",
+      "links": []
+    },
+    {
+      "name": "CRM",
+      "icon": "🤝",
+      "desc": "Bitrix24: угоди, клієнти, склад",
+      "links": [
+        { "title": "Bitrix24 — портал", "url": "https://b24-733cj8.bitrix24.eu/", "desc": "Головна сторінка CRM" },
+        { "title": "Bitrix24 — угоди", "url": "https://b24-733cj8.bitrix24.eu/crm/deal/", "desc": "Воронка угод, картки клієнтів" }
+      ]
+    },
+    {
+      "name": "Фінанси",
+      "icon": "📊",
+      "desc": "P&L, CashFlow, Баланс, платежі",
+      "links": [
+        { "title": "P&L 2026", "url": "https://docs.google.com/spreadsheets/d/1kIwx30hqxuT7HDq0fq7shxyxvwv2zO3V2aP_ey0NtFw/edit", "desc": "Звіт про прибутки і збитки по місяцях" },
+        { "title": "CashFlow", "url": "https://docs.google.com/spreadsheets/d/1_JaHwKT1Ksg95Qe8koYrslOC2eWylWRBeW4PjSGQeT4/edit", "desc": "Рух коштів по всіх юрособах" },
+        { "title": "Баланс", "url": "https://docs.google.com/spreadsheets/d/1z2uTKgK5Ji2oYtVwoeuulTPuHjEkHqzsOvjGG9rIJk8/edit", "desc": "Управлінський баланс групи" },
+        { "title": "Реєстр оплат", "url": "https://docs.google.com/spreadsheets/d/191GeZ7sQ7t-CJdXULQ2md02xj3FumjaFkOuoo-uZpvU/edit", "desc": "Заплановані та проведені оплати" }
+      ]
+    },
+    {
+      "name": "Виробництво",
+      "icon": "🏭",
+      "desc": "Журнали локацій, сировина, розвиток",
+      "links": [
+        { "title": "Журнал · Локація 1", "url": "https://docs.google.com/spreadsheets/d/1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4/edit", "desc": "Зміни, вага, НФ, простої — лінії 1–6" },
+        { "title": "Журнал · Локація 2", "url": "https://docs.google.com/spreadsheets/d/1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI/edit", "desc": "Зміни, вага, НФ, простої — лінії 7–10" },
+        { "title": "Журнал сировини · Локація 1", "url": "https://docs.google.com/spreadsheets/d/1hggfeKsGx1R18aKadeK9wl62gQvxH7kuqk8-yhKIbvU/edit", "desc": "Прихід і витрата сировини" },
+        { "title": "Журнал сировини · Локація 2", "url": "https://docs.google.com/spreadsheets/d/1BNXjHxApOdWLWa0OtN_PPmeDdbDvZ-m1WtrJ78pDI9U/edit", "desc": "Прихід і витрата сировини" },
+        { "title": "План розвитку виробництва", "url": "https://docs.google.com/spreadsheets/d/1jAA_ayMFJ4FkbauamjWaeXi2bdwkcaYw0y8Hz13uirI/edit", "desc": "Нові лінії та локації" }
+      ]
+    },
+    {
+      "name": "Інше",
+      "icon": "🧭",
+      "desc": "Стратегія, проєкти, дашборди",
+      "links": [
+        { "title": "Файл проєктів", "url": "https://docs.google.com/spreadsheets/d/1Dpmb9zNdL3-JoMY_K44ZtUbLd8whD8h3aNSX40C7bBU/edit", "desc": "Карта проєктів, задачі, дельти шарів — джерело вкладки «Проєкти»" },
+        { "title": "9 шарів", "url": "https://docs.google.com/spreadsheets/d/1sVlHuAq_Nyio-2no4nL1mYhbIiBwtfsCi5rCMbJJtvc/edit", "desc": "Модель 9 шарів і Календар грошей" },
+        { "title": "OKR 2026", "url": "https://docs.google.com/spreadsheets/d/1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk/edit", "desc": "Цілі та ключові результати" },
+        { "title": "Дашборд · ТОП", "url": "https://olegivanovioa.github.io/Drukar-Dashboard/", "desc": "Повна версія для менеджменту" },
+        { "title": "Дашборд · Мідл", "url": "https://olegivanovioa.github.io/Drukar-Dashboard/middle.html", "desc": "Версія для мідл-менеджменту" }
+      ]
+    }
+  ]
+}

@@ -3,6 +3,13 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-09-26 15:30 — (1) журнали: захист від дат-описок (2029/лютий посеред грудня),
+нормалізація назв Видів (PETG 3,0 White → PETG 3кг WHITE), денні дані PROD_DAILY для
+вкладки "Товар" (фільтр тиждень/місяць/рік); (2) продажі: денні SALES_DAILY з позначкою
+"кг оцінено з грн"; (3) нові вкладки "Корисні ресурси" (resources.json) і "Проєкти"
+(файл проєктів, листи Проекти_Карта/Задачі/Дельта_Шарів/Ресурси_Зведення);
+(4) load_config домерджує нові табки з DEFAULT_CONFIG, якщо їх немає в middle_config.json.
+
 BUILD: 2026-08-14 14:20 — fix: добавлен fallback '{{FC_FACT}}'/'{{FC_LAST_M}}'
 в else-ветку (когда sales не загрузился). Без него неудачный fetch_csv листа
 "Відвантаження" оставлял сырые {{FC_FACT}}/{{FC_LAST_M}} в опубликованном
@@ -46,14 +53,31 @@ DEFAULT_CONFIG = {
         "okr":        {"top": True, "mid": True},
         "inventory":  {"top": True, "mid": True},
         "product":    {"top": True, "mid": False},
+        "projects":   {"top": True, "mid": False},
+        "resources":  {"top": True, "mid": True},
     }
 }
+
+# 🆕 Файл проєктів (листи Проекти_Карта / Проекти_Задачі / Проекти_Дельта_Шарів /
+# Проекти_Ресурси_Зведення). Має бути відкритий "Всі з посиланням → Переглядач",
+# інакше вкладка "Проєкти" покаже підказку замість даних (нічого не падає).
+PROJECTS_SHEET_ID = os.environ.get("PROJECTS_SHEET_ID", "1Dpmb9zNdL3-JoMY_K44ZtUbLd8whD8h3aNSX40C7bBU")
+PROJECTS_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PROJECTS_SHEET_ID}/edit"
+# 🆕 Бібліотека корисних посилань — редагується руками у resources.json в репо.
+RESOURCES_FILE = "resources.json"
 
 def load_config():
     try:
         with open("middle_config.json", "r", encoding="utf-8") as fh:
             cfg = json.load(fh)
         print("OK middle_config.json loaded")
+        # Нові табки, яких ще немає у збереженому конфігу, беремо з DEFAULT_CONFIG —
+        # інакше вони не з'являться навіть у ТОП-версії (active_tabs = тільки ключі з конфігу).
+        tabs = cfg.setdefault("tabs", {})
+        for _tid, _tv in DEFAULT_CONFIG["tabs"].items():
+            if _tid not in tabs:
+                tabs[_tid] = dict(_tv)
+                print(f"  config: додано нову табку '{_tid}' з дефолтів {_tv}")
         return cfg
     except Exception as e:
         print(f"WARN middle_config.json not found ({e}), using defaults")
@@ -542,18 +566,28 @@ def parse_production_from_journals(rows_list):
         except:
             return 0.0
 
-    def _parse_date(val):
+    def _parse_day(val):
+        """Повертає date або None. Приймає datetime, Excel-serial, 'YYYY-MM-DD', 'DD.MM.YYYY',
+        'Date(2026,6,6)' та інші варіанти gviz (через _mc9sl_parse_date)."""
         if hasattr(val, 'strftime'):
-            return val.strftime('%Y-%m')
+            try: return val.date() if hasattr(val, 'date') else val
+            except Exception: return None
         if isinstance(val, (int, float)) and 40000 < val < 60000:
-            return (_date(1899, 12, 30) + timedelta(days=int(val))).strftime('%Y-%m')
-        if isinstance(val, str):
-            for fmt in ('%Y-%m-%d', '%d.%m.%Y'):
-                try:
-                    return _dt.strptime(str(val)[:10], fmt).strftime('%Y-%m')
-                except:
-                    pass
-        return None
+            return _date(1899, 12, 30) + timedelta(days=int(val))
+        sv = str(val or '').strip()
+        if not sv or sv.lower() in ('nan', 'none', 'nat'):
+            return None
+        try:
+            fv = float(sv.replace(',', '.'))
+            if 40000 < fv < 60000:
+                return _date(1899, 12, 30) + timedelta(days=int(fv))
+            return None   # просто число (напр. номер тижня "52" у заголовку)
+        except ValueError:
+            pass
+        try:
+            return _mc9sl_parse_date(sv)
+        except Exception:
+            return None
 
     # Маппінг назв Видів з журналу → назва SKU для дашборду (має збігатися з продажами)
     SKU_DISPLAY_MAP = {
@@ -565,6 +599,18 @@ def parse_production_from_journals(rows_list):
         'PLA 2.5':      'PLA 2.5кг',
         'PLA 3.0':      'PLA 3кг',
     }
+    import re as _re_sku
+    def _sku_display(vid):
+        v = vid.strip()
+        if v in SKU_DISPLAY_MAP:
+            return SKU_DISPLAY_MAP[v]
+        # Варіанти типу "PETG 3,0 White" / "PETG 3,0 прозорий" / "PETG 2.4"
+        m = _re_sku.match(r'^(PETG|PLA)\s*(\d+(?:[.,]\d+)?)\s*(.*)$', v, _re_sku.IGNORECASE)
+        if not m:
+            return v
+        w = str(float(m.group(2).replace(',', '.'))).rstrip('0').rstrip('.')
+        suffix = m.group(3).strip()
+        return f"{m.group(1).upper()} {w}кг" + (f" {suffix.upper()}" if suffix else '')
 
     monthly = defaultdict(lambda: {
         'petg': 0.0, 'pla': 0.0,
@@ -575,25 +621,43 @@ def parse_production_from_journals(rows_list):
     # per-SKU: sku_display → ym → kg
     from collections import defaultdict as _dd
     sku_monthly = _dd(lambda: _dd(float))
+    # 🆕 per-day per-SKU (для вкладки "Товар" з фільтром тиждень/місяць/рік)
+    sku_daily = _dd(float)   # (YYYY-MM-DD, sku) → kg
+    date_typos = 0
 
     total_rows = 0
+    today = _date.today()
     for rows in rows_list:
         if not rows or len(rows) < 3:
             continue
         # Рядки даних починаються з індексу 2 (пропускаємо 2 рядки заголовків)
-        last_ym = None
+        cur_day = None
         for row in rows[2:]:
             if not row or len(row) < 9:
                 continue
 
-            # col 0 = дата (може бути NaT/порожньо — тоді ffill)
-            raw_date = row[0]
-            ym = _parse_date(raw_date)
-            if ym:
-                last_ym = ym
-            else:
-                ym = last_ym
-            if not ym or ym < '2025-11':
+            # col 0 = дата (може бути порожньо — тоді ffill).
+            # Захист від описок (2029 замість 2026, лютий посеред грудня): нова дата
+            # приймається, лише якщо вона в межах -3…+20 днів від попередньої
+            # прийнятої (і не в майбутньому). Інакше — вважаємо опискою і
+            # лишаємо попередню дату зміни.
+            d = _parse_day(row[0])
+            if d is not None:
+                if cur_day is None:
+                    if d <= today + timedelta(days=1):
+                        cur_day = d
+                    else:
+                        date_typos += 1
+                else:
+                    delta = (d - cur_day).days
+                    if -3 <= delta <= 20 and d <= today + timedelta(days=1):
+                        cur_day = d
+                    else:
+                        date_typos += 1
+            if cur_day is None:
+                continue
+            ym = cur_day.strftime('%Y-%m')
+            if ym < '2025-11':
                 continue
 
             # col 8 = Вид продукту
@@ -621,10 +685,14 @@ def parse_production_from_journals(rows_list):
                 monthly[ym]['pla_nf']     += nf
                 monthly[ym]['pla_waste']  += waste
             # per-SKU accumulation
-            sku_disp = SKU_DISPLAY_MAP.get(vid, vid.strip())
+            sku_disp = _sku_display(vid)
             sku_monthly[sku_disp][ym] += kg
+            if kg > 0:
+                sku_daily[(cur_day.strftime('%Y-%m-%d'), sku_disp)] += kg
             total_rows += 1
 
+    if date_typos:
+        print(f"  parse_production_from_journals: пропущено {date_typos} дат-описок (лишено дату попередньої зміни)")
     print(f"  parse_production_from_journals: {total_rows} data rows, {len(monthly)} months")
 
     petg_prod  = [round(monthly[m]['petg'],  1) if m in monthly else None for m in MONTH_ORDER]
@@ -691,6 +759,8 @@ def parse_production_from_journals(rows_list):
         # per-SKU для таба "Товар"
         'prod_by_sku':    prod_by_sku,
         'prod_sku_list':  all_skus_sorted,
+        # 🆕 денні дані: [[YYYY-MM-DD, sku, kg], ...]
+        'prod_daily':     [[dk, sk, round(v, 2)] for (dk, sk), v in sorted(sku_daily.items())],
     }
 
     print(f"  PETG prod (journals): {petg_prod}")
@@ -1314,7 +1384,8 @@ def parse_sales_from_journal(rows):
         plastic = 'PETG' if 'PETG' in product.upper() else ('PLA' if 'PLA' in product.upper() else '')
         ym = d.strftime('%Y-%m')
         data_rows.append({'ym': ym, 'channel': channel, 'product': product, 'plastic': plastic,
-                           'revenue': revenue, 'kg': kg, 'op_type': op_type})
+                           'revenue': revenue, 'kg': kg, 'op_type': op_type,
+                           'date': d.strftime('%Y-%m-%d')})
 
     if not data_rows:
         print("  WARNING: no sales data parsed from journal")
@@ -1429,6 +1500,8 @@ def _sales_rows_to_result(data_rows):
     sku_ret = _dd2(lambda: [0.0] * MONTH_COUNT)
     zero_kg_cnt = 0; zero_kg_rev = 0.0
 
+    # 🆕 денні продажі по SKU/каналу: (date, sku, 'o'|'r') → [kg, kg_оцінено]
+    sku_daily = _dd2(lambda: [0.0, 0.0])
     for r in data_rows:
         sku = _norm_sku(r['product'])
         if not sku: continue
@@ -1438,9 +1511,11 @@ def _sales_rows_to_result(data_rows):
             continue
 
         kg = r['kg']
+        estimated = False
         if kg <= 0 and r['revenue'] > 0:
             pl = 'PETG' if sku.startswith('PETG') else 'PLA'
             kg = r['revenue'] / avg_price[pl]
+            estimated = True
             zero_kg_cnt += 1
             zero_kg_rev += r['revenue']
 
@@ -1448,8 +1523,17 @@ def _sales_rows_to_result(data_rows):
 
         if r['channel'] == 'Опт':
             sku_opt[sku][mi] += kg
+            ch = 'o'
         elif r['channel'] == 'Розница':
             sku_ret[sku][mi] += kg
+            ch = 'r'
+        else:
+            continue
+        if r.get('date'):
+            rec = sku_daily[(r['date'], sku, ch)]
+            rec[0] += kg
+            if estimated:
+                rec[1] += kg
 
     print(f"  Zero-kg rows fixed: {zero_kg_cnt}, revenue covered: {round(zero_kg_rev):,} грн")
 
@@ -1494,6 +1578,9 @@ def _sales_rows_to_result(data_rows):
         'sku_sales_opt':     sku_sales_opt,
         'sku_sales_ret':     sku_sales_ret,
         'sku_list':          all_skus,
+        # 🆕 [[YYYY-MM-DD, sku, 'o'|'r', kg, kg_оцінено_з_грн], ...]
+        'sku_sales_daily':   [[k[0], k[1], k[2], round(v[0], 2), round(v[1], 2)]
+                              for k, v in sorted(sku_daily.items())],
     }
     print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
     return result
@@ -1736,6 +1823,256 @@ def parse_sales(rows):
     }
     print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
     return result
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🆕 ПРОЄКТИ — файл проєктів (PROJECTS_SHEET_ID)
+# ══════════════════════════════════════════════════════════════════
+def _prj_date(v):
+    """Дата з файлу проєктів → 'YYYY-MM-DD' або None.
+    Файл у US-локалі: '11/1/2026' = 1 листопада (М/Д/Р). Крапка — Д.М.Р, ISO — як є."""
+    s = str(v or '').strip()
+    if not s or s.lower() in ('nan', 'none'):
+        return None
+    md = re.match(r'^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})', s)
+    try:
+        if md:
+            return datetime(int(md.group(1)), int(md.group(2)) + 1, int(md.group(3))).strftime('%Y-%m-%d')
+        m = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})', s)
+        if m:
+            return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).strftime('%Y-%m-%d')
+        m = re.match(r'^(\d{1,2})/(\d{1,2})/(\d{2,4})', s)
+        if m:
+            a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if y < 100: y += 2000
+            mon, day = (a, b) if a <= 12 else (b, a)
+            return datetime(y, mon, day).strftime('%Y-%m-%d')
+        m = re.match(r'^(\d{1,2})\.(\d{1,2})\.(\d{2,4})', s)
+        if m:
+            d, mon, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if y < 100: y += 2000
+            return datetime(y, mon, d).strftime('%Y-%m-%d')
+    except ValueError:
+        return None
+    return None
+
+
+def _prj_bool(v):
+    return str(v or '').strip().upper() in ('TRUE', 'ИСТИНА', 'ІСТИНА', '1', 'ДА', 'ТАК', 'YES')
+
+
+def _prj_find_header(rows, *needles):
+    """Індекс першого рядка, у якому є ВСІ підрядки needles (без регістру)."""
+    for i, row in enumerate(rows[:15]):
+        low = [str(c or '').strip().lower() for c in row]
+        if all(any(n in c for c in low) for n in needles):
+            return i
+    return None
+
+
+def parse_projects(map_rows, task_rows=None, delta_rows=None, res_rows=None):
+    """Повертає dict для вкладки "Проєкти":
+      projects: [{id, name, client, status, prob, volume_t, start, prep_months, prep_start,
+                  loc_type, loc_name, lines, capex, sales_link, notes, layers:[...],
+                  fields:[[заголовок, значення], ...] (ВСІ колонки як є),
+                  tasks:[...], deltas:[...], resources:{тип:[[місяць, значення],...]},
+                  checks:[текст попередження, ...]}]
+      general_notes: [рядки без ID внизу листа задач (РИЗИКИ тощо)]
+    Нічого не вигадує: порожні клітинки лишаються порожніми."""
+    out = {'projects': [], 'general_notes': [], 'layers_all': []}
+    if not map_rows:
+        return out
+    hi = _prj_find_header(map_rows, 'id', 'назва')
+    if hi is None:
+        hi = 0
+    hdr = [_mc9sl_norm(c) for c in map_rows[hi]]
+
+    def col(*needles):
+        for i, h in enumerate(hdr):
+            hl = h.lower()
+            if all(n in hl for n in needles):
+                return i
+        return None
+
+    C = {
+        'id': col('id'), 'name': col('назва'), 'client': col('клієнт'), 'status': col('статус'),
+        'prob': col('ймовірн'), 'volume': col('обсяг'), 'start': col('дата старту'),
+        'prep_months': col('тривалість'), 'prep_start': col('старт підготовки'),
+        'loc_type': col('нова/існуюча'), 'loc_name': col('назва/номер'),
+        'lines': col('к-сть ліній'), 'capex': col('capex'), 'sales_link': col('слон'),
+        'notes': col('примітка'),
+    }
+    layer_cols = [(i, h) for i, h in enumerate(hdr) if re.match(r'^\d{2}_', h)]
+    out['layers_all'] = [h for _, h in layer_cols]
+
+    def cell(row, key):
+        i = C.get(key)
+        if i is None or i >= len(row):
+            return ''
+        return _mc9sl_norm(row[i])
+
+    by_id = {}
+    for row in map_rows[hi + 1:]:
+        pid = cell(row, 'id')
+        if not pid:
+            continue
+        fields = []
+        for i, h in enumerate(hdr):
+            if not h or any(i == li for li, _ in layer_cols):
+                continue
+            v = _mc9sl_norm(row[i]) if i < len(row) else ''
+            fields.append([h, v])
+        prj = {
+            'id': pid,
+            'name': cell(row, 'name'),
+            'client': cell(row, 'client'),
+            'status': cell(row, 'status'),
+            'prob': _mc9sl_num(cell(row, 'prob')) if cell(row, 'prob') else None,
+            'volume_t': _mc9sl_num(cell(row, 'volume')) if cell(row, 'volume') else None,
+            'start': _prj_date(cell(row, 'start')),
+            'prep_months': _mc9sl_num(cell(row, 'prep_months')) if cell(row, 'prep_months') else None,
+            'prep_start': _prj_date(cell(row, 'prep_start')),
+            'loc_type': cell(row, 'loc_type'),
+            'loc_name': cell(row, 'loc_name'),
+            'lines': _mc9sl_num(cell(row, 'lines')) if cell(row, 'lines') else None,
+            'capex': _mc9sl_num(cell(row, 'capex')) if cell(row, 'capex') else None,
+            'sales_link': cell(row, 'sales_link'),
+            'notes': cell(row, 'notes'),
+            'layers': [h for i, h in layer_cols if i < len(row) and _prj_bool(row[i])],
+            'fields': fields,
+            'tasks': [], 'deltas': [], 'resources': {}, 'checks': [],
+        }
+        out['projects'].append(prj)
+        by_id[pid] = prj
+
+    # ── Задачі ──
+    if task_rows:
+        th = _prj_find_header(task_rows, 'id задачі')
+        if th is not None:
+            thdr = [_mc9sl_norm(c).lower() for c in task_rows[th]]
+            def tcol(*needles):
+                for i, h in enumerate(thdr):
+                    if all(n in h for n in needles):
+                        return i
+                return None
+            T = {'tid': tcol('id задачі'), 'pid': tcol('id проекту'), 'name': tcol('назва'),
+                 'layer': tcol('шар'), 'owner': tcol('виконавець'), 'start': tcol('дата початку'),
+                 'end': tcol('дата закінчення'), 'days': tcol('тривалість'), 'status': tcol('статус'),
+                 'pct': tcol('% готовності'), 'money': tcol('гроші'), 'people': tcol('люди'),
+                 'equip': tcol('обладнання'), 'dep': tcol('залежність'), 'note': tcol('примітка')}
+            def tc(row, k):
+                i = T.get(k)
+                return _mc9sl_norm(row[i]) if i is not None and i < len(row) else ''
+            seen_tid = {}
+            for row in task_rows[th + 1:]:
+                pid, tid = tc(row, 'pid'), tc(row, 'tid')
+                if not pid and not tid:
+                    txt = ' · '.join(_mc9sl_norm(c) for c in row if _mc9sl_norm(c))
+                    if txt:
+                        out['general_notes'].append(txt)
+                    continue
+                prj = by_id.get(pid)
+                if prj is None:
+                    continue
+                task = {
+                    'id': tid, 'name': tc(row, 'name'), 'layer': tc(row, 'layer'),
+                    'owner': tc(row, 'owner'), 'start': _prj_date(tc(row, 'start')),
+                    'end': _prj_date(tc(row, 'end')), 'status': tc(row, 'status'),
+                    'pct': _mc9sl_num(tc(row, 'pct')) if tc(row, 'pct') else None,
+                    'money': _mc9sl_num(tc(row, 'money')) if tc(row, 'money') else 0.0,
+                    'people_h': _mc9sl_num(tc(row, 'people')) if tc(row, 'people') else 0.0,
+                    'equip_h': _mc9sl_num(tc(row, 'equip')) if tc(row, 'equip') else 0.0,
+                    'dep': tc(row, 'dep'), 'note': tc(row, 'note'),
+                }
+                prj['tasks'].append(task)
+                seen_tid[tid] = seen_tid.get(tid, 0) + 1
+            for prj in out['projects']:
+                dups = sorted({t['id'] for t in prj['tasks'] if seen_tid.get(t['id'], 0) > 1})
+                if dups:
+                    prj['checks'].append('Дубль ID задачі: ' + ', '.join(dups))
+                empty = [t['id'] for t in prj['tasks'] if not t['name']]
+                if empty:
+                    prj['checks'].append('Задачі без назви: ' + ', '.join(empty))
+                noowner = [t['id'] for t in prj['tasks'] if t['name'] and not t['owner']]
+                if noowner:
+                    prj['checks'].append('Задачі без виконавця: ' + ', '.join(noowner))
+                bad_dates = [t['id'] for t in prj['tasks'] if t['start'] and t['end'] and t['end'] < t['start']]
+                if bad_dates:
+                    prj['checks'].append('Кінець раніше за початок: ' + ', '.join(bad_dates))
+
+    # ── Дельти шарів ──
+    if delta_rows:
+        dh = _prj_find_header(delta_rows, 'id проекту', 'шар')
+        if dh is not None:
+            for row in delta_rows[dh + 1:]:
+                r = [_mc9sl_norm(c) for c in row] + [''] * 8
+                pid = r[0]
+                prj = by_id.get(pid)
+                if prj is None:
+                    continue
+                prj['deltas'].append({
+                    'layer': r[1], 'what': r[2], 'from': _prj_date(r[3]), 'to': _prj_date(r[4]),
+                    'value': _mc9sl_num(r[5]) if r[5] else None, 'unit': r[6],
+                    'on': _prj_bool(r[7]) if r[7] else None,
+                })
+            for prj in out['projects']:
+                capex_d = sum((d['value'] or 0) for d in prj['deltas']
+                              if 'capex' in d['layer'].lower() and d['unit'].lower().startswith('грн'))
+                if prj['capex'] and capex_d and abs(capex_d - prj['capex']) > 0.5:
+                    prj['checks'].append(
+                        f"CAPEX у Карті ({prj['capex']:,.0f} грн) ≠ сума CAPEX у Дельтах шарів ({capex_d:,.0f} грн)"
+                        .replace(',', ' '))
+
+    # ── Помісячне зведення ресурсів ──
+    if res_rows:
+        rh = None
+        for i, row in enumerate(res_rows[:15]):
+            if row and _mc9sl_norm(row[0]).lower() == 'проект':
+                rh = i
+                break
+        if rh is not None:
+            months = [_mc9sl_norm(c) for c in res_rows[rh][2:]]
+            for row in res_rows[rh + 1:]:
+                r = [_mc9sl_norm(c) for c in row]
+                if not r or not r[0]:
+                    continue
+                prj = by_id.get(r[0])
+                if prj is None or len(r) < 3:
+                    continue
+                vals = []
+                for mi, m in enumerate(months):
+                    if not m:
+                        continue
+                    v = _mc9sl_num(r[mi + 2]) if mi + 2 < len(r) and r[mi + 2] else 0.0
+                    if v:
+                        vals.append([m, v])
+                if vals:
+                    prj['resources'][r[1]] = vals
+
+    print(f"  Проєкти: {len(out['projects'])} проєктів, "
+          f"{sum(len(p['tasks']) for p in out['projects'])} задач, "
+          f"{len(out['general_notes'])} загальних приміток")
+    return out
+
+
+def load_resources():
+    """resources.json → {'groups': [{'name','icon','links':[{'title','url','desc'}]}]}.
+    Якщо файлу немає або він битий — порожній список (вкладка покаже підказку)."""
+    try:
+        with open(RESOURCES_FILE, 'r', encoding='utf-8') as fh:
+            data = json.load(fh)
+        groups = data.get('groups', []) if isinstance(data, dict) else []
+        clean = []
+        for g in groups:
+            links = [l for l in (g.get('links') or [])
+                     if isinstance(l, dict) and str(l.get('url', '')).startswith(('http://', 'https://'))]
+            clean.append({'name': str(g.get('name', 'Інше')), 'icon': str(g.get('icon', '')),
+                          'desc': str(g.get('desc', '')), 'links': links})
+        print(f"  Ресурси: {len(clean)} груп, {sum(len(g['links']) for g in clean)} посилань")
+        return {'groups': clean, 'updated': str(data.get('updated', '')) if isinstance(data, dict) else ''}
+    except Exception as e:
+        print(f"  WARNING resources.json: {e}")
+        return {'groups': [], 'updated': ''}
 
 
 def jv(v):
@@ -2010,6 +2347,17 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
             '{{PROD_BY_SKU}}':        jv(data.get('prod_by_sku', {})),
             '{{PROD_SKU_LIST}}':      jv(data.get('prod_sku_list', [])),
         })
+    # 🆕 Денні дані для "Товар", Проєкти, Ресурси — ЗАВЖДИ замінюємо (безумовний fallback),
+    # json.dumps + екранування '</' — щоб перенос рядка чи '</script>' у примітках не ламав JS.
+    def _jd(v):
+        return json.dumps(v, ensure_ascii=False).replace('</', '<\\/')
+    subs.update({
+        '{{PROD_DAILY}}':     _jd(data.get('prod_daily') or []),
+        '{{SALES_DAILY}}':    _jd((sales or {}).get('sku_sales_daily') or []),
+        '{{PROJECTS_DATA}}':  _jd(data.get('projects') or {'projects': [], 'general_notes': [], 'layers_all': [],
+                                                          'error': 'дані не завантажено'}),
+        '{{RESOURCES_DATA}}': _jd(data.get('resources') or {'groups': [], 'updated': ''}),
+    })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
     subs.update({
         '{{OKR_COMPANY_PCT}}':   str(round(okr['company_pct'] * 100, 1)) if okr else '0',
@@ -2081,6 +2429,7 @@ if __name__ == '__main__':
             data['pla_pcs']       = jdata['pla_pcs']
             data['prod_by_sku']   = jdata['prod_by_sku']
             data['prod_sku_list'] = jdata['prod_sku_list']
+            data['prod_daily']    = jdata.get('prod_daily', [])
             print("  Journal data merged into data[] OK")
             print(f"  prod_sku_list: {jdata['prod_sku_list']}")
         except Exception as e:
@@ -2370,6 +2719,35 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"WARNING norms: {e}")
         line_norms = {}
+
+    # ── 7. 🆕 Проєкти (файл проєктів) ─────────────────────────
+    data['projects'] = {'projects': [], 'general_notes': [], 'layers_all': [],
+                        'source_url': PROJECTS_SHEET_URL, 'error': ''}
+    try:
+        _pm = fetch_csv(PROJECTS_SHEET_ID, 'Проекти_Карта')
+        _head = ' '.join(str(c) for r in (_pm or [])[:3] for c in r).lower()
+        if '<html' in _head or '<!doctype' in _head:
+            raise ValueError('отримано HTML замість CSV — файл не відкритий за посиланням')
+        _pt = _pd = _pr = None
+        for _nm in ('Проекти_Задачі', 'Проекти_Дельта_Шарів', 'Проекти_Ресурси_Зведення'):
+            try:
+                _rows = fetch_csv(PROJECTS_SHEET_ID, _nm)
+            except Exception as _e:
+                print(f"  WARNING проєкти '{_nm}': {_e}")
+                _rows = None
+            if _nm == 'Проекти_Задачі': _pt = _rows
+            elif _nm == 'Проекти_Дельта_Шарів': _pd = _rows
+            else: _pr = _rows
+        _pp = parse_projects(_pm, _pt, _pd, _pr)
+        _pp['source_url'] = PROJECTS_SHEET_URL
+        _pp['error'] = '' if _pp['projects'] else 'у листі Проекти_Карта не знайдено жодного рядка з ID'
+        data['projects'] = _pp
+    except Exception as e:
+        print(f"WARNING projects: {e}")
+        data['projects']['error'] = f"не вдалося прочитати файл проєктів ({e})"
+
+    # ── 8. 🆕 Корисні ресурси (resources.json у репо) ─────────
+    data['resources'] = load_resources()
 
     config = load_config()
     data_errors = {}
