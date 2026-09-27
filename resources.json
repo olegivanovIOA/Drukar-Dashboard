@@ -3,31 +3,6 @@
   "_how_to_edit": "Додавайте посилання у потрібну групу: {\"title\": \"Назва\", \"url\": \"https://...\", \"desc\": \"Коротко: для чого і кому\"}. Нову групу — новим об'єктом у groups. Видимість: \"modes\": [\"top\"] — тільки ТОП-дашборд, [\"mid\"] — тільки Мідл, без поля — обидва. Працює і для групи, і для окремого посилання. Інша назва/опис групи для версії: \"name_by_mode\": {\"top\": \"...\"}, \"desc_by_mode\": {\"top\": \"...\"}. Після push дашборд оновиться з наступним запуском GitHub Actions.",
   "groups": [
     {
-      "name": "Продажі",
-      "icon": "💰",
-      "desc": "Плани, відвантаження, реалізація",
-      "links": [
-        {
-          "title": "B2B план продажів",
-          "url": "https://docs.google.com/spreadsheets/d/1IKKB7NRWLzxK2KC0p1InAEqvlNsT3XiEeGFTGUyx3Go/edit",
-          "desc": "План B2B-продажів по клієнтських сегментах і місяцях"
-        },
-        {
-          "title": "Реєстр відвантажень",
-          "url": "https://docs.google.com/spreadsheets/d/1oy23YacYq6O7MajCcBf_HIWnRyFSyRgdrI5_uPE9ZVk/edit",
-          "desc": "Усі відвантаження ТОВ / ФОП / Easy — джерело вкладки «Продажі» і «Товар»"
-        },
-        {
-          "title": "Реалізація ТОВ",
-          "url": "https://docs.google.com/spreadsheets/d/124AErY0bMYHuv2H1vjkSAerEOTgZV7OgR51N0op5r-4/edit",
-          "desc": "Бухгалтерська реалізація ТОВ «Друкар Продакшн»"
-        }
-      ],
-      "modes": [
-        "top"
-      ]
-    },
-    {
       "name": "Маркетинг",
       "icon": "📣",
       "desc": "Сайти, соцмережі, контент, виставки",
@@ -38,36 +13,6 @@
       "icon": "🤝",
       "desc": "CRM, клієнти, воронки",
       "links": []
-    },
-    {
-      "name": "Фінанси",
-      "icon": "📊",
-      "desc": "P&L, CashFlow, Баланс, платежі",
-      "links": [
-        {
-          "title": "P&L 2026",
-          "url": "https://docs.google.com/spreadsheets/d/1kIwx30hqxuT7HDq0fq7shxyxvwv2zO3V2aP_ey0NtFw/edit",
-          "desc": "Звіт про прибутки і збитки по місяцях"
-        },
-        {
-          "title": "CashFlow",
-          "url": "https://docs.google.com/spreadsheets/d/1_JaHwKT1Ksg95Qe8koYrslOC2eWylWRBeW4PjSGQeT4/edit",
-          "desc": "Рух коштів по всіх юрособах"
-        },
-        {
-          "title": "Баланс",
-          "url": "https://docs.google.com/spreadsheets/d/1z2uTKgK5Ji2oYtVwoeuulTPuHjEkHqzsOvjGG9rIJk8/edit",
-          "desc": "Управлінський баланс групи"
-        },
-        {
-          "title": "Реєстр оплат",
-          "url": "https://docs.google.com/spreadsheets/d/191GeZ7sQ7t-CJdXULQ2md02xj3FumjaFkOuoo-uZpvU/edit",
-          "desc": "Заплановані та проведені оплати"
-        }
-      ],
-      "modes": [
-        "top"
-      ]
     },
     {
       "name": "Виробництво",
