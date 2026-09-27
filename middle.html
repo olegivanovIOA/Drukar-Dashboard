@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-27 10:20 — Ресурси: блоки за висотою вмісту (masonry), порожні групи компактні; видимість посилань по версіях — у generate.py.
+<!-- BUILD: 2026-09-27 11:35 — OKR: таблиця «Прогноз досягнення 100%» — лише компанія та основні ОКР, без персональних OKR_<Ім'я>.
+     BUILD: 2026-09-27 10:20 — Ресурси: блоки за висотою вмісту (masonry), порожні групи компактні; видимість посилань по версіях — у generate.py.
      BUILD: 2026-09-26 23:30 — мобільна версія: шапка/вкладки, сітки в 1–2 колонки, таблиці зі скролом і липкою першою колонкою, широкі графіки у горизонтальний скрол.
      BUILD: 2026-09-26 17:40 — таблиця кг/год: підсвітка max (зелений) / min (червоний) по кожному виду серед ліній.
      BUILD: 2026-09-26 17:10 — підписи «год · %» на графіках простоїв (причини, лінії); шкала місяців під тижнями на графіку кг/год.
@@ -408,7 +409,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 27.09.2026 08:21 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 27.09.2026 08:30 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -5095,11 +5096,7 @@ function okrRenderHistory() {
       tableRows += fcRow(`ОКР${i+1} · ${f.label}`, f, false);
     });
   }
-  if (fc.person) {
-    Object.entries(fc.person).forEach(([k, f]) => {
-      tableRows += fcRow(`👤 ${f.label || k}`, f, false);
-    });
-  }
+  // Персональні OKR_<Ім'я> у таблицю прогнозу не виводимо — лише компанія та основні ОКР (з 27.09.2026)
   const tableEl = document.getElementById('okrForecastTable');
   if (tableEl) {
     if (!tableRows) {
