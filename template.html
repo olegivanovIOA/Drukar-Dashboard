@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-26 23:30 — мобільна версія: шапка/вкладки, сітки в 1–2 колонки, таблиці зі скролом і липкою першою колонкою, широкі графіки у горизонтальний скрол.
+<!-- BUILD: 2026-09-27 10:20 — Ресурси: блоки за висотою вмісту (masonry), порожні групи компактні; видимість посилань по версіях — у generate.py.
+     BUILD: 2026-09-26 23:30 — мобільна версія: шапка/вкладки, сітки в 1–2 колонки, таблиці зі скролом і липкою першою колонкою, широкі графіки у горизонтальний скрол.
      BUILD: 2026-09-26 17:40 — таблиця кг/год: підсвітка max (зелений) / min (червоний) по кожному виду серед ліній.
      BUILD: 2026-09-26 17:10 — підписи «год · %» на графіках простоїв (причини, лінії); шкала місяців під тижнями на графіку кг/год.
      BUILD: 2026-09-26 15:30 — Виробництво: структура простоїв (зовн./внутр./техн.) + кг/год по видах + виправлена «Зведена по причинах» (фільтр рік/місяць/тиждень); Товар: денні дані, фільтр рік/місяць/тиждень, прибрано «Залишок»; нові вкладки Проєкти і Ресурси -->
@@ -248,7 +249,14 @@
   .res-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
   .res-search{flex:1;min-width:220px;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--text);outline:none}
   .res-search:focus{border-color:var(--accent)}
-  .res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  /* 🆕 Блоки ресурсів за висотою вмісту (masonry через CSS-колонки): порожня група — компактна */
+  .res-grid{column-width:320px;column-gap:14px}
+  .res-grid>.res-group{break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%;margin:0 0 14px}
+  .res-grid>.res-group.res-group-empty{padding:12px 16px!important}
+  .res-group-empty h3{font-size:17px}
+  .res-group-empty .res-gdesc{margin-bottom:6px}
+  .res-group-empty .res-empty{padding:6px 10px;text-align:left}
+  .res-grid>.res-empty{column-span:all}
   .res-group h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:2px}
   .res-group .res-gdesc{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px}
   .res-link{display:block;padding:9px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;text-decoration:none;color:var(--text);transition:border-color .15s,background .15s}
@@ -6904,25 +6912,30 @@ function initResources(){
 function resRender(){
   var G = (RESOURCES_DATA && RESOURCES_DATA.groups) || [];
   var grid = document.getElementById('resGrid'); if(!grid) return;
-  if(!G.length){ grid.innerHTML = '<div class="res-empty" style="grid-column:1/-1">Список порожній — додайте групи і посилання у resources.json</div>'; return; }
+  if(!G.length){ grid.innerHTML = '<div class="res-empty">Список порожній — додайте групи і посилання у resources.json</div>'; return; }
   var q = ((document.getElementById('resSearch') || {}).value || '').toLowerCase().trim();
   var shown = 0;
-  grid.innerHTML = G.map(function(g, gi){
+  // Наповнені групи — першими, порожні заготовки — в кінці (порядок усередині зберігається)
+  var order = G.map(function(g, gi){ return gi; }).sort(function(a, b){
+    var ea = (G[a].links || []).length ? 0 : 1, eb = (G[b].links || []).length ? 0 : 1;
+    return ea - eb || a - b;
+  });
+  grid.innerHTML = order.map(function(gi){ var g = G[gi];
     if(window._resGroup !== 'all' && window._resGroup !== gi) return '';
     var links = (g.links || []).filter(function(l){
       return !q || [l.title, l.desc, l.url, g.name].join(' ').toLowerCase().indexOf(q) >= 0;
     });
     if(q && !links.length) return '';
     shown += links.length;
-    return '<div class="card res-group"><h3>' + _prjEsc(g.icon || '') + ' ' + _prjEsc(g.name) + '</h3>' +
+    return '<div class="card res-group' + ((g.links || []).length ? '' : ' res-group-empty') + '"><h3>' + _prjEsc(g.icon || '') + ' ' + _prjEsc(g.name) + '</h3>' +
       (g.desc ? '<div class="res-gdesc">' + _prjEsc(g.desc) + '</div>' : '') +
       (links.length ? links.map(function(l){
         var host = ''; try { host = new URL(l.url).hostname.replace(/^www\./,''); } catch(e){}
         return '<a class="res-link" href="' + _prjEsc(l.url) + '" target="_blank" rel="noopener"><b>' + _prjEsc(l.title || l.url) + '</b>' +
           (l.desc ? '<span>' + _prjEsc(l.desc) + '</span>' : '') + '<i>' + _prjEsc(host) + ' ↗</i></a>';
-      }).join('') : '<div class="res-empty">Поки порожньо — додайте посилання в resources.json</div>') +
+      }).join('') : '<div class="res-empty">Поки порожньо</div>') +
     '</div>';
-  }).join('') || '<div class="res-empty" style="grid-column:1/-1">Нічого не знайдено</div>';
+  }).join('') || '<div class="res-empty">Нічого не знайдено</div>';
   var b = document.getElementById('resBadge');
   if(b) b.textContent = shown + ' посилань' + (RESOURCES_DATA.updated ? ' · оновлено ' + RESOURCES_DATA.updated : '');
 }

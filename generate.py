@@ -3,6 +3,8 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-09-27 10:20 — Ресурси: видимість "modes" (top/mid) для груп і посилань, фільтрація під час генерації.
+
 BUILD: 2026-09-26 15:30 — (1) журнали: захист від дат-описок (2029/лютий посеред грудня),
 нормалізація назв Видів (PETG 3,0 White → PETG 3кг WHITE), денні дані PROD_DAILY для
 вкладки "Товар" (фільтр тиждень/місяць/рік); (2) продажі: денні SALES_DAILY з позначкою
@@ -2067,12 +2069,33 @@ def load_resources():
             links = [l for l in (g.get('links') or [])
                      if isinstance(l, dict) and str(l.get('url', '')).startswith(('http://', 'https://'))]
             clean.append({'name': str(g.get('name', 'Інше')), 'icon': str(g.get('icon', '')),
-                          'desc': str(g.get('desc', '')), 'links': links})
+                          'desc': str(g.get('desc', '')), 'links': links,
+                          'modes': g.get('modes')})
         print(f"  Ресурси: {len(clean)} груп, {sum(len(g['links']) for g in clean)} посилань")
         return {'groups': clean, 'updated': str(data.get('updated', '')) if isinstance(data, dict) else ''}
     except Exception as e:
         print(f"  WARNING resources.json: {e}")
         return {'groups': [], 'updated': ''}
+
+
+def resources_for_mode(res, mode):
+    """🆕 Фільтр ресурсів під версію дашборда ('top' / 'mid').
+    "modes": ["top"] у групі або посиланні = показувати лише в цих версіях; без поля — у всіх.
+    Фільтрується ще під час генерації, тож прибрані посилання не потрапляють навіть у код middle.html.
+    Група, яка стала порожньою ЧЕРЕЗ фільтр, прибирається; група, порожня від початку
+    (заготовка, напр. «Маркетинг»), лишається компактною заглушкою."""
+    def visible(obj):
+        m = obj.get('modes')
+        return not m or mode in m
+    out = []
+    for g in (res or {}).get('groups', []):
+        if not visible(g):
+            continue
+        links = [{k: v for k, v in l.items() if k != 'modes'} for l in g.get('links', []) if visible(l)]
+        if g.get('links') and not links:
+            continue
+        out.append({'name': g['name'], 'icon': g.get('icon', ''), 'desc': g.get('desc', ''), 'links': links})
+    return {'groups': out, 'updated': (res or {}).get('updated', '')}
 
 
 def jv(v):
@@ -2356,7 +2379,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{SALES_DAILY}}':    _jd((sales or {}).get('sku_sales_daily') or []),
         '{{PROJECTS_DATA}}':  _jd(data.get('projects') or {'projects': [], 'general_notes': [], 'layers_all': [],
                                                           'error': 'дані не завантажено'}),
-        '{{RESOURCES_DATA}}': _jd(data.get('resources') or {'groups': [], 'updated': ''}),
+        '{{RESOURCES_DATA}}': _jd(resources_for_mode(data.get('resources') or {'groups': [], 'updated': ''}, mode)),
     })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
     subs.update({
