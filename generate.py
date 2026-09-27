@@ -3,6 +3,8 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-09-27 11:15 — Ресурси: name_by_mode / desc_by_mode / icon_by_mode (інша назва групи для ТОП чи Мідл).
+
 BUILD: 2026-09-27 10:20 — Ресурси: видимість "modes" (top/mid) для груп і посилань, фільтрація під час генерації.
 
 BUILD: 2026-09-26 15:30 — (1) журнали: захист від дат-описок (2029/лютий посеред грудня),
@@ -2070,7 +2072,10 @@ def load_resources():
                      if isinstance(l, dict) and str(l.get('url', '')).startswith(('http://', 'https://'))]
             clean.append({'name': str(g.get('name', 'Інше')), 'icon': str(g.get('icon', '')),
                           'desc': str(g.get('desc', '')), 'links': links,
-                          'modes': g.get('modes')})
+                          'modes': g.get('modes'),
+                          'name_by_mode': g.get('name_by_mode') or {},
+                          'desc_by_mode': g.get('desc_by_mode') or {},
+                          'icon_by_mode': g.get('icon_by_mode') or {}})
         print(f"  Ресурси: {len(clean)} груп, {sum(len(g['links']) for g in clean)} посилань")
         return {'groups': clean, 'updated': str(data.get('updated', '')) if isinstance(data, dict) else ''}
     except Exception as e:
@@ -2094,7 +2099,10 @@ def resources_for_mode(res, mode):
         links = [{k: v for k, v in l.items() if k != 'modes'} for l in g.get('links', []) if visible(l)]
         if g.get('links') and not links:
             continue
-        out.append({'name': g['name'], 'icon': g.get('icon', ''), 'desc': g.get('desc', ''), 'links': links})
+        out.append({'name': (g.get('name_by_mode') or {}).get(mode) or g['name'],
+                    'icon': (g.get('icon_by_mode') or {}).get(mode) or g.get('icon', ''),
+                    'desc': (g.get('desc_by_mode') or {}).get(mode) or g.get('desc', ''),
+                    'links': links})
     return {'groups': out, 'updated': (res or {}).get('updated', '')}
 
 
