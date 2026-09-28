@@ -380,6 +380,220 @@ def extract_row_by_month(row, col_map):
     return result
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# 🛡 ДЕТЕКЦІЯ СТРУКТУРИ ЛИСТІВ (_AllData_Product / Аналіз вкладів / Журнали)
+# Колонки шукаються за заголовками І перевіряються за вмістом. Якщо дані
+# під заголовками не відповідають очікуваному (напр. у колонці "Линия"
+# лежить "Ніч"), лист вважається зламаним: повертається помилка, а не
+# тихо неправильні цифри.
+# ═══════════════════════════════════════════════════════════════════════
+_RE_SHIFT = re.compile(r'^(день|денна|ніч|нічна|ночь|ночная|day|night)$', re.I)
+_RE_LINE  = re.compile(r'^(лінія|линия|лін\.?|лин\.?|line)\s*\d+$', re.I)
+_RE_VID   = re.compile(r'^(petg|pla|abs|asa|tpu|pc|pa|nylon)\b', re.I)
+
+# Канонічний порядок колонок _AllData_Product, на який розраховані всі парсери
+# (generate.py і template.html): індекс → ключ.
+ALLDATA_CANON = ['date', 'shift', 'operator', 'contrib', 'line', 'vid',
+                 'pcs', 'weight', 'nf', 'waste', 'packed', 'autokg',
+                 'x_w', 'x_x', 'x_y', 'x_z', 'packer', 'senior', 'loc']
+
+
+def _cell(v):
+    return str(v if v is not None else '').strip()
+
+
+def _num(v):
+    s = _cell(v).replace('\xa0', '').replace(' ', '').replace('%', '').replace(',', '.')
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _col_share(rows, ci, pred, start, limit=400):
+    """Частка непорожніх значень колонки ci (у перших limit рядках даних),
+    що задовольняють pred. Повертає (share, n_nonempty)."""
+    hit = n = 0
+    for row in rows[start:start + limit]:
+        if not row or ci >= len(row):
+            continue
+        v = _cell(row[ci])
+        if not v:
+            continue
+        n += 1
+        if pred(v):
+            hit += 1
+    return (hit / n if n else 0.0), n
+
+
+def _best_col(rows, pred, start, ncols, min_share=0.6, min_n=5):
+    best, best_share = -1, 0.0
+    for ci in range(ncols):
+        share, n = _col_share(rows, ci, pred, start)
+        if n >= min_n and share >= min_share and share > best_share:
+            best, best_share = ci, share
+    return best
+
+
+def _is_contrib(v):
+    x = _num(v)
+    if x is None:
+        return False
+    return 0 < x <= 100 if '%' in v else 0 < x <= 1.0001
+
+
+def _is_number(v):
+    return _num(v) is not None
+
+
+def normalize_alldata(rows, label='_AllData_Product'):
+    """Приводить _AllData_Product / Аналіз вкладів до канонічного порядку
+    колонок (ALLDATA_CANON). Повертає (rows_canon, error_str|None).
+    rows_canon == [] якщо структура не розпізнана."""
+    if not rows or len(rows) < 2:
+        return [], f'{label}: лист порожній'
+
+    # 1. Рядок заголовків (серед перших трьох)
+    hi = -1
+    for i in range(min(3, len(rows))):
+        h = [_cell(c).lower() for c in rows[i]]
+        if any(x.startswith('дата') for x in h) and any('вклад' in x for x in h):
+            hi = i
+            break
+    if hi < 0:
+        return [], f'{label}: не знайдено рядок заголовків (Дата / Вклад %)'
+    hdr = [_cell(c).lower() for c in rows[hi]]
+    start = hi + 1
+    ncols = max(len(r) for r in rows[:start + 400] if r)
+
+    def hfind(pred):
+        for i, h in enumerate(hdr):
+            if pred(h):
+                return i
+        return -1
+
+    hcol = {
+        'date':     hfind(lambda h: h.startswith('дата')),
+        'shift':    hfind(lambda h: h in ('смена', 'зміна') or h.startswith('смена') or h.startswith('зміна')),
+        'operator': hfind(lambda h: h.startswith('оператор')),
+        'contrib':  hfind(lambda h: h.startswith('вклад')),
+        'line':     hfind(lambda h: h in ('линия', 'лінія')),
+        'vid':      hfind(lambda h: h == 'вид' or h.startswith('вид ')),
+        'pcs':      hfind(lambda h: h.startswith('кол-во шт') or h.startswith('кількість')),
+        'weight':   hfind(lambda h: h.startswith('вес кг') or h.startswith('вага кг') or h.startswith('вага,')),
+        'nf':       hfind(lambda h: h.startswith('н/ф')),
+        'waste':    hfind(lambda h: h.startswith('отход') or h.startswith('відхід')),
+        'packed':   hfind(lambda h: h.startswith('запаковано')),
+        'autokg':   hfind(lambda h: h.startswith('автоподсчет') or h.startswith('автопідрахунок')),
+        'x_w':      hfind(lambda h: h.startswith('колонка w')),
+        'x_x':      hfind(lambda h: h.startswith('колонка x')),
+        'x_y':      hfind(lambda h: h.startswith('колонка y')),
+        'x_z':      hfind(lambda h: h.startswith('колонка z')),
+        'packer':   hfind(lambda h: h.startswith('упаковщик') or h.startswith('пакувальник')),
+        'senior':   hfind(lambda h: h.startswith('старш')),
+        'loc':      hfind(lambda h: h.startswith('локац')),
+    }
+
+    # 2. Перевірка вмістом ключових колонок
+    ccol = {
+        'shift': _best_col(rows, lambda v: bool(_RE_SHIFT.match(v)), start, ncols),
+        'line':  _best_col(rows, lambda v: bool(_RE_LINE.match(v)), start, ncols),
+        'vid':   _best_col(rows, lambda v: bool(_RE_VID.match(v)), start, ncols),
+    }
+    missing = [k for k in ('shift', 'line', 'vid') if ccol[k] < 0]
+    if missing:
+        names = {'shift': 'Зміна (День/Ніч)', 'line': 'Лінія (ЛІНІЯ N)', 'vid': 'Вид (PETG/PLA)'}
+        seen_in = []
+        for k in missing:
+            if hcol.get(k, -1) >= 0:
+                s = [_cell(r[hcol[k]]) for r in rows[start:start + 3] if r and hcol[k] < len(r)]
+                seen_in.append(f'під заголовком «{rows[hi][hcol[k]]}» лежить {s}')
+        return [], (f'{label}: структура змінилась — не знайдено колонку '
+                    + ', '.join(names[k] for k in missing)
+                    + ('. ' + '; '.join(seen_in) if seen_in else ''))
+
+    # 3. Зсув: якщо ключові колонки стоять не там, де їх заголовки
+    offsets = {k: ccol[k] - hcol[k] for k in ('line', 'vid') if hcol[k] >= 0}
+    offs = set(offsets.values())
+    if len(offs) > 1:
+        return [], f'{label}: колонки Лінія/Вид зсунуті по-різному ({offsets}) — дані не довіряю'
+    k = offs.pop() if offs else 0
+
+    col = dict(hcol)
+    col['shift'], col['line'], col['vid'] = ccol['shift'], ccol['line'], ccol['vid']
+    # числовий блок і хвіст стоять після "Вид" → зсуваємо на той самий k
+    for key in ALLDATA_CANON[6:]:
+        if col.get(key, -1) >= 0:
+            col[key] += k
+    # Вклад % — за заголовком, інакше пошук за вмістом
+    if col['contrib'] < 0 or _col_share(rows, col['contrib'], _is_contrib, start)[0] < 0.8:
+        col['contrib'] = _best_col(rows, _is_contrib, start, ncols, min_share=0.8)
+    if col['date'] < 0:
+        col['date'] = 0
+    if col['weight'] < 0 or _col_share(rows, col['weight'], _is_number, start)[0] < 0.6:
+        return [], f'{label}: колонка «Вес кг» не знайдена або не числова'
+
+    warn = None
+    if k:
+        warn = f'{label}: дані зсунуті на {k} кол. відносно заголовків — скориговано'
+
+    canon = []
+    canon.append([rows[hi][col[c]] if col.get(c, -1) >= 0 and col[c] < len(rows[hi]) else c
+                  for c in ALLDATA_CANON])
+    for row in rows[start:]:
+        if not row:
+            continue
+        canon.append([row[col[c]] if col.get(c, -1) >= 0 and col[c] < len(row) else ''
+                      for c in ALLDATA_CANON])
+    print(f'  {label}: колонки {{{", ".join(f"{c}={col[c]}" for c in ALLDATA_CANON if col.get(c, -1) >= 0)}}}'
+          + (f'  ⚠ {warn}' if warn else ''))
+    return canon, None
+
+
+def detect_journal_cols(rows, label='Журнал'):
+    """Колонки основного листа журналу (2 рядки заголовків). Повертає
+    (cols_dict, error_str|None). Дефолти = поточна структура журналу."""
+    cols = {'date': 0, 'shift': 6, 'line': 7, 'vid': 8, 'pcs': 9,
+            'kg': 10, 'nf': 11, 'waste': 12, 'start': 2}
+    if not rows or len(rows) < 3:
+        return cols, f'{label}: лист порожній'
+    h0 = [_cell(c).lower() for c in rows[0]]
+    h1 = [_cell(c).lower() for c in rows[1]] if len(rows) > 1 else []
+    start = 2
+    ncols = max(len(r) for r in rows[:start + 400] if r)
+
+    li = next((i for i, h in enumerate(h1) if h in ('лінія', 'линия')), -1)
+    vi = next((i for i, h in enumerate(h1) if h == 'вид' or h.startswith('вид ')), -1)
+    if li >= 0:
+        cols['line'] = li
+    if vi >= 0:
+        cols['vid'] = vi
+        after = [(i, h) for i, h in enumerate(h1) if i > vi]
+        pi = next((i for i, h in after if h.startswith('кількість')), -1)
+        ki = next((i for i, h in after if h.startswith('вага')), -1)
+        if pi >= 0: cols['pcs'] = pi
+        if ki >= 0: cols['kg'] = ki
+        ni = next((i for i, h in enumerate(h0) if i > vi and h.startswith('н/ф')), -1)
+        wi = next((i for i, h in enumerate(h0) if i > vi and h.startswith('відхід')), -1)
+        if ni >= 0: cols['nf'] = ni
+        if wi >= 0: cols['waste'] = wi
+
+    # Перевірка вмістом (дата у журналі заповнена лише в першому рядку зміни)
+    checks = {'shift': _RE_SHIFT, 'line': _RE_LINE, 'vid': _RE_VID}
+    for key, rx in checks.items():
+        pred = (lambda r: lambda v: bool(r.match(v)))(rx)
+        if _col_share(rows, cols[key], pred, start)[0] < 0.6:
+            found = _best_col(rows, pred, start, ncols)
+            if found < 0:
+                return cols, f'{label}: не знайдено колонку «{key}» за вмістом'
+            print(f'  {label}: колонка {key} {cols[key]} → {found} (за вмістом)')
+            cols[key] = found
+    if _col_share(rows, cols['kg'], _is_number, start)[0] < 0.6:
+        return cols, f'{label}: колонка «Вага, кг» ({cols["kg"]}) не числова'
+    print(f'  {label}: колонки {cols}')
+    return cols, None
+
+
 def parse_production_from_alldata(rows):
     """
     Читає _AllData_Product (агрегований лист з обох локацій).
@@ -629,15 +843,28 @@ def parse_production_from_journals(rows_list):
     sku_daily = _dd(float)   # (YYYY-MM-DD, sku) → kg
     date_typos = 0
 
+    # 🆕 кг по (дата, лінія) з розбивкою День/Ніч — для heatmap / День vs Ніч /
+    # тижневої завантаженості, коли _AllData_Product зламаний.
+    line_daily = _dd(lambda: [0.0, 0.0])   # (YYYY-MM-DD, 'ЛІНІЯ N', loc) → [day, night]
+    journal_errors = []
+
     total_rows = 0
     today = _date.today()
-    for rows in rows_list:
+    for loc_idx, rows in enumerate(rows_list, start=1):
         if not rows or len(rows) < 3:
             continue
+        jc, jerr = detect_journal_cols(rows, f'Журнал Лок{loc_idx}')
+        if jerr:
+            print(f"  WARNING {jerr}")
+            journal_errors.append(jerr)
+            continue
+        c_date, c_shift, c_line, c_vid = jc['date'], jc['shift'], jc['line'], jc['vid']
+        c_pcs, c_kg, c_nf, c_waste = jc['pcs'], jc['kg'], jc['nf'], jc['waste']
+        min_len = max(c_vid, c_line, c_shift) + 1
         # Рядки даних починаються з індексу 2 (пропускаємо 2 рядки заголовків)
         cur_day = None
-        for row in rows[2:]:
-            if not row or len(row) < 9:
+        for row in rows[jc['start']:]:
+            if not row or len(row) < min_len:
                 continue
 
             # col 0 = дата (може бути порожньо — тоді ffill).
@@ -645,7 +872,7 @@ def parse_production_from_journals(rows_list):
             # приймається, лише якщо вона в межах -3…+20 днів від попередньої
             # прийнятої (і не в майбутньому). Інакше — вважаємо опискою і
             # лишаємо попередню дату зміни.
-            d = _parse_day(row[0])
+            d = _parse_day(row[c_date])
             if d is not None:
                 if cur_day is None:
                     if d <= today + timedelta(days=1):
@@ -664,8 +891,8 @@ def parse_production_from_journals(rows_list):
             if ym < '2025-11':
                 continue
 
-            # col 8 = Вид продукту
-            vid = str(row[8]).strip() if len(row) > 8 else ''
+            # Вид продукту (колонка визначена detect_journal_cols)
+            vid = str(row[c_vid]).strip() if len(row) > c_vid else ''
             if not vid or vid in ('nan', 'None', ''):
                 continue
             is_petg = 'PETG' in vid.upper()
@@ -673,10 +900,21 @@ def parse_production_from_journals(rows_list):
             if not is_petg and not is_pla:
                 continue
 
-            pcs   = _safe(row[9])  if len(row) > 9  else 0.0  # col 9  Кількість шт
-            kg    = _safe(row[10]) if len(row) > 10 else 0.0  # col 10 Вага кг
-            nf    = _safe(row[11]) if len(row) > 11 else 0.0  # col 11 НФ кг
-            waste = _safe(row[12]) if len(row) > 12 else 0.0  # col 12 Відхід кг
+            pcs   = _safe(row[c_pcs])   if len(row) > c_pcs   else 0.0  # Кількість шт
+            kg    = _safe(row[c_kg])    if len(row) > c_kg    else 0.0  # Вага кг
+            nf    = _safe(row[c_nf])    if len(row) > c_nf    else 0.0  # НФ кг
+            waste = _safe(row[c_waste]) if len(row) > c_waste else 0.0  # Відхід кг
+
+            # 🆕 лінія × день × зміна
+            _ln = str(row[c_line]).strip().upper()
+            _lm = re.search(r'(\d+)\s*$', _ln)
+            _sh = str(row[c_shift]).strip().lower()
+            if _lm and kg > 0:
+                _key = (cur_day.strftime('%Y-%m-%d'), f'ЛІНІЯ {int(_lm.group(1))}', loc_idx)
+                if _sh.startswith('д') or _sh == 'day':
+                    line_daily[_key][0] += kg
+                elif _sh.startswith('н') or _sh == 'night':
+                    line_daily[_key][1] += kg
 
             if is_petg:
                 monthly[ym]['petg']       += kg
@@ -765,6 +1003,10 @@ def parse_production_from_journals(rows_list):
         'prod_sku_list':  all_skus_sorted,
         # 🆕 денні дані: [[YYYY-MM-DD, sku, kg], ...]
         'prod_daily':     [[dk, sk, round(v, 2)] for (dk, sk), v in sorted(sku_daily.items())],
+        # 🆕 [[YYYY-MM-DD, 'ЛІНІЯ N', loc, kg_день, kg_ніч], ...]
+        'line_daily':     [[dk, ln, lc, round(v[0], 1), round(v[1], 1)]
+                           for (dk, ln, lc), v in sorted(line_daily.items())],
+        'journal_errors': journal_errors,
     }
 
     print(f"  PETG prod (journals): {petg_prod}")
@@ -995,6 +1237,27 @@ def parse_lines_heatmap_from_alldata(rows):
     total_kg = sum(sum(v.values()) for v in monthly.values())
     print(f"  HM from _AllData_Product: {len(hm_data)} lines x {len(all_months)} months, total={round(total_kg):,} kg")
     return hm_labels, hm_data
+
+def heatmap_from_line_daily(line_daily):
+    """Лінія × місяць (кг) з line_daily журналів — запасне джерело heatmap."""
+    from collections import defaultdict
+    UA_SHORT = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
+                '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
+    monthly = defaultdict(lambda: defaultdict(float))
+    for d, ln, _loc, kd, kn in (line_daily or []):
+        ym = d[:7]
+        if ym >= '2025-11':
+            monthly[ln][ym] += (kd or 0) + (kn or 0)
+    if not monthly:
+        return [], {}
+    months = sorted({m for v in monthly.values() for m in v})
+    labels = [f"{UA_SHORT[m[5:7]]} {m[2:4]}" for m in months]
+    def _n(ln):
+        m = re.search(r'(\d+)', ln); return int(m.group(1)) if m else 999
+    data = {ln: [round(monthly[ln].get(m, 0)) for m in months] for ln in sorted(monthly, key=_n)}
+    print(f"  HM from journals: {len(data)} lines x {len(months)} months")
+    return labels, data
+
 
 def parse_norms(rows):
     """
@@ -2384,6 +2647,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         return json.dumps(v, ensure_ascii=False).replace('</', '<\\/')
     subs.update({
         '{{PROD_DAILY}}':     _jd(data.get('prod_daily') or []),
+        '{{LINE_DAILY}}':     _jd(data.get('line_daily') or []),
         '{{SALES_DAILY}}':    _jd((sales or {}).get('sku_sales_daily') or []),
         '{{PROJECTS_DATA}}':  _jd(data.get('projects') or {'projects': [], 'general_notes': [], 'layers_all': [],
                                                           'error': 'дані не завантажено'}),
@@ -2418,8 +2682,13 @@ if __name__ == '__main__':
     # Залишаємо як є — використовується для heatmap, операторів, мотивації.
     prod_rows = []
     data = None
+    data_errors = {}
     try:
         prod_rows = fetch_csv(SHEET_ID, "_AllData_Product")
+        prod_rows, _ad_err = normalize_alldata(prod_rows, '_AllData_Product')
+        if _ad_err:
+            print(f"  ⚠ {_ad_err}")
+            data_errors['_alldata_layout'] = _ad_err
         data = parse_production_from_alldata(prod_rows)
     except Exception as e:
         print(f"WARNING _AllData_Product: {e}")
@@ -2461,6 +2730,9 @@ if __name__ == '__main__':
             data['prod_by_sku']   = jdata['prod_by_sku']
             data['prod_sku_list'] = jdata['prod_sku_list']
             data['prod_daily']    = jdata.get('prod_daily', [])
+            data['line_daily']    = jdata.get('line_daily', [])
+            if jdata.get('journal_errors'):
+                data_errors['_journal_layout'] = '; '.join(jdata['journal_errors'])
             print("  Journal data merged into data[] OK")
             print(f"  prod_sku_list: {jdata['prod_sku_list']}")
         except Exception as e:
@@ -2744,6 +3016,9 @@ if __name__ == '__main__':
         print(f"  Lines HM result: {len(hm_labels)} months, {len(hm_data)} lines")
     except Exception as e:
         print(f"WARNING lines heatmap: {e}")
+    if not hm_data and data.get('line_daily'):
+        # _AllData_Product недоступний/зламаний → heatmap напряму з журналів
+        hm_labels, hm_data = heatmap_from_line_daily(data['line_daily'])
     try:
         norms_rows = fetch_csv(LINES_SHEET_ID, 'НОРМЫ')
         line_norms = parse_norms(norms_rows)
@@ -2781,7 +3056,6 @@ if __name__ == '__main__':
     data['resources'] = load_resources()
 
     config = load_config()
-    data_errors = {}
 
     # index.html — TOP (всі табки)
     html_top = generate(data, calc, calc_ext, sales, okr, hm_labels, hm_data, line_norms,

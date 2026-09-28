@@ -2541,6 +2541,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateFilterBadge();
   applyTabVisibility();
   showTabErrors();
+  showAdLayoutBanner();
   if(DASHBOARD_MODE==='top'){
     var ab=document.getElementById('adminToggleBtn');
     if(ab) ab.style.display='flex';
@@ -2604,6 +2605,7 @@ const PROD_BY_SKU={{PROD_BY_SKU}};
 const PROD_SKU_LIST={{PROD_SKU_LIST}};
 // 🆕 2026-09-26: денні дані для «Товар», проєкти, ресурси (generate.py)
 const PROD_DAILY={{PROD_DAILY}};
+const LINE_DAILY={{LINE_DAILY}}; // [[YYYY-MM-DD,'ЛІНІЯ N',лок,кг_день,кг_ніч]] з журналів
 const SALES_DAILY={{SALES_DAILY}};
 const PROJECTS_DATA={{PROJECTS_DATA}};
 const RESOURCES_DATA={{RESOURCES_DATA}};
@@ -2898,7 +2900,7 @@ async function loadProductionCharts(){
     const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
     const r=await fetch(url); if(!r.ok) return [];
     const txt=await r.text(); if(txt.includes('<html')) return [];
-    return lParseCSV(txt);
+    return adFix(sheet,lParseCSV(txt));
   }
 
   function parseVidByMonth(rows){
@@ -2957,10 +2959,18 @@ async function loadProductionCharts(){
     for(const [ym,v] of Object.entries(d2.pla))  pla[ym]=(pla[ym]||0)+v;
 
     // Build labels from actual data months only (2025-11 onward)
-    const allMonths=[...new Set([...Object.keys(petg),...Object.keys(pla)])].sort().filter(m=>m>='2025-11');
-    const labels=allMonths.map(ym=>{const[y,mo]=ym.split('-');return UA[mo]+' '+y.slice(2);});
-    const petgVals=allMonths.map(ym=>petg[ym]?Math.round(petg[ym]):null);
-    const plaVals=allMonths.map(ym=>pla[ym]?Math.round(pla[ym]):null);
+    let allMonths=[...new Set([...Object.keys(petg),...Object.keys(pla)])].sort().filter(m=>m>='2025-11');
+    let labels=allMonths.map(ym=>{const[y,mo]=ym.split('-');return UA[mo]+' '+y.slice(2);});
+    let petgVals=allMonths.map(ym=>petg[ym]?Math.round(petg[ym]):null);
+    let plaVals=allMonths.map(ym=>pla[ym]?Math.round(pla[ym]):null);
+    // 🛡 Фолбек: _AllData_Product недоступний/зламаний → місячні кг з журналів (generate.py)
+    if(!allMonths.length){
+      const idx=MS.map((_,i)=>i).filter(i=>PETG_ALL[i]!=null||PLA_ALL[i]!=null);
+      labels=idx.map(i=>MS[i]);
+      petgVals=idx.map(i=>PETG_ALL[i]!=null?Math.round(PETG_ALL[i]):null);
+      plaVals=idx.map(i=>PLA_ALL[i]!=null?Math.round(PLA_ALL[i]):null);
+      console.warn('loadProductionCharts: fallback на PETG_ALL/PLA_ALL (журнали)');
+    }
 
     var _petgTabChart=safeCreateChart('petgChart',{
       data:{labels,datasets:[
@@ -2994,7 +3004,7 @@ async function loadShiftData(){
       const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
       const r=await fetch(url); if(!r.ok) return [];
       const txt=await r.text(); if(txt.includes('<html')) return [];
-      return lParseCSV(txt);
+      return adFix(sheet,lParseCSV(txt));
     }
     // Використовуємо _AllData_Product (містить обидві локації)
     const SHIFT_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
@@ -3084,7 +3094,9 @@ async function loadShiftData(){
       return byLine;
     }
     window._shiftByLine={};
-    const bl=calcShiftsByLine(r1);
+    let bl=calcShiftsByLine(r1);
+    // 🛡 Фолбек: _AllData_Product зламаний → День/Ніч з журналів (LINE_DAILY)
+    if(!Object.keys(bl).length) bl=lineDailyAgg('2025-11-01',null);
     const lineNames=new Set();
     Object.entries(bl).forEach(([ln,v])=>{
       if(!window._shiftByLine[ln])window._shiftByLine[ln]={day:0,night:0};
@@ -3150,7 +3162,7 @@ async function buildHeatmap(){
         const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
         const r=await fetch(url); if(!r.ok) return [];
         const txt=await r.text(); if(txt.includes('<html')) return [];
-        return lParseCSV(txt); // reuse existing CSV parser from Lines tab
+        return adFix(sheetName,lParseCSV(txt)); // reuse existing CSV parser from Lines tab
       }
 
       function parseJournal(rows){
@@ -3400,7 +3412,7 @@ async function buildHeatmapWeekly(monthIdx){
       const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
       const r=await fetch(url); if(!r.ok) return [];
       const txt=await r.text(); if(txt.includes('<html')) return [];
-      return lParseCSV(txt);
+      return adFix(sheetName,lParseCSV(txt));
     }
 
     function parseWeekly(rows,weeks){
@@ -3484,6 +3496,8 @@ async function buildHeatmapWeekly(monthIdx){
         arr.forEach((v,i)=>{merged[ln][i]+=v;});
       });
     });
+    // 🛡 Фолбек: _AllData_Product зламаний → кг по тижнях з журналів (LINE_DAILY)
+    if(!Object.keys(merged).length) Object.assign(merged, lineDailyWeeks(weeks));
 
     if(!Object.keys(merged).length){
       document.getElementById('heatmapWrap').innerHTML=
@@ -3854,7 +3868,7 @@ async function loadOperatorData(){
     const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
     const r=await fetch(url); if(!r.ok) return [];
     const txt=await r.text(); if(txt.includes('<html')) return [];
-    return lParseCSV(txt);
+    return adFix(sheet,lParseCSV(txt));
   }
   function parseOps(rows){
     const allMap={}, byMonthMap={};
@@ -3962,7 +3976,7 @@ async function loadSeniorData() {
     const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
     const r = await fetch(url); if(!r.ok) return [];
     const txt = await r.text(); if(txt.includes('<html')) return [];
-    return lParseCSV(txt);
+    return adFix(sheet,lParseCSV(txt));
   }
   function parseSenior(rows) {
     // _AllData_Product: col17 = 1 (прапорець) означає що col2 (Оператор) є Старшим зміни
@@ -4465,7 +4479,8 @@ async function lFetchSheet(id, sheet, label) {
   const txt = await r.text();
   if (txt.includes('<html') || txt.includes('Sign in'))
     throw new Error(`"${label}" не публічна. Відкрийте доступ: Поділитися → Всі з посиланням → Переглядач`);
-  const rows = lParseCSV(txt);
+  const rows = adFix(sheet, lParseCSV(txt));
+  if (!rows.length) throw new Error(`${label}: ${window.AD_LAYOUT_ERR || 'лист порожній'}`);
   return lParseAllData(rows, label);
 }
 
@@ -4488,6 +4503,146 @@ function lParseDate(raw) {
 function lFindCol(headers, kws) {
   for (const kw of kws) { const i = headers.findIndex(h => h.includes(kw)); if (i>=0) return i; }
   return -1;
+}
+
+// ══════════════ 🛡 СТРУКТУРА _AllData_Product (детекція колонок) ══════════════
+// Та сама логіка, що normalize_alldata() у generate.py: колонки шукаються за
+// заголовками й перевіряються за вмістом. Результат — рядки в канонічному
+// порядку (0 Дата,1 Зміна,2 Оператор,3 Вклад%,4 Лінія,5 Вид,6 шт,7 Вес,8 НФ,
+// 9 Відхід,10 Запаковано,11 Автоподсчет,12-15 W/X/Y/Z,16 Упаковщик,17 Старший,
+// 18 Локація). Якщо структура не розпізнана — повертається [] і в
+// window.AD_LAYOUT_ERR пишеться причина (показується банером).
+var AD_CANON=['date','shift','operator','contrib','line','vid','pcs','weight','nf','waste','packed','autokg','x_w','x_x','x_y','x_z','packer','senior','loc'];
+var AD_RE_SHIFT=/^(день|денна|ніч|нічна|ночь|ночная|day|night)$/i;
+var AD_RE_LINE=/^(лінія|линия|лін\.?|лин\.?|line)\s*\d+$/i;
+var AD_RE_VID=/^(petg|pla|abs|asa|tpu|pc|pa|nylon)\b/i;
+window.AD_LAYOUT_ERR=window.AD_LAYOUT_ERR||'';
+var _adCache={};
+function _adNum(v){var x=parseFloat(String(v==null?'':v).replace(/[\s %]/g,'').replace(',','.'));return isNaN(x)?null:x;}
+function _adShare(rows,ci,pred,start){
+  var hit=0,n=0,end=Math.min(rows.length,start+400);
+  for(var i=start;i<end;i++){var r=rows[i];if(!r||ci>=r.length)continue;var v=String(r[ci]==null?'':r[ci]).trim();if(!v)continue;n++;if(pred(v))hit++;}
+  return {share:n?hit/n:0,n:n};
+}
+function _adBest(rows,pred,start,ncols,minShare){
+  minShare=minShare||0.6;var best=-1,bs=0;
+  for(var ci=0;ci<ncols;ci++){var s=_adShare(rows,ci,pred,start);if(s.n>=5&&s.share>=minShare&&s.share>bs){best=ci;bs=s.share;}}
+  return best;
+}
+function _adIsContrib(v){var x=_adNum(v);if(x===null)return false;return v.indexOf('%')>=0?(x>0&&x<=100):(x>0&&x<=1.0001);}
+function adNormalize(rows,label){
+  label=label||'_AllData_Product';
+  if(!rows||rows.length<2) return {rows:[],err:''};
+  var hi=-1;
+  for(var i=0;i<Math.min(3,rows.length);i++){
+    var h0=rows[i].map(function(c){return String(c||'').trim().toLowerCase();});
+    if(h0.some(function(x){return x.indexOf('дата')===0;})&&h0.some(function(x){return x.indexOf('вклад')>=0;})){hi=i;break;}
+  }
+  if(hi<0) return {rows:[],err:label+': не знайдено рядок заголовків (Дата / Вклад %)'};
+  var hdr=rows[hi].map(function(c){return String(c||'').trim().toLowerCase();});
+  var start=hi+1, ncols=0;
+  for(var r=0;r<Math.min(rows.length,start+400);r++) if(rows[r]&&rows[r].length>ncols) ncols=rows[r].length;
+  function hf(pred){for(var k=0;k<hdr.length;k++) if(pred(hdr[k])) return k; return -1;}
+  function sw(h,arr){return arr.some(function(p){return h.indexOf(p)===0;});}
+  var col={
+    date:hf(function(h){return sw(h,['дата']);}),
+    shift:hf(function(h){return sw(h,['смена','зміна']);}),
+    operator:hf(function(h){return sw(h,['оператор']);}),
+    contrib:hf(function(h){return sw(h,['вклад']);}),
+    line:hf(function(h){return h==='линия'||h==='лінія';}),
+    vid:hf(function(h){return h==='вид'||h.indexOf('вид ')===0;}),
+    pcs:hf(function(h){return sw(h,['кол-во шт','кількість']);}),
+    weight:hf(function(h){return sw(h,['вес кг','вага кг','вага,']);}),
+    nf:hf(function(h){return sw(h,['н/ф']);}),
+    waste:hf(function(h){return sw(h,['отход','відхід']);}),
+    packed:hf(function(h){return sw(h,['запаковано']);}),
+    autokg:hf(function(h){return sw(h,['автоподсчет','автопідрахунок']);}),
+    x_w:hf(function(h){return sw(h,['колонка w']);}),
+    x_x:hf(function(h){return sw(h,['колонка x']);}),
+    x_y:hf(function(h){return sw(h,['колонка y']);}),
+    x_z:hf(function(h){return sw(h,['колонка z']);}),
+    packer:hf(function(h){return sw(h,['упаковщик','пакувальник']);}),
+    senior:hf(function(h){return sw(h,['старш']);}),
+    loc:hf(function(h){return sw(h,['локац']);})
+  };
+  var cc={
+    shift:_adBest(rows,function(v){return AD_RE_SHIFT.test(v);},start,ncols),
+    line:_adBest(rows,function(v){return AD_RE_LINE.test(v);},start,ncols),
+    vid:_adBest(rows,function(v){return AD_RE_VID.test(v);},start,ncols)
+  };
+  var names={shift:'Зміна (День/Ніч)',line:'Лінія (ЛІНІЯ N)',vid:'Вид (PETG/PLA)'};
+  var miss=['shift','line','vid'].filter(function(k){return cc[k]<0;});
+  if(miss.length){
+    var seen=miss.filter(function(k){return col[k]>=0;}).map(function(k){
+      var s=rows.slice(start,start+3).map(function(r){return r&&r[col[k]]!=null?String(r[col[k]]):'';});
+      return 'під заголовком «'+rows[hi][col[k]]+'» лежить '+s.join(', ');
+    });
+    return {rows:[],err:label+': структура змінилась — не знайдено колонку '+miss.map(function(k){return names[k];}).join(', ')+(seen.length?'. '+seen.join('; '):'')};
+  }
+  var offs={};['line','vid'].forEach(function(k){if(col[k]>=0) offs[cc[k]-col[k]]=1;});
+  var ok=Object.keys(offs);
+  if(ok.length>1) return {rows:[],err:label+': колонки Лінія/Вид зсунуті по-різному — дані не довіряю'};
+  var sh=ok.length?parseInt(ok[0]):0;
+  col.shift=cc.shift; col.line=cc.line; col.vid=cc.vid;
+  AD_CANON.slice(6).forEach(function(k){if(col[k]>=0) col[k]+=sh;});
+  if(col.contrib<0||_adShare(rows,col.contrib,_adIsContrib,start).share<0.8) col.contrib=_adBest(rows,_adIsContrib,start,ncols,0.8);
+  if(col.date<0) col.date=0;
+  if(col.weight<0||_adShare(rows,col.weight,function(v){return _adNum(v)!==null;},start).share<0.6)
+    return {rows:[],err:label+': колонка «Вес кг» не знайдена або не числова'};
+  var out=[AD_CANON.map(function(k){return col[k]>=0&&col[k]<rows[hi].length?rows[hi][col[k]]:k;})];
+  for(var j=start;j<rows.length;j++){
+    var row=rows[j]; if(!row) continue;
+    out.push(AD_CANON.map(function(k){return col[k]>=0&&col[k]<row.length?row[col[k]]:'';}));
+  }
+  if(sh) console.warn('[adNormalize] '+label+': дані зсунуті на '+sh+' кол. відносно заголовків — скориговано');
+  return {rows:out,err:''};
+}
+// Обгортка для всіх fetch-хелперів: нормалізує лише листи з вкладами операторів
+function adFix(sheet,rows){
+  if(sheet!=='_AllData_Product'&&sheet!=='Аналіз вкладів'&&sheet!=='_AllData') return rows;
+  var res=adNormalize(rows,sheet);
+  if(res.err){
+    console.warn('[adFix] '+res.err);
+    if(!window.AD_LAYOUT_ERR) window.AD_LAYOUT_ERR=res.err;
+    showAdLayoutBanner();
+  }
+  return res.rows;
+}
+function showAdLayoutBanner(){
+  var msg=window.AD_LAYOUT_ERR||(DATA_ERRORS&&DATA_ERRORS._alldata_layout)||'';
+  var jmsg=(DATA_ERRORS&&DATA_ERRORS._journal_layout)||'';
+  if(!msg&&!jmsg) return;
+  ['tab-production','tab-lines','tab-operators'].forEach(function(id){
+    var tab=document.getElementById(id); if(!tab) return;
+    var b=tab.querySelector('.ad-layout-banner');
+    if(!b){b=document.createElement('div');b.className='tab-err-banner ad-layout-banner';tab.insertBefore(b,tab.firstChild);}
+    b.innerHTML='<span style="font-size:16px">⚠</span><div><strong>Зламана структура джерела даних</strong><br>'
+      +(msg?lEsc(msg)+'<br>Графіки виробництва побудовані з журналів локацій; вклади операторів можуть бути неповні.':'')
+      +(jmsg?'<br>'+lEsc(jmsg):'')+'</div>';
+  });
+}
+function lEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Запасне джерело: LINE_DAILY з журналів (generate.py) → {лінія: {day,night}} за період
+function lineDailyAgg(fromDate,toDate){
+  var res={};
+  (typeof LINE_DAILY!=='undefined'?LINE_DAILY:[]).forEach(function(r){
+    var d=r[0]; if((fromDate&&d<fromDate)||(toDate&&d>toDate)) return;
+    if(!res[r[1]]) res[r[1]]={day:0,night:0};
+    res[r[1]].day+=r[3]||0; res[r[1]].night+=r[4]||0;
+  });
+  return res;
+}
+// {лінія: [кг по тижнях]} для списку тижнів [{from,to}]
+function lineDailyWeeks(weeks){
+  var res={};
+  (typeof LINE_DAILY!=='undefined'?LINE_DAILY:[]).forEach(function(r){
+    var wi=-1; for(var i=0;i<weeks.length;i++){ if(r[0]>=weeks[i].from&&r[0]<=weeks[i].to){wi=i;break;} }
+    if(wi<0) return;
+    if(!res[r[1]]) res[r[1]]=new Array(weeks.length).fill(0);
+    res[r[1]][wi]+=(r[3]||0)+(r[4]||0);
+  });
+  Object.keys(res).forEach(function(k){res[k]=res[k].map(Math.round);});
+  return res;
 }
 
 function lParseAllData(rows, label) {
@@ -5369,6 +5524,12 @@ function okrFindKrForecast(krText) {
 
 // ══════════════ UTILIZATION HEATMAP ══════════════
 
+// Норми вже прийшли з generate.py → просто показуємо статус (раніше висів «Завантаження норм...»)
+function utilNormStatusFromServer(){
+  const el=document.getElementById('utilNormStatus'); if(!el) return;
+  const cnt=Object.values(HM_NORMS||{}).reduce((s,v)=>s+Object.keys(v).length,0);
+  el.textContent=`✓ Норми: ${cnt} записів для ${Object.keys(HM_NORMS||{}).length} ліній`;
+}
 // Завантаження норм з листа НОРМЫ
 async function loadNormsFromSheets(){
   const statusEl = document.getElementById('utilNormStatus');
@@ -5442,7 +5603,7 @@ async function buildDailyChart(){
       if(!r.ok) throw new Error('HTTP '+r.status);
       const txt = await r.text();
       if(txt.trim().startsWith('<')) throw new Error('sheet not public');
-      window._dailyRawData = parseDailyData(lParseCSV(txt));
+      window._dailyRawData = parseDailyData(adFix('_AllData_Product',lParseCSV(txt)));
     }
     renderDailyChart();
   } catch(e) {
@@ -5811,7 +5972,7 @@ async function buildUtilHeatmap(){
   // Якщо норми не завантажені з generate.py — завантажуємо з Sheets
   if(!HM_NORMS || !Object.keys(HM_NORMS).length){
     await loadNormsFromSheets();
-  }
+  } else { utilNormStatusFromServer(); }
 
   // Кількість днів у кожному місяці
   const MONTH_ORDER_UTIL = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04',
@@ -6102,6 +6263,7 @@ function _utilRebuildLineBtns(locFilter) {
 async function buildUtilHeatmapWeekly(monthIdx){
   // Завантажуємо норми якщо потрібно
   if(!HM_NORMS || !Object.keys(HM_NORMS).length) await loadNormsFromSheets();
+  else utilNormStatusFromServer();
   const norm = 1500; // fallback якщо норма не знайдена для конкретної лінії
   const wrap = document.getElementById('utilHeatmapWrap');
   if(!wrap) return;
@@ -6172,7 +6334,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
     async function fetchR(sid,sh){
       const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sh)}`;
       const r=await fetch(url); if(!r.ok) return []; const txt=await r.text();
-      if(txt.includes('<html')) return []; return lParseCSV(txt);
+      if(txt.includes('<html')) return []; return adFix(sh,lParseCSV(txt));
     }
     function parseWk(rows){
       if(!rows||rows.length<2) return {};
@@ -6204,6 +6366,8 @@ async function buildUtilHeatmapWeekly(monthIdx){
     const merged={};
     for(const [ln,v] of Object.entries(w1)){if(!merged[ln])merged[ln]=new Array(weeks.length).fill(0);v.forEach((kg,i)=>merged[ln][i]+=kg);}
     for(const [ln,v] of Object.entries(w2)){if(!merged[ln])merged[ln]=new Array(weeks.length).fill(0);v.forEach((kg,i)=>merged[ln][i]+=kg);}
+    // 🛡 Фолбек: _AllData_Product зламаний → кг по тижнях з журналів (LINE_DAILY)
+    if(!Object.keys(merged).length) Object.assign(merged, lineDailyWeeks(weeks));
     if(!Object.keys(merged).length) throw new Error('No data');
 
     // Convert to %
