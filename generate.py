@@ -845,7 +845,7 @@ def parse_production_from_journals(rows_list):
 
     # 🆕 кг по (дата, лінія) з розбивкою День/Ніч — для heatmap / День vs Ніч /
     # тижневої завантаженості, коли _AllData_Product зламаний.
-    line_daily = _dd(lambda: [0.0, 0.0])   # (YYYY-MM-DD, 'ЛІНІЯ N', loc) → [day, night]
+    line_daily = _dd(lambda: [0.0, 0.0, 0.0])   # (YYYY-MM-DD, 'ЛІНІЯ N', loc) → [day, night, зміна не розпізнана]
     journal_errors = []
 
     total_rows = 0
@@ -863,6 +863,7 @@ def parse_production_from_journals(rows_list):
         min_len = max(c_vid, c_line, c_shift) + 1
         # Рядки даних починаються з індексу 2 (пропускаємо 2 рядки заголовків)
         cur_day = None
+        cur_shift = ''   # зміна заповнена лише в першому рядку блоку → forward-fill
         for row in rows[jc['start']:]:
             if not row or len(row) < min_len:
                 continue
@@ -872,6 +873,9 @@ def parse_production_from_journals(rows_list):
             # приймається, лише якщо вона в межах -3…+20 днів від попередньої
             # прийнятої (і не в майбутньому). Інакше — вважаємо опискою і
             # лишаємо попередню дату зміни.
+            _sh_cell = str(row[c_shift]).strip().lower() if len(row) > c_shift else ''
+            if _sh_cell:
+                cur_shift = _sh_cell
             d = _parse_day(row[c_date])
             if d is not None:
                 if cur_day is None:
@@ -908,13 +912,15 @@ def parse_production_from_journals(rows_list):
             # 🆕 лінія × день × зміна
             _ln = str(row[c_line]).strip().upper()
             _lm = re.search(r'(\d+)\s*$', _ln)
-            _sh = str(row[c_shift]).strip().lower()
+            _sh = cur_shift
             if _lm and kg > 0:
                 _key = (cur_day.strftime('%Y-%m-%d'), f'ЛІНІЯ {int(_lm.group(1))}', loc_idx)
                 if _sh.startswith('д') or _sh == 'day':
                     line_daily[_key][0] += kg
                 elif _sh.startswith('н') or _sh == 'night':
                     line_daily[_key][1] += kg
+                else:
+                    line_daily[_key][2] += kg
 
             if is_petg:
                 monthly[ym]['petg']       += kg
@@ -1003,8 +1009,8 @@ def parse_production_from_journals(rows_list):
         'prod_sku_list':  all_skus_sorted,
         # 🆕 денні дані: [[YYYY-MM-DD, sku, kg], ...]
         'prod_daily':     [[dk, sk, round(v, 2)] for (dk, sk), v in sorted(sku_daily.items())],
-        # 🆕 [[YYYY-MM-DD, 'ЛІНІЯ N', loc, kg_день, kg_ніч], ...]
-        'line_daily':     [[dk, ln, lc, round(v[0], 1), round(v[1], 1)]
+        # 🆕 [[YYYY-MM-DD, 'ЛІНІЯ N', loc, kg_день, kg_ніч, kg_зміна_невідома], ...]
+        'line_daily':     [[dk, ln, lc, round(v[0], 1), round(v[1], 1), round(v[2], 1)]
                            for (dk, ln, lc), v in sorted(line_daily.items())],
         'journal_errors': journal_errors,
     }
@@ -1244,10 +1250,11 @@ def heatmap_from_line_daily(line_daily):
     UA_SHORT = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
                 '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
     monthly = defaultdict(lambda: defaultdict(float))
-    for d, ln, _loc, kd, kn in (line_daily or []):
+    for r in (line_daily or []):
+        d, ln = r[0], r[1]
         ym = d[:7]
         if ym >= '2025-11':
-            monthly[ln][ym] += (kd or 0) + (kn or 0)
+            monthly[ln][ym] += sum((x or 0) for x in r[3:])
     if not monthly:
         return [], {}
     months = sorted({m for v in monthly.values() for m in v})
@@ -3019,12 +3026,30 @@ if __name__ == '__main__':
     if not hm_data and data.get('line_daily'):
         # _AllData_Product недоступний/зламаний → heatmap напряму з журналів
         hm_labels, hm_data = heatmap_from_line_daily(data['line_daily'])
+    # Контроль: сума heatmap по місяцю має збігатися з виробництвом із журналів
     try:
-        norms_rows = fetch_csv(LINES_SHEET_ID, 'НОРМЫ')
-        line_norms = parse_norms(norms_rows)
-    except Exception as e:
-        print(f"WARNING norms: {e}")
-        line_norms = {}
+        _UA = {'Січ':'01','Лют':'02','Бер':'03','Кві':'04','Тра':'05','Чер':'06',
+               'Лип':'07','Сер':'08','Вер':'09','Жов':'10','Лис':'11','Гру':'12'}
+        for _i, _lbl in enumerate(hm_labels):
+            _mo, _yy = _lbl.split()
+            _ym = f"20{_yy}-{_UA[_mo]}"
+            if _ym not in MONTH_ORDER: continue
+            _tot = (data.get('total_prod') or [None]*MONTH_COUNT)[MONTH_ORDER.index(_ym)]
+            _hm = sum((v[_i] or 0) for v in hm_data.values())
+            if _tot and abs(_hm - _tot) / _tot > 0.03:
+                print(f"  ⚠ HM {_lbl}: сума по лініях {_hm:,.0f} кг ≠ виробництво {_tot:,.0f} кг")
+    except Exception as _e:
+        print(f"  HM check skipped: {_e}")
+    # Норми з обох журналів (НОРМЫ Лок1 — лінії 1–6, НОРМЫ Лок2 — лінії 7+)
+    line_norms = {}
+    for _nsid, _nlbl in ((LINES_SHEET_ID, 'Лок1'), (LINES_SHEET_ID2, 'Лок2')):
+        try:
+            _n = parse_norms(fetch_csv(_nsid, 'НОРМЫ'))
+            for _ln, _vids in _n.items():
+                line_norms.setdefault(_ln, {}).update(_vids)
+            print(f"  Норми {_nlbl}: {len(_n)} ліній")
+        except Exception as e:
+            print(f"WARNING norms {_nlbl}: {e}")
 
     # ── 7. 🆕 Проєкти (файл проєктів) ─────────────────────────
     data['projects'] = {'projects': [], 'general_notes': [], 'layers_all': [],

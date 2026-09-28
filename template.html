@@ -2605,7 +2605,7 @@ const PROD_BY_SKU={{PROD_BY_SKU}};
 const PROD_SKU_LIST={{PROD_SKU_LIST}};
 // 🆕 2026-09-26: денні дані для «Товар», проєкти, ресурси (generate.py)
 const PROD_DAILY={{PROD_DAILY}};
-const LINE_DAILY={{LINE_DAILY}}; // [[YYYY-MM-DD,'ЛІНІЯ N',лок,кг_день,кг_ніч]] з журналів
+const LINE_DAILY={{LINE_DAILY}}; // [[YYYY-MM-DD,'ЛІНІЯ N',лок,кг_день,кг_ніч,кг_зміна_невідома]] з журналів
 const SALES_DAILY={{SALES_DAILY}};
 const PROJECTS_DATA={{PROJECTS_DATA}};
 const RESOURCES_DATA={{RESOURCES_DATA}};
@@ -4639,7 +4639,7 @@ function lineDailyWeeks(weeks){
     var wi=-1; for(var i=0;i<weeks.length;i++){ if(r[0]>=weeks[i].from&&r[0]<=weeks[i].to){wi=i;break;} }
     if(wi<0) return;
     if(!res[r[1]]) res[r[1]]=new Array(weeks.length).fill(0);
-    res[r[1]][wi]+=(r[3]||0)+(r[4]||0);
+    res[r[1]][wi]+=(r[3]||0)+(r[4]||0)+(r[5]||0);
   });
   Object.keys(res).forEach(function(k){res[k]=res[k].map(Math.round);});
   return res;
