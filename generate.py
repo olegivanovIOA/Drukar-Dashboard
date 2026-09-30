@@ -3,6 +3,8 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-09-30 20:10 — heatmap Лінія×Місяць спочатку з журналів (line_daily), _AllData_Product — лише запасний.
+
 BUILD: 2026-09-27 11:15 — Ресурси: name_by_mode / desc_by_mode / icon_by_mode (інша назва групи для ТОП чи Мідл).
 
 BUILD: 2026-09-27 10:20 — Ресурси: видимість "modes" (top/mid) для груп і посилань, фільтрація під час генерації.
@@ -3018,14 +3020,19 @@ if __name__ == '__main__':
 
     # ── 6. Lines heatmap + норми ───────────────────────────────
     hm_labels, hm_data = [], {}
-    try:
-        hm_labels, hm_data = parse_lines_heatmap_from_alldata(prod_rows)
-        print(f"  Lines HM result: {len(hm_labels)} months, {len(hm_data)} lines")
-    except Exception as e:
-        print(f"WARNING lines heatmap: {e}")
-    if not hm_data and data.get('line_daily'):
-        # _AllData_Product недоступний/зламаний → heatmap напряму з журналів
-        hm_labels, hm_data = heatmap_from_line_daily(data['line_daily'])
+    # 🆕 30.09.2026: heatmap — СПОЧАТКУ з журналів (line_daily), _AllData_Product лише як запасне джерело
+    if data.get('line_daily'):
+        try:
+            hm_labels, hm_data = heatmap_from_line_daily(data['line_daily'])
+            print(f"  Lines HM (журнали): {len(hm_labels)} months, {len(hm_data)} lines")
+        except Exception as e:
+            print(f"WARNING lines heatmap (journals): {e}")
+    if not hm_data:
+        try:
+            hm_labels, hm_data = parse_lines_heatmap_from_alldata(prod_rows)
+            print(f"  Lines HM (_AllData_Product): {len(hm_labels)} months, {len(hm_data)} lines")
+        except Exception as e:
+            print(f"WARNING lines heatmap: {e}")
     # Контроль: сума heatmap по місяцю має збігатися з виробництвом із журналів
     try:
         _UA = {'Січ':'01','Лют':'02','Бер':'03','Кві':'04','Тра':'05','Чер':'06',
