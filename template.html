@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-30 18:10 — Лінії/рекорди: дані з ЖУРНАЛІВ локацій (маса лінії за зміну напряму), а не з _AllData (там зсув колонок, немає «Вид», вклади ≠100% → рекорди ×2); оператори зміни й контроль «Эффективность, %» — з журналу; перелік змін з порожньою/несходною ефективністю.
+<!-- BUILD: 2026-09-30 18:40 — «Продуктивність ліній по днях» теж з журналів (графік вічно «завантажувався» через зламаний _AllData_Product); банер про зламаний _AllData прибрано з вкладки «Лінії».
+     BUILD: 2026-09-30 18:10 — Лінії/рекорди: дані з ЖУРНАЛІВ локацій (маса лінії за зміну напряму), а не з _AllData (там зсув колонок, немає «Вид», вклади ≠100% → рекорди ×2); оператори зміни й контроль «Эффективность, %» — з журналу; перелік змін з порожньою/несходною ефективністю.
      BUILD: 2026-09-27 11:35 — OKR: таблиця «Прогноз досягнення 100%» — лише компанія та основні ОКР, без персональних OKR_<Ім'я>.
      BUILD: 2026-09-27 10:20 — Ресурси: блоки за висотою вмісту (masonry), порожні групи компактні; видимість посилань по версіях — у generate.py.
      BUILD: 2026-09-26 23:30 — мобільна версія: шапка/вкладки, сітки в 1–2 колонки, таблиці зі скролом і липкою першою колонкою, широкі графіки у горизонтальний скрол.
@@ -4613,7 +4614,8 @@ function showAdLayoutBanner(){
   var msg=window.AD_LAYOUT_ERR||(DATA_ERRORS&&DATA_ERRORS._alldata_layout)||'';
   var jmsg=(DATA_ERRORS&&DATA_ERRORS._journal_layout)||'';
   if(!msg&&!jmsg) return;
-  ['tab-production','tab-lines','tab-operators'].forEach(function(id){
+  // 🆕 30.09.2026: вкладка «Лінії» повністю на журналах — банер там більше не потрібен
+  ['tab-production','tab-operators'].forEach(function(id){
     var tab=document.getElementById(id); if(!tab) return;
     var b=tab.querySelector('.ad-layout-banner');
     if(!b){b=document.createElement('div');b.className='tab-err-banner ad-layout-banner';tab.insertBefore(b,tab.firstChild);}
@@ -5666,21 +5668,30 @@ async function buildDailyChart(){
   if(loading) loading.style.display='flex';
   try {
     if(!window._dailyRawData){
-      const SID = '1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-      const url = 'https://docs.google.com/spreadsheets/d/'+SID+
-        '/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent('_AllData_Product');
-      const r = await fetch(url);
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const txt = await r.text();
-      if(txt.trim().startsWith('<')) throw new Error('sheet not public');
-      window._dailyRawData = parseDailyData(adFix('_AllData_Product',lParseCSV(txt)));
+      // 🆕 30.09.2026: з ЖУРНАЛІВ локацій (як рекорди, простої, кг/год), а не з _AllData_Product —
+      // той лист зламаний (зсув колонок, немає «Вид»), і графік вічно «завантажувався».
+      const slots = await djLoad();
+      window._dailyRawData = dailyFromJournal(slots);
     }
+    if(!Object.keys(window._dailyRawData).length) throw new Error('немає даних у журналах за поточний рік');
     renderDailyChart();
   } catch(e) {
     const loading2=document.getElementById('dailyChartLoading');
     if(loading2) loading2.textContent='⚠ '+e.message;
     console.warn('[dailyChart]', e);
   }
+}
+
+// Слоти журналу → {дата: {ЛІНІЯ N: кг за добу (день+ніч)}} за поточний рік; неправдоподібні зміни — без них
+function dailyFromJournal(slots){
+  const res = {}, curYear = String(new Date().getFullYear());
+  (slots || []).forEach(function(s){
+    if(!s.kg || s.suspect || s.date.slice(0,4) !== curYear) return;
+    const d = res[s.date] || (res[s.date] = {});
+    d[s.line] = (d[s.line] || 0) + s.kg;
+  });
+  Object.keys(res).forEach(function(dt){ Object.keys(res[dt]).forEach(function(ln){ res[dt][ln] = Math.round(res[dt][ln]); }); });   // цілі кг, як раніше
+  return res;
 }
 
 function parseDailyData(rows){
