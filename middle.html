@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-30 18:40 — «Продуктивність ліній по днях» теж з журналів (графік вічно «завантажувався» через зламаний _AllData_Product); банер про зламаний _AllData прибрано з вкладки «Лінії».
+<!-- BUILD: 2026-09-30 20:10 — усе виробниче — з журналів (djLoad з перевіркою колонок за вмістом): День/Ніч, PETG/PLA, тижневі теплокарти, понеділковий аналіз, Оператори (внесок = «Эффективность»×продукція блоку, старші зміни); _AllData_Product не читається; банер лише при зламаній структурі журналу; Фінанси — підписи собівартості без накладань.
+     BUILD: 2026-09-30 18:40 — «Продуктивність ліній по днях» теж з журналів (графік вічно «завантажувався» через зламаний _AllData_Product); банер про зламаний _AllData прибрано з вкладки «Лінії».
      BUILD: 2026-09-30 18:10 — Лінії/рекорди: дані з ЖУРНАЛІВ локацій (маса лінії за зміну напряму), а не з _AllData (там зсув колонок, немає «Вид», вклади ≠100% → рекорди ×2); оператори зміни й контроль «Эффективность, %» — з журналу; перелік змін з порожньою/несходною ефективністю.
      BUILD: 2026-09-27 11:35 — OKR: таблиця «Прогноз досягнення 100%» — лише компанія та основні ОКР, без персональних OKR_<Ім'я>.
      BUILD: 2026-09-27 10:20 — Ресурси: блоки за висотою вмісту (masonry), порожні групи компактні; видимість посилань по версіях — у generate.py.
@@ -411,7 +412,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 30.09.2026 14:18 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 30.09.2026 14:38 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -2955,13 +2956,9 @@ async function loadProductionCharts(){
     return {petg,pla};
   }
 
-  // SHEET_ID = _AllData_Product (той самий що для HM)
-  const PROD_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
+  // 🆕 30.09.2026: лише журнали (PETG_ALL / PLA_ALL з generate.py) — _AllData_Product більше не читаємо
   try{
-    let r1=await fetchSheet(PROD_SID,'_AllData_Product');
-    // Якщо недоступний — fallback на Аналіз вкладів з Журналів
-    if(!r1.length) r1=await fetchSheet(sid1,'Аналіз вкладів');
-    const r2=[]; // _AllData_Product вже містить обидві локації
+    const r1=[], r2=[];
     const [r1_,r2_]=[r1,r2];
     const d1=parseVidByMonth(r1_), d2=parseVidByMonth(r2_);
     // Merge both locations
@@ -3008,117 +3005,20 @@ async function loadProductionCharts(){
 }
 
 async function loadShiftData(){
+  // 🆕 30.09.2026: з журналів локацій (раніше — _AllData_Product, який зламаний)
   const wrap=document.getElementById('shiftWrap');
   if(!wrap) return;
   try{
-    const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
-    const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
-    async function fetchSheet(sid,sheet){
-      const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
-      const r=await fetch(url); if(!r.ok) return [];
-      const txt=await r.text(); if(txt.includes('<html')) return [];
-      return adFix(sheet,lParseCSV(txt));
-    }
-    // Використовуємо _AllData_Product (містить обидві локації)
-    const SHIFT_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-    let shiftRows=await fetchSheet(SHIFT_SID,'_AllData_Product');
-    if(!shiftRows.length) {
-      // Fallback — Аналіз вкладів з Журналів
-      const [f1,f2]=await Promise.all([fetchSheet(sid1,'Аналіз вкладів'),fetchSheet(sid2,'Аналіз вкладів')]);
-      shiftRows=[...f1,...f2.slice(1)]; // пропускаємо заголовок другого
-    }
-    const [r1,r2]=[shiftRows,[]];
-    function calcShifts(rows){
-      if(!rows||rows.length<3) return {day:0,night:0};
-      // Scan first 3 rows for headers
-      let ci_shift=-1, ci_weight=-1, ci_contrib=-1, dataStart=1;
-      for(let hi=0;hi<Math.min(3,rows.length);hi++){
-        const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
-        const s=hdr.findIndex(h=>h==='смена'||h==='зміна'||h.includes('зміна')||h.includes('смена')||h==='shift');
-        const w=hdr.findIndex(h=>h.includes('вес кг')||h.includes('вага кг'));
-        const c=hdr.findIndex(h=>h==='вклад %'||h.includes('вклад %')||h.includes('вклад%'));
-        if(s>=0){ci_shift=s; dataStart=hi+1;}
-        if(w>=0){ci_weight=w; dataStart=hi+1;}
-        if(c>=0) ci_contrib=c;
-      }
-      // Аналіз вкладів known positions: col1=Смена, col3=Вклад%, col7=Вес кг (вклад)
-      // Журнал fallback: col4=Зміна, col9=Вага кг
-      if(ci_shift<0) ci_shift=4;
-      if(ci_weight<0) ci_weight=9;
-      const isAnaliz=ci_contrib>=0;
-      let day=0,night=0,curDate=null,curShift=null;
-      const seen=new Set();
-      for(let i=dataStart;i<rows.length;i++){
-        const row=rows[i];
-        const dRaw=row[0]; if(dRaw){const d=lParseDate(String(dRaw));if(d)curDate=d;}
-        const sRaw=String(row[ci_shift]||'').trim().toLowerCase();
-        if(sRaw) curShift=sRaw;
-        if(!curDate||!curShift) continue;
-        const w=parseFloat(String(row[ci_weight]||'').replace(',','.'));
-        if(isNaN(w)||w<=0) continue;
-        let kg=w;
-        if(isAnaliz&&ci_contrib>=0){
-          let c=parseFloat(String(row[ci_contrib]||'').replace(',','.'));
-          if(!isNaN(c)&&c>0){if(c>1.5)c/=100;kg=w/c;}
-        }
-        // Deduplicate by (date, shift, line) — Аналіз вкладів has N operators per line per shift,
-        // all with same total weight after /contrib → count only once
-        const lineCol=isAnaliz?4:6;
-        const key=`${curDate}|${curShift}|${String(row[lineCol]||'')}`;
-        if(seen.has(key)) continue;
-        seen.add(key);
-        if(curShift.includes('ден')||curShift.includes('day')) day+=kg;
-        else if(curShift.includes('ніч')||curShift.includes('ноч')||curShift.includes('night')) night+=kg;
-      }
-      return {day,night};
-    }
-    // Збираємо дані по кожній лінії для select-фільтра
-    function calcShiftsByLine(rows){
-      if(!rows||rows.length<3) return {};
-      let ci_s=1,ci_w=7,ci_c=-1,ci_l=4,ds=1;
-      for(let hi=0;hi<Math.min(3,rows.length);hi++){
-        const h=rows[hi].map(c=>String(c||'').toLowerCase().trim());
-        const si=h.findIndex(c=>c==='смена'||c==='зміна'||c.includes('зміна')||c.includes('смена'));
-        const wi=h.findIndex(c=>c.includes('вес кг')||c.includes('вага кг'));
-        const ci=h.findIndex(c=>c==='вклад %'||c.includes('вклад %'));
-        const li=h.findIndex(c=>c==='лінія'||c==='линия');
-        if(si>=0){ci_s=si;ds=hi+1;} if(wi>=0)ci_w=wi; if(ci>=0)ci_c=ci; if(li>=0)ci_l=li;
-      }
-      const byLine={}, seen=new Set();
-      let curD=null,curS=null;
-      const isA=ci_c>=0;
-      for(let i=ds;i<rows.length;i++){
-        const row=rows[i];
-        const dr=row[0]; if(dr){const d=lParseDate(String(dr));if(d)curD=d;}
-        const sr=String(row[ci_s]||'').trim().toLowerCase(); if(sr)curS=sr;
-        if(!curD||!curS) continue;
-        const lr=String(row[ci_l]||'').toUpperCase().trim(); if(!lr) continue;
-        const nm=lr.match(/\d+/); if(!nm) continue;
-        const ln='ЛІНІЯ '+parseInt(nm[0]);
-        const key=curD+'|'+curS+'|'+ln;
-        if(seen.has(key)) continue; seen.add(key);
-        const w=parseFloat(String(row[ci_w]||'').replace(',','.')); if(isNaN(w)||w<=0) continue;
-        let kg=w;
-        if(isA&&ci_c>=0){const c=parseFloat(String(row[ci_c]||'').replace(',','.'));if(!isNaN(c)&&c>0)kg=w/(c>1.5?c/100:c);}
-        if(!byLine[ln])byLine[ln]={day:0,night:0};
-        if(curS.includes('ден')||curS.includes('day'))byLine[ln].day+=kg;
-        else if(curS.includes('ніч')||curS.includes('ноч')||curS.includes('night'))byLine[ln].night+=kg;
-      }
-      return byLine;
-    }
+    const slots=await djLoad();
     window._shiftByLine={};
-    let bl=calcShiftsByLine(r1);
-    // 🛡 Фолбек: _AllData_Product зламаний → День/Ніч з журналів (LINE_DAILY)
-    if(!Object.keys(bl).length) bl=lineDailyAgg('2025-11-01',null);
-    const lineNames=new Set();
-    Object.entries(bl).forEach(([ln,v])=>{
-      if(!window._shiftByLine[ln])window._shiftByLine[ln]={day:0,night:0};
-      window._shiftByLine[ln].day+=v.day; window._shiftByLine[ln].night+=v.night;
-      lineNames.add(ln);
+    slots.forEach(function(s){
+      if(!s.kg||s.suspect||s.date<'2025-11') return;
+      const r=window._shiftByLine[s.line]||(window._shiftByLine[s.line]={day:0,night:0});
+      if(/^н/i.test(s.shift||'')) r.night+=s.kg; else r.day+=s.kg;
     });
     const sel=document.getElementById('shiftLineFilter');
     if(sel&&sel.options.length<=1){
-      [...lineNames].sort((a,b)=>parseInt(a.match(/\d+/)||0)-parseInt(b.match(/\d+/)||0))
+      Object.keys(window._shiftByLine).sort((a,b)=>parseInt(a.match(/\d+/)||0)-parseInt(b.match(/\d+/)||0))
         .forEach(ln=>{const o=document.createElement('option');o.value=ln;o.textContent=ln;sel.appendChild(o);});
     }
     renderShiftData();
@@ -3218,17 +3118,13 @@ async function buildHeatmap(){
         return monthly;
       }
 
-      // _AllData_Product — єдине джерело правди (містить обидві локації + апрель і далі)
-      const HM_ALLDATA_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-      let rows1=await fetchSheet(HM_ALLDATA_SID,'_AllData_Product');
-      let rows2=[]; // обидві локації вже в rows1
-      // Fallback якщо _AllData_Product недоступний
-      if(!rows1.length){
-        rows1=await fetchSheet(sid1,'Аналіз вкладів');
-        rows2=await fetchSheet(sid2,'Аналіз вкладів');
-      }
-
-      const m1=parseJournal(rows1), m2=parseJournal(rows2);
+      // 🆕 30.09.2026: запасне джерело — журнали (djLoad), а не _AllData_Product
+      const m1={}, m2={};
+      (await djLoad()).forEach(function(sl){
+        if(!sl.kg||sl.suspect||sl.date<'2025-11') return;
+        const ym=sl.date.slice(0,7); if(!m1[sl.line]) m1[sl.line]={};
+        m1[sl.line][ym]=(m1[sl.line][ym]||0)+sl.kg;
+      });
       // Merge
       const merged={};
       for(const [line,data] of Object.entries(m1)){
@@ -3490,13 +3386,8 @@ async function buildHeatmapWeekly(monthIdx){
     }
 
     // Завантажуємо дані
-    const WK_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-    let rows1=await fetchRows(WK_SID,'_AllData_Product');
-    let rows2=[];
-    if(!rows1.length){
-      rows1=await fetchRows(sid1,'Аналіз вкладів');
-      rows2=await fetchRows(sid2,'Аналіз вкладів');
-    }
+    // 🆕 30.09.2026: лише журнали (LINE_DAILY з generate.py) — _AllData_Product більше не читаємо
+    const rows1=[], rows2=[];
 
     const w1=parseWeekly(rows1,weeks);
     const w2=parseWeekly(rows2,weeks);
@@ -3743,40 +3634,61 @@ function initCosts(){
     const lastPLA=CPKG_PLA.map((v,i)=>v!==null?i:-1).filter(i=>i>=0).pop()??-1;
     const avgPETGArr=MS.map((_,i)=>(i>=firstPETG&&i<=lastPETG)?avgPETG:null);
     const avgPLAArr=MS.map((_,i)=>(i>=firstPLA&&i<=lastPLA)?avgPLA:null);
-    const barLabelsPlugin={id:'barLabels',afterDraw(chart){
-      const ctx=chart.ctx;
+    // 🆕 30.09.2026: підписи без накладань — цілі ₴ (одиниця вже на осі) і «шахматка»:
+    // якщо підпис зачіпає вже поставлений (сусідній стовпчик/місяць), піднімаємо його на рядок вище.
+    const barLabelsPlugin={id:'barLabels',afterDatasetsDraw(chart){
+      const ctx=chart.ctx, placed=[], items=[];
       chart.data.datasets.forEach((ds,di)=>{
-        if(ds.type!=='bar')return;
-        const meta=chart.getDatasetMeta(di);
-        meta.data.forEach((bar,i)=>{
-          const val=ds.data[i];
-          if(!val)return;
-          const color=di===0?'#1d4ed8':'#9a8800';
-          ctx.save();
-          ctx.font='600 10px IBM Plex Mono,monospace';
-          ctx.fillStyle=color;
-          ctx.textAlign='center';
-          ctx.textBaseline='bottom';
-          ctx.fillText(val+'₴', bar.x, bar.y-3);
-          ctx.restore();
+        if(ds.type!=='bar'||chart.getDatasetMeta(di).hidden)return;
+        chart.getDatasetMeta(di).data.forEach((bar,i)=>{
+          const val=ds.data[i]; if(!val)return;
+          items.push({x:bar.x,y:bar.y,txt:String(Math.round(val)),color:di===0?'#1d4ed8':'#8a7a00'});
         });
       });
+      items.sort((a,b)=>a.x-b.x);
+      ctx.save();
+      ctx.font='600 10px IBM Plex Mono,monospace'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+      // Вузький екран: підпис вертикально всередині стовпчика (біля верху)
+      const barW=items.length>1?Math.abs(items[1].x-items[0].x):40;
+      if(barW<22){
+        items.forEach(it=>{
+          ctx.save(); ctx.translate(it.x,it.y+4); ctx.rotate(-Math.PI/2);
+          ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle=it.color==='#1d4ed8'?'#0b2a78':'#4a4100'; ctx.font='700 9px IBM Plex Mono,monospace';
+          ctx.fillText(it.txt,0,0); ctx.restore();
+        });
+        ctx.restore(); return;
+      }
+      const LH=12;
+      items.forEach(it=>{
+        const w=ctx.measureText(it.txt).width+4;
+        let yb=it.y-3, guard=0;
+        const hit=()=>placed.some(p=>Math.abs(p.x-it.x)<(p.w+w)/2 && yb>p.yb-LH && yb-LH<p.yb);
+        while(hit() && guard++<6) yb-=LH;
+        placed.push({x:it.x,yb:yb,w:w});
+        ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillRect(it.x-w/2,yb-LH+1,w,LH-1);
+        ctx.fillStyle=it.color; ctx.fillText(it.txt,it.x,yb);
+      });
+      ctx.restore();
     }};
+    // Телефон: лише місяці з даними (порожні місяці року забирають місце у стовпчиків)
+    const cpkIdx = window.innerWidth<=760 ? MS.map((_,i)=>i).filter(i=>CPKG_PETG[i]!=null||CPKG_PLA[i]!=null) : MS.map((_,i)=>i);
+    const cpk = arr => cpkIdx.map(i=>arr[i]);
     safeCreateChart('costPerKgChart',{
       plugins:[barLabelsPlugin],
-      data:{labels:MS,datasets:[
-        {type:'bar',label:'PETG ₴/кг',data:CPKG_PETG,backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
-        {type:'bar',label:'PLA ₴/кг',data:CPKG_PLA,backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
-        {type:'line',label:'Тренд PETG',data:trendline(CPKG_PETG),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},
-        {type:'line',label:'Тренд PLA',data:trendline(CPKG_PLA),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},
-        {type:'line',label:'Сер. PETG ∅'+avgPETG+'₴',data:avgPETGArr,borderColor:'rgba(37,99,235,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false},
-        {type:'line',label:'Сер. PLA ∅'+avgPLA+'₴',data:avgPLAArr,borderColor:'rgba(161,145,0,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false}
+      data:{labels:cpk(MS),datasets:[
+        {type:'bar',label:'PETG ₴/кг',data:cpk(CPKG_PETG),backgroundColor:'rgba(71,180,255,.6)',borderColor:'#2563eb',borderWidth:1,borderRadius:3},
+        {type:'bar',label:'PLA ₴/кг',data:cpk(CPKG_PLA),backgroundColor:'rgba(200,180,0,.6)',borderColor:'#c8b400',borderWidth:1,borderRadius:3},
+        {type:'line',label:'Тренд PETG',data:cpk(trendline(CPKG_PETG)),borderColor:'rgba(71,180,255,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},
+        {type:'line',label:'Тренд PLA',data:cpk(trendline(CPKG_PLA)),borderColor:'rgba(200,180,0,.4)',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,spanGaps:true},
+        {type:'line',label:'Сер. PETG ∅'+avgPETG+'₴',data:cpk(avgPETGArr),borderColor:'rgba(37,99,235,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false},
+        {type:'line',label:'Сер. PLA ∅'+avgPLA+'₴',data:cpk(avgPLAArr),borderColor:'rgba(161,145,0,.8)',borderDash:[2,4],borderWidth:2,pointRadius:0,fill:false,tension:0,spanGaps:false}
       ]},
       options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'top',labels:{boxWidth:12}}},
-        layout:{padding:{top:20}},
+        plugins:{legend:{position:'top',labels:{boxWidth:12}},
+          tooltip:{callbacks:{label:function(ctx){ if(ctx.raw==null) return null; return ctx.dataset.label+': '+(+ctx.raw).toFixed(2)+' ₴'; }}}},
+        layout:{padding:{top:28}},
         scales:{x:GR,y:{...GR,
-          max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.28/50)*50:700;})(),
+          max:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.ceil(Math.max(...v)*1.35/50)*50:700;})(),
           min:(()=>{const v=[...CPKG_PETG,...CPKG_PLA].filter(x=>x!==null);return v.length?Math.floor(Math.min(...v)*.82/50)*50:150;})(),
           ticks:{...GR.ticks,callback:v=>v+' ₴'}
         }}
@@ -3871,103 +3783,62 @@ let _opLoaded = false;
 let OP_ALL_DYN = null;      // перекроет OP_ALL после загрузки
 let OP_BY_MONTH_DYN = null; // перекроет OP_BY_MONTH
 
+// 🆕 30.09.2026: оператори рахуються з ЖУРНАЛІВ локацій, а не з _AllData_Product
+// (той лист зламаний: зсув колонок, немає «Вид»; до того ж статичні OP_* закінчувались березнем).
+// Внесок оператора = його частка «Эффективность, %» × вся продукція його блоку зміни (усі лінії блоку) —
+// це рівно те, що давав старий робочий _AllData (перевірено: Щербакова, березень = 4826 кг в обох).
+// Порожня «Эффективность»: отримує залишок до 100%; якщо порожні всі — порівну; якщо Σ > 100% — пропорційно
+// зменшується. Отже сума внесків операторів блоку = 100% продукції блоку, без подвоєнь.
+function djOpShares(eff){
+  var n = eff.length; if(!n) return [];
+  var known = eff.filter(function(x){ return x > 0; }), s = known.reduce(function(a,b){ return a+b; }, 0), ne = n - known.length;
+  if(!known.length) return eff.map(function(){ return 1/n; });
+  var rem = Math.max(0, 1 - s);
+  var sh = eff.map(function(x){ return x > 0 ? x : (ne ? rem/ne : 0); });
+  var tot = sh.reduce(function(a,b){ return a+b; }, 0);
+  return tot > 1.0001 ? sh.map(function(x){ return x/tot; }) : sh;
+}
+function djOperators(){
+  var all = {}, byMonth = {}, shAll = {}, shByMonth = {}, senAll = {}, senByMonth = {};
+  function add(map, name, v){ map[name] = (map[name] || 0) + v; }
+  (window._djBlocks || []).forEach(function(b){
+    if(!b.date || b.date < '2025-11') return;
+    var ym = b.date.slice(0,7), night = /^н/i.test(b.shift || '');
+    if(b.names.length && b.kg > 0){
+      var sh = djOpShares(b.eff);
+      b.names.forEach(function(nm, i){
+        var name = nm.replace(/\s+/g,' ').trim(), v = b.kg * sh[i];
+        add(all, name, v); add(byMonth[ym] || (byMonth[ym] = {}), name, v);
+        [shAll, shByMonth[ym] || (shByMonth[ym] = {})].forEach(function(m){ var r = m[name] || (m[name] = [0,0]); r[night ? 1 : 0] += v; });
+      });
+    }
+    if(b.senior){ var sn = b.senior.replace(/\s+/g,' ').trim(); add(senAll, sn, 1); add(senByMonth[ym] || (senByMonth[ym] = {}), sn, 1); }
+  });
+  function toArr(m){ return Object.keys(m).map(function(n){ return [n, Math.round(m[n])]; }).filter(function(r){ return r[1] > 0; }).sort(function(a,b){ return b[1]-a[1]; }); }
+  function toShift(m){ return Object.keys(m).map(function(n){ var r = m[n]; return [n, Math.round(r[0]*10)/10, Math.round(r[1]*10)/10, Math.round((r[0]+r[1])*10)/10]; }).filter(function(r){ return r[3] > 0; }).sort(function(a,b){ return b[3]-a[3]; }); }
+  var out = { all: toArr(all), byMonth: {}, shift: { all: toShift(shAll) }, senAll: senAll, senByMonth: senByMonth };
+  Object.keys(byMonth).forEach(function(ym){ out.byMonth[ym] = toArr(byMonth[ym]); });
+  Object.keys(shByMonth).forEach(function(ym){ out.shift[ym] = toShift(shByMonth[ym]); });
+  return out;
+}
+
 async function loadOperatorData(){
   if(_opLoaded) return;
-  // _AllData_Product знаходиться в ГОЛОВНОМУ файлі (не в Журналах!)
-  const MAIN_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-  const sid1='1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4'; // Журнал лок1 (fallback)
-  const sid2='1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI'; // Журнал лок2 (fallback)
-  async function fetchCSV(sid,sheet){
-    const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
-    const r=await fetch(url); if(!r.ok) return [];
-    const txt=await r.text(); if(txt.includes('<html')) return [];
-    return adFix(sheet,lParseCSV(txt));
-  }
-  function parseOps(rows){
-    const allMap={}, byMonthMap={};
-    if(!rows||rows.length<2) return {allMap,byMonthMap};
-    // Автодетекція заголовку — шукаємо рядок з "Дата" або "Оператор"
-    let dataStart=1, ci_date=0, ci_shift=1, ci_op=2, ci_contrib=3, ci_line=4, ci_weight=7;
-    for(let hi=0;hi<Math.min(5,rows.length);hi++){
-      const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
-      const hasDate=hdr.some(h=>h==='дата'||h==='date'||h.includes('дата')||h.includes('date'));
-      const hasOp=hdr.some(h=>h.includes('оператор')||h.includes('operator')||h.includes('oper'));
-      if(hasDate||hasOp){
-        dataStart=hi+1;
-        const iDate=hdr.findIndex(h=>h==='дата'||h==='date'); if(iDate>=0) ci_date=iDate;
-        const iShift=hdr.findIndex(h=>h.includes('смен')||h.includes('зміна')||h==='shift'); if(iShift>=0) ci_shift=iShift;
-        const iOp=hdr.findIndex(h=>h.includes('оператор')||h.includes('operator')); if(iOp>=0) ci_op=iOp;
-        const iContrib=hdr.findIndex(h=>h.includes('вклад')); if(iContrib>=0) ci_contrib=iContrib;
-        const iLine=hdr.findIndex(h=>h.includes('лін')||h.includes('лини')||h==='line'); if(iLine>=0) ci_line=iLine;
-        // Шукаємо "вес кг" або "вага кг" - може бути з уточненням "(вклад)"
-        const iW=hdr.findIndex(h=>(h.includes('вес кг')||h.includes('вага кг')||h.includes('weight'))&&!h.includes('нф')&&!h.includes('відх')&&!h.includes('зап')); if(iW>=0) ci_weight=iW;
-        break;
-      }
-    }
-    console.log(`parseOps: dataStart=${dataStart} ci_date=${ci_date} ci_op=${ci_op} ci_contrib=${ci_contrib} ci_weight=${ci_weight} total=${rows.length}`);
-    // Debug перший рядок заголовку і перші 3 рядки даних
-    if(rows[dataStart-1]) console.log('  HDR:', rows[dataStart-1].slice(0,12).map((h,i)=>i+':'+h).join(' | '));
-    for(let di=dataStart;di<Math.min(dataStart+3,rows.length);di++){
-      const dr=rows[di];
-      console.log(`  row[${di}]: date=${JSON.stringify(dr[ci_date])} op=${JSON.stringify(dr[ci_op])} contrib=${JSON.stringify(dr[ci_contrib])} w=${JSON.stringify(dr[ci_weight])} ym=${dr[ci_date]?lParseDate(String(dr[ci_date]||'')):'?'}`);
-    }
-    for(let i=dataStart;i<rows.length;i++){
-      const row=rows[i]; if(!row||row.length<3) continue;
-      const dRaw=String(row[ci_date]||'').trim(); if(!dRaw) continue;
-      const d=lParseDate(dRaw); if(!d) continue;
-      const ym=d.slice(0,7); if(ym<'2025-11') continue;
-      const op=String(row[ci_op]||'').trim(); if(!op||op==='null'||op===''||op.includes('IFERROR')) continue;
-      let contrib=parseFloat(String(row[ci_contrib]||'').replace('%','').replace(',','.'));
-      if(isNaN(contrib)||contrib<=0) contrib=1; if(contrib>1.5) contrib/=100;
-      const wRaw=parseFloat(String(row[ci_weight]||'').replace(',','.')); if(isNaN(wRaw)||wRaw<=0) continue;
-      const opKg=wRaw; // вклад оператора (вес × вклад%)
-      if(!allMap[op]) allMap[op]=0;
-      allMap[op]+=opKg;
-      if(!byMonthMap[ym]) byMonthMap[ym]={};
-      if(!byMonthMap[ym][op]) byMonthMap[ym][op]=0;
-      byMonthMap[ym][op]+=opKg;
-    }
-    return {allMap,byMonthMap};
-  }
   try {
-    console.log('Loading operator data from MAIN_SID...');
-    // Головний файл містить _AllData_Product з ОБОМА локаціями + свіжі дані
-    let r1=await fetchCSV(MAIN_SID,'_AllData_Product');
-    let r2=[]; // обидві локації вже в r1
-    if(!r1.length){
-      // Fallback: Аналіз вкладів з Журналів (тільки старі дані до березня)
-      console.warn('MAIN_SID _AllData_Product empty, trying journals fallback');
-      const [f1,f2]=await Promise.all([fetchCSV(sid1,'Аналіз вкладів'),fetchCSV(sid2,'Аналіз вкладів')]);
-      r1=f1; r2=f2;
+    await djLoad();
+    var o = djOperators();
+    if(o.all.length){
+      OP_ALL_DYN = o.all;
+      OP_BY_MONTH_DYN = o.byMonth;
+      Object.keys(o.shift).forEach(function(k){ OP_SHIFT[k] = o.shift[k]; });   // «По змінах» — теж з журналів
+      SENIOR_ALL = o.senAll; SENIOR_BY_MONTH = o.senByMonth; _seniorLoaded = true;
     }
-    console.log('Op rows:', r1.length, r2.length);
-    const p1=parseOps(r1), p2=parseOps(r2);
-    const allMap={}, byMonthMap={};
-    for(const [k,v] of Object.entries(p1.allMap)) allMap[k]=(allMap[k]||0)+v;
-    for(const [k,v] of Object.entries(p2.allMap)) allMap[k]=(allMap[k]||0)+v;
-    for(const [ym,data] of Object.entries(p1.byMonthMap)){
-      if(!byMonthMap[ym]) byMonthMap[ym]={};
-      for(const [k,v] of Object.entries(data)) byMonthMap[ym][k]=(byMonthMap[ym][k]||0)+v;
-    }
-    for(const [ym,data] of Object.entries(p2.byMonthMap)){
-      if(!byMonthMap[ym]) byMonthMap[ym]={};
-      for(const [k,v] of Object.entries(data)) byMonthMap[ym][k]=(byMonthMap[ym][k]||0)+v;
-    }
-    // Конвертуємо в масиви [[name, kg], ...] відсортовані по спадінню
-    OP_ALL_DYN=Object.entries(allMap).sort((a,b)=>b[1]-a[1]).map(([n,v])=>[n,Math.round(v)]);
-    OP_BY_MONTH_DYN={};
-    for(const [ym,data] of Object.entries(byMonthMap)){
-      OP_BY_MONTH_DYN[ym]=Object.entries(data).sort((a,b)=>b[1]-a[1]).map(([n,v])=>[n,Math.round(v)]);
-    }
-    _opLoaded=true;
-    const totalOps = Object.keys(OP_ALL_DYN||{}).length;
-    const months = Object.keys(OP_BY_MONTH_DYN||{}).sort();
-    console.log(`Operators loaded: ${totalOps} ops, months: ${months.join(',')}`);
-  } catch(e) { 
+    console.log('[OP] з журналів: ' + o.all.length + ' операторів, місяці: ' + Object.keys(o.byMonth).sort().join(','));
+  } catch(e) {
     console.warn('loadOperatorData:', e);
-    // Fallback: використовуємо захардкоджені дані
     OP_ALL_DYN = null; OP_BY_MONTH_DYN = null;
   }
+  _opLoaded = true;
 }
 
 function getOpAll(){ return OP_ALL_DYN || OP_ALL; }
@@ -3982,96 +3853,9 @@ let SENIOR_BY_MONTH = {}; // { ym: { name: count } }
 let _seniorLoaded = false;
 
 async function loadSeniorData() {
+  // 🆕 30.09.2026: «Старший зміни» — з журналів (колонка «Старший зміни» = TRUE у рядку оператора); рахує loadOperatorData()
   if(_seniorLoaded) return;
-  const sid1 = '1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
-  const sid2 = '1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
-  async function fetchCSV(sid, sheet) {
-    const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
-    const r = await fetch(url); if(!r.ok) return [];
-    const txt = await r.text(); if(txt.includes('<html')) return [];
-    return adFix(sheet,lParseCSV(txt));
-  }
-  function parseSenior(rows) {
-    // _AllData_Product: col17 = 1 (прапорець) означає що col2 (Оператор) є Старшим зміни
-    // Дедупліцюємо по (дата, зміна, оператор) — не по лінії
-    // Автодетекція заголовку
-    const all = {}, byMonth = {};
-    const seen = new Set();
-    if(!rows||rows.length<2) return {all, byMonth};
-    // Знайдемо колонки
-    let ci_date=0, ci_shift=1, ci_op=2, ci_senior=17, dataStart=1;
-    for(let hi=0;hi<Math.min(5,rows.length);hi++){
-      const hdr=rows[hi].map(h=>String(h||'').toLowerCase().trim());
-      if(hdr.some(h=>h.includes('дата')||h==='date')){
-        dataStart=hi+1;
-        const iD=hdr.findIndex(h=>h.includes('дата')||h==='date'); if(iD>=0) ci_date=iD;
-        const iS=hdr.findIndex(h=>h.includes('смен')||h.includes('зміна')); if(iS>=0) ci_shift=iS;
-        const iO=hdr.findIndex(h=>h.includes('оператор')); if(iO>=0) ci_op=iO;
-        const iSr=hdr.findIndex(h=>h.includes('старший')); if(iSr>=0) ci_senior=iSr;
-        break;
-      }
-    }
-    for(let i=dataStart;i<rows.length;i++){
-      const row = rows[i]; if(!row||row.length<3) continue;
-      const dRaw = String(row[ci_date]||'').trim(); if(!dRaw) continue;
-      const d = lParseDate(dRaw); if(!d) continue;
-      const ym = d.slice(0,7);
-      if(ym < '2025-11') continue;
-      // col ci_senior може бути:
-      //   1) ім'я рядком "Іванов Іван" → це і є старший
-      //   2) числовий флаг 1 / TRUE → старший = col ci_op (поточний оператор)
-      //   3) 0 / FALSE / пусто → не старший
-      const seniorRaw = String(row[ci_senior]||'').trim();
-      if(!seniorRaw || seniorRaw==='0' || seniorRaw.toLowerCase()==='false' || seniorRaw==='') continue;
-      const seniorNum = parseFloat(seniorRaw);
-      let seniorName;
-      if(!isNaN(seniorNum)){
-        // Числовий флаг: 1=TRUE, 0=FALSE
-        if(seniorNum !== 1) continue;
-        // Ім'я = поточний оператор
-        seniorName = String(row[ci_op]||'').trim();
-      } else {
-        // Рядок з ім'ям — використовуємо напряму (наприклад "Сорока Ігор")
-        seniorName = seniorRaw;
-      }
-      if(!seniorName || seniorName==='null' || seniorName.includes('IFERROR')) continue;
-      const shift = String(row[ci_shift]||'').trim();
-      // Дедупліцюємо по (дата, зміна, ім'я старшого)
-      const key = d+'|'+shift+'|'+seniorName;
-      if(seen.has(key)) continue;
-      seen.add(key);
-      all[seniorName] = (all[seniorName]||0) + 1;
-      if(!byMonth[ym]) byMonth[ym] = {};
-      byMonth[ym][seniorName] = (byMonth[ym][seniorName]||0) + 1;
-    }
-    console.log('Senior shifts:', Object.entries(byMonth).map(([m,d])=>`${m}:${Object.values(d).reduce((a,b)=>a+b,0)}`).join(', '));
-    return {all, byMonth};
-  }
-  try {
-    // Senior data теж у головному файлі
-    const SENIOR_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-    const r_senior = await fetchCSV(SENIOR_SID, '_AllData_Product');
-    const [r1, r2] = r_senior.length ? [r_senior, []] : [
-      await fetchCSV(sid1, '_AllData_Product'),
-      await fetchCSV(sid2, '_AllData_Product'),
-    ];
-    const s1 = parseSenior(r1), s2 = parseSenior(r2);
-    // Merge
-    for(const [name, cnt] of Object.entries(s1.all)) SENIOR_ALL[name]=(SENIOR_ALL[name]||0)+cnt;
-    for(const [name, cnt] of Object.entries(s2.all)) SENIOR_ALL[name]=(SENIOR_ALL[name]||0)+cnt;
-    for(const [ym, data] of Object.entries(s1.byMonth)){
-      if(!SENIOR_BY_MONTH[ym]) SENIOR_BY_MONTH[ym]={};
-      for(const [name,cnt] of Object.entries(data)) SENIOR_BY_MONTH[ym][name]=(SENIOR_BY_MONTH[ym][name]||0)+cnt;
-    }
-    for(const [ym, data] of Object.entries(s2.byMonth)){
-      if(!SENIOR_BY_MONTH[ym]) SENIOR_BY_MONTH[ym]={};
-      for(const [name,cnt] of Object.entries(data)) SENIOR_BY_MONTH[ym][name]=(SENIOR_BY_MONTH[ym][name]||0)+cnt;
-    }
-    _seniorLoaded = true;
-    console.log('Senior data loaded:', Object.keys(SENIOR_ALL).length, 'people');
-  } catch(e) {
-    console.warn('loadSeniorData failed:', e);
-  }
+  await loadOperatorData();
 }
 
 const OP_SHIFT = {
@@ -4099,7 +3883,8 @@ function setOpView(view, btn) {
 }
 
 function renderShiftView(key) {
-  const data = OP_SHIFT[key] || OP_SHIFT['all'];
+  if(!_opLoaded){ loadOperatorData().then(function(){ renderShiftView(key); }); return; }
+  const data = OP_SHIFT[key] || [];
   const mIdx = ['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'].indexOf(key);
   const title = key === 'all' ? `Всі місяці · ${data.length} операторів` : `${MF[mIdx]} · ${data.length} операторів`;
   document.getElementById('opShiftTableTitle').textContent = title;
@@ -4380,7 +4165,7 @@ function renderOpTotal(key) {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ...GR, ticks: { ...GR.ticks, callback: v => (v/1000).toFixed(0)+'k' } },
+        x: { ...GR, ticks: { ...GR.ticks, callback: v => (v%1000? (v/1000).toFixed(1) : v/1000)+'k' } },
         y: { ...GR, ticks: { ...GR.ticks, font: { size: 10 } } }
       }
     }
@@ -4622,15 +4407,17 @@ function adFix(sheet,rows){
   return res.rows;
 }
 function showAdLayoutBanner(){
-  var msg=window.AD_LAYOUT_ERR||(DATA_ERRORS&&DATA_ERRORS._alldata_layout)||'';
-  var jmsg=(DATA_ERRORS&&DATA_ERRORS._journal_layout)||'';
-  if(!msg&&!jmsg) return;
-  // 🆕 30.09.2026: вкладка «Лінії» повністю на журналах — банер там більше не потрібен
-  ['tab-production','tab-operators'].forEach(function(id){
+  // 🆕 30.09.2026: виробництво, лінії й оператори рахуються з ЖУРНАЛІВ; зламаний _AllData_Product
+  // на них більше не впливає → банер лише коли зламана структура самих журналів.
+  var msg='';
+  var jmsg=[(DATA_ERRORS&&DATA_ERRORS._journal_layout)||'', window.DJ_LAYOUT_ERR||''].filter(Boolean).join('; ');
+  if(window.AD_LAYOUT_ERR||(DATA_ERRORS&&DATA_ERRORS._alldata_layout)) console.warn('[_AllData] '+(window.AD_LAYOUT_ERR||DATA_ERRORS._alldata_layout)+' — дашборд його не використовує');
+  if(!jmsg) return;
+  ['tab-production','tab-lines','tab-operators'].forEach(function(id){
     var tab=document.getElementById(id); if(!tab) return;
     var b=tab.querySelector('.ad-layout-banner');
     if(!b){b=document.createElement('div');b.className='tab-err-banner ad-layout-banner';tab.insertBefore(b,tab.firstChild);}
-    b.innerHTML='<span style="font-size:16px">⚠</span><div><strong>Зламана структура джерела даних</strong><br>'
+    b.innerHTML='<span style="font-size:16px">⚠</span><div><strong>Змінилась структура журналу локації</strong><br>'
       +(msg?lEsc(msg)+'<br>Графіки виробництва побудовані з журналів локацій; вклади операторів можуть бути неповні.':'')
       +(jmsg?'<br>'+lEsc(jmsg):'')+'</div>';
   });
@@ -6451,9 +6238,8 @@ async function buildUtilHeatmapWeekly(monthIdx){
       Object.values(res).forEach(arr=>arr.forEach((_,i)=>{arr[i]=Math.round(arr[i]);}));
       return res;
     }
-    const UW_SID='1thXW13Min0-5qWpNUvi0Y5ZWNl1LxYsZyLA78zf0khA';
-    let r1=await fetchR(UW_SID,'_AllData_Product'); let r2=[];
-    if(!r1.length){ r1=await fetchR(sid1,'Аналіз вкладів'); r2=await fetchR(sid2,'Аналіз вкладів'); }
+    // 🆕 30.09.2026: лише журнали (LINE_DAILY з generate.py) — _AllData_Product більше не читаємо
+    const r1=[], r2=[];
     const w1=parseWk(r1), w2=parseWk(r2);
     const merged={};
     for(const [ln,v] of Object.entries(w1)){if(!merged[ln])merged[ln]=new Array(weeks.length).fill(0);v.forEach((kg,i)=>merged[ln][i]+=kg);}
@@ -7308,7 +7094,7 @@ window._djPromise = null;
 function djLoad(){
   if(window._djPromise) return window._djPromise;
   window._djPromise = (async function(){
-    var slots = [], stats = {};
+    var slots = [], stats = {}, blocks = [];
     for (var loc of DOWNTIME_LOCATIONS) {
       var st = stats[loc.id] = { rows:0, slots:0, dateTypos:0, hoursFixed:0, hoursUnknown:0, error:'' };
       try {
@@ -7322,7 +7108,7 @@ function djLoad(){
         st.rows = rows.length;
 
         // Колонки: знайдені в заголовках (перші 3 рядки), інакше — перевірені дефолти
-        var C = { date:0, eff:3, op:4, shift:6, line:7, vid:8, kg:10, nf:11, waste:12, hours:16, reason:17, dt:18, comment:19 };
+        var C = { date:0, eff:3, op:4, senior:5, shift:6, line:7, vid:8, pcs:9, kg:10, nf:11, waste:12, packed:13, hours:16, reason:17, dt:18, comment:19 };
         for(var hi=0; hi<Math.min(3, rows.length); hi++){
           rows[hi].forEach(function(c, ci){
             var h = String(c||'').toLowerCase().trim();
@@ -7331,14 +7117,30 @@ function djLoad(){
             else if(h.indexOf('причин')>=0) C.reason = ci;          // «Причина1» / «Причини простою лінії»
             else if(h.indexOf('эффективн')>=0 || h.indexOf('ефективн')>=0) C.eff = ci;
             else if((h === 'зміна' || h === 'смена') && ci < 6) C.op = ci;   // під «Зміна» — ПІБ операторів
+            else if(h.indexOf('старш') === 0) C.senior = ci;
             else if((h === 'простой' || h === 'простій') && ci > C.hours) C.dt = ci;
             else if(h.indexOf('коментар')>=0 || h.indexOf('комментар')>=0) C.comment = ci;
             else if(h === 'лінія' || h === 'линия') C.line = ci;
-            else if(h === 'вид') { C.vid = ci; C.kg = ci+2; C.nf = ci+3; C.waste = ci+4; }
+            else if(h === 'вид') { C.vid = ci; C.pcs = ci+1; C.kg = ci+2; C.nf = ci+3; C.waste = ci+4; C.packed = ci+5; }
           });
         }
         var start = 0;
         for(var si=0; si<Math.min(6, rows.length); si++){ if(djDate(rows[si][C.date])){ start = si; break; } start = si+1; }
+        // 🛡 Перевірка за ВМІСТОМ: під «Лінія» мають бути «ЛІНІЯ N», під «Вид» — PETG/PLA.
+        // Якщо колонку вставили/зсунули — шукаємо її за вмістом і зсуваємо числові колонки разом із «Вид».
+        (function(){
+          var ncols = 0; for(var q=start; q<Math.min(rows.length, start+300); q++) if(rows[q] && rows[q].length > ncols) ncols = rows[q].length;
+          function share(ci, re){ var h=0,n=0; for(var q=start; q<Math.min(rows.length, start+300); q++){ var v=String((rows[q]||[])[ci]||'').trim(); if(!v) continue; n++; if(re.test(v)) h++; } return n>=5 ? h/n : 0; }
+          function best(re){ var b=-1,bs=0; for(var ci=0; ci<ncols; ci++){ var x=share(ci,re); if(x>=0.6 && x>bs){ b=ci; bs=x; } } return b; }
+          var RE_LINE=/^(лінія|линия)\s*\d+/i, RE_VID=/^(petg|pla|abs|asa|tpu)\b/i;
+          if(share(C.line, RE_LINE) < 0.6){ var bl = best(RE_LINE); if(bl >= 0){ st.colFix = (st.colFix||[]).concat(['Лінія '+C.line+'→'+bl]); C.line = bl; } else st.layoutErr = 'не знайдено колонку «Лінія» (ЛІНІЯ N)'; }
+          if(share(C.vid, RE_VID) < 0.6){
+            var bv = best(RE_VID);
+            if(bv >= 0){ var dv = bv - C.vid; st.colFix = (st.colFix||[]).concat(['Вид '+C.vid+'→'+bv]); ['vid','pcs','kg','nf','waste','packed'].forEach(function(k){ C[k] += dv; }); }
+            else st.layoutErr = (st.layoutErr ? st.layoutErr + '; ' : '') + 'не знайдено колонку «Вид» (PETG/PLA)';
+          }
+        })();
+        if(st.layoutErr){ st.error = 'структура журналу змінилась — ' + st.layoutErr; console.warn('[DJ] '+loc.name+': '+st.error); continue; }
 
         var today = DPF.toStr(new Date()), curDate = null, curShift = '', slotMap = {}, opsMap = {};
         // 🆕 30.09.2026: кожен блок зміни — окремо (раніше блок без позначки «Ніч» зливався з денним,
@@ -7386,6 +7188,7 @@ function djLoad(){
               if(ev != null && ev > 1.5) ev = ev / 100;
               ob.names.push(opName); ob.eff.push(ev != null && ev > 0 ? ev : null);
             }
+            if(/^(true|истина|1|так|да|✓|x)$/i.test(String(row[C.senior]||'').trim())) ob.senior = opName;
           }
           if(!isLine) continue;
           var lineNo = parseInt(ln[1]);
@@ -7413,7 +7216,8 @@ function djLoad(){
                                  shift:curShift, block:blockNo, parts:[], reason:'', comment:'', dtExplicit:null };
             slots.push(s);
           }
-          s.parts.push({ vid: djVid(row[C.vid]), kg:kg, nf:nf, waste:waste, h:hv.h });
+          s.parts.push({ vid: djVid(row[C.vid]), kg:kg, nf:nf, waste:waste, h:hv.h,
+                         pcs: djNum(row[C.pcs]) || 0, packed: djNum(row[C.packed]) || 0 });
           if(reason && !s.reason) s.reason = reason;
           if(comment) s.comment = s.comment ? s.comment+' · '+comment : comment;
           if(dtv != null && dtv > 0) s.dtExplicit = Math.max(s.dtExplicit || 0, dtv);
@@ -7461,6 +7265,16 @@ function djLoad(){
           if(hours == null) st.hoursUnknown++;
           st.slots++;
         });
+        // 🆕 Блоки змін (для «Операторів»): ПІБ, «Эффективность», старший, маса блоку (без неправдоподібних змін)
+        var blk = {};
+        Object.keys(slotMap).forEach(function(k){
+          var s = slotMap[k];
+          var b = blk[s.block] || (blk[s.block] = { loc:loc.id, locName:loc.name, date:s.date, shift:s.shift, kg:0,
+                                                  names:(opsMap[s.block]||{}).names || [], eff:(opsMap[s.block]||{}).eff || [],
+                                                  senior:(opsMap[s.block]||{}).senior || '' });
+          if(!s.suspect) b.kg += s.kg;
+        });
+        Object.keys(blk).forEach(function(k){ blocks.push(blk[k]); });
         // 🆕 Дві зміни з однаковою позначкою в одну дату (напр. два блоки «День» 05.08) — опечатка в журналі
         var shiftBlocks = {};
         Object.keys(slotMap).forEach(function(k){ var s = slotMap[k], kk = s.date + ' ' + s.shift; (shiftBlocks[kk] = shiftBlocks[kk] || {})[s.block] = 1; });
@@ -7475,6 +7289,10 @@ function djLoad(){
     }
     window._djSlots = slots;
     window._djStats = stats;
+    window._djBlocks = blocks;
+    // Помилки структури журналів — у банер (журнали тепер ЄДИНЕ джерело виробничих даних)
+    var jerr = Object.keys(stats).filter(function(k){ return stats[k].error; }).map(function(k){ return 'Журнал Лок' + k + ': ' + stats[k].error; });
+    if(jerr.length){ window.DJ_LAYOUT_ERR = jerr.join('; '); if(typeof showAdLayoutBanner === 'function') showAdLayoutBanner(); }
     return slots;
   })();
   return window._djPromise;
@@ -8582,79 +8400,35 @@ async function loadWeeklyAnalysis() {
   var badge=document.getElementById('waFilterBadge');
   if(badge) badge.textContent='⟳ завантаження...';
 
-  await Promise.all(WA_SOURCES.map(async function(src){
-    try {
-      var url='https://docs.google.com/spreadsheets/d/'+src.sheetId+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(src.sheet);
-      var r=await fetch(url); if(!r.ok) return;
-      var txt=await r.text(); if(txt.includes('<html')) return;
-      var rows=lParseCSV(txt);
-      // Джерело: ПЕРШИЙ лист журналу "Журнал.ЛокаціяN".
-      // Тут Вага (col10) = ПОВНА вага лінії за зміну (БЕЗ вкладу, без розмноження
-      // по операторах) — просто сумуємо по даті|лінії|виду. Дата заповнена лише
-      // в першому рядку зміни → forward-fill (curDate тримається до наступної дати).
-      // Структура: col0=Дата, col6=24/7(зміна), col7=Лінія, col8=Вид,
-      //   col9=Кількість шт, col10=Вага кг(гот.прод), col11=НФ кг, col12=Відхід кг,
-      //   col13=Запаковано шт.
-      var CI={date:0,shift:6,line:7,vid:8,coils:9,kg:10,nf:11,brak:12,packed:13};
-      var curDate=null;
-      // Агрегуємо просто по key=date|line|vid (БЕЗ вкладу, БЕЗ ділення)
-      var agg={};
-      for(var i=2;i<rows.length;i++){  // дані з рядка 2 (рядки 0-1 = заголовки)
-        var row=rows[i];
-        var dRaw=String(row[CI.date]||'').trim();
-        if(dRaw&&dRaw!=='nan'){var dp=lParseDate(dRaw); if(dp) curDate=dp;}
-        if(!curDate) continue;
-        var line=String(row[CI.line]||'').toUpperCase().trim();
-        var nm=line.match(/\d+/); if(!nm) continue;
-        line='ЛІНІЯ '+nm[0];
-        var kg=parseFloat(String(row[CI.kg]||'').replace(',','.')); if(isNaN(kg)||kg<0) kg=0;
-        var nf=parseFloat(String(row[CI.nf]||'').replace(',','.')); if(isNaN(nf)) nf=0;
-        var brak=parseFloat(String(row[CI.brak]||'').replace(',','.')); if(isNaN(brak)) brak=0;
-        if(kg===0 && nf===0 && brak===0) continue;
-        var coils=parseFloat(String(row[CI.coils]||'').replace(',','.'))||0;
-        var packed=parseFloat(String(row[CI.packed]||'').replace(',','.'))||0;
-        var shift=String(row[CI.shift]||'').trim();
-        var vid=String(row[CI.vid]||'').trim();
-        var plastic=vid.toUpperCase().indexOf('PLA')>=0?'PLA':'PETG';
-        var key=curDate+'|'+line+'|'+vid;
-        if(!agg[key]) agg[key]={date:curDate,line:line,vid:vid,plastic:plastic,
-                                 locId:src.locId,locName:src.locName,
-                                 kg:0,nf:0,brak:0,coils:0,packed:0,autokg:0};
-        agg[key].kg     += kg;     // повна вага — просто сумуємо
-        agg[key].nf     += nf;
-        agg[key].brak   += brak;
-        agg[key].coils  += coils;
-        agg[key].packed += packed;
-      }
-      // Конвертуємо в рядки з тижнями
-      Object.values(agg).forEach(function(rec){
-        var d=new Date(rec.date); if(isNaN(d)) return;
-        // ISO тиждень і рік
-        var jan4=new Date(d.getFullYear(),0,4);
-        var startOfWeek=new Date(jan4);
-        startOfWeek.setDate(jan4.getDate()-((jan4.getDay()+6)%7));
-        var week=Math.floor((d-startOfWeek)/604800000)+1;
-        var year=d.getFullYear();
-        // Якщо тиждень > 52 і ми в грудні — рік+1
-        if(week>=53&&d.getMonth()===0) year--;
-        // Початок тижня (пн)
-        var dow=(d.getDay()+6)%7;
-        var wMon=new Date(d); wMon.setDate(d.getDate()-dow);
-        var wSun=new Date(wMon); wSun.setDate(wMon.getDate()+6);
-        function fd(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
-        window._waRaw.push({
-          date:rec.date, weekKey:fd(wMon), weekEnd:fd(wSun),
-          week:week, year:year,
-          locId:rec.locId, locName:rec.locName, line:rec.line,
-          vid:rec.vid||'', plastic:rec.plastic||'PETG',
-          kg:rec.kg+rec.nf+rec.brak, prod:rec.kg,
-          autokg:rec.autokg||0,
-          nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
-        });
+  // 🆕 30.09.2026: з єдиного розбору журналів (djLoad): колонки шукаються за заголовками й вмістом,
+  // блоки змін не зливаються, неправдоподібні зміни (опечатки) не враховуються.
+  try {
+    var slots = await djLoad();
+    var agg = {};
+    slots.forEach(function(s){
+      if(s.suspect) return;
+      s.parts.forEach(function(p){
+        if(!(p.kg > 0 || p.nf > 0 || p.waste > 0)) return;
+        var key = s.date + '|' + s.line + '|' + p.vid;
+        var rec = agg[key] || (agg[key] = { date:s.date, line:s.line, vid:p.vid, plastic: p.vid.toUpperCase().indexOf('PLA') === 0 ? 'PLA' : 'PETG',
+                                          locId:String(s.loc), locName:s.locName, kg:0, nf:0, brak:0, coils:0, packed:0 });
+        rec.kg += p.kg; rec.nf += p.nf; rec.brak += p.waste; rec.coils += p.pcs || 0; rec.packed += p.packed || 0;
       });
-      console.log('[WA] loc'+src.locId+': '+Object.keys(agg).length+' зміни завантажено');
-    } catch(e){ console.warn('[WA] loc'+src.locId, e); }
-  }));
+    });
+    function fd(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+    Object.values(agg).forEach(function(rec){
+      var p = rec.date.split('-'), d = new Date(+p[0], +p[1]-1, +p[2]);
+      var mon = DPF.weekMon(rec.date), iw = DPF.isoWeek(mon);
+      var wSun = new Date(d); wSun.setDate(d.getDate() - (d.getDay()+6)%7 + 6);
+      window._waRaw.push({
+        date:rec.date, weekKey:mon, weekEnd:fd(wSun), week:iw.w, year:iw.y,
+        locId:rec.locId, locName:rec.locName, line:rec.line, vid:rec.vid, plastic:rec.plastic,
+        kg:rec.kg+rec.nf+rec.brak, prod:rec.kg, autokg:0,
+        nf:rec.nf, brak:rec.brak, coils:rec.coils, packed:rec.packed
+      });
+    });
+    console.log('[WA] з журналів: ' + window._waRaw.length + ' записів');
+  } catch(e){ console.warn('[WA]', e); }
 
   _waRebuildLineBtns('all');
   // Активуємо 2026 за замовчуванням
