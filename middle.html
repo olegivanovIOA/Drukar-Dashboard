@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-27 11:35 — OKR: таблиця «Прогноз досягнення 100%» — лише компанія та основні ОКР, без персональних OKR_<Ім'я>.
+<!-- BUILD: 2026-09-30 18:10 — Лінії/рекорди: дані з ЖУРНАЛІВ локацій (маса лінії за зміну напряму), а не з _AllData (там зсув колонок, немає «Вид», вклади ≠100% → рекорди ×2); оператори зміни й контроль «Эффективность, %» — з журналу; перелік змін з порожньою/несходною ефективністю.
+     BUILD: 2026-09-27 11:35 — OKR: таблиця «Прогноз досягнення 100%» — лише компанія та основні ОКР, без персональних OKR_<Ім'я>.
      BUILD: 2026-09-27 10:20 — Ресурси: блоки за висотою вмісту (masonry), порожні групи компактні; видимість посилань по версіях — у generate.py.
      BUILD: 2026-09-26 23:30 — мобільна версія: шапка/вкладки, сітки в 1–2 колонки, таблиці зі скролом і липкою першою колонкою, широкі графіки у горизонтальний скрол.
      BUILD: 2026-09-26 17:40 — таблиця кг/год: підсвітка max (зелений) / min (червоний) по кожному виду серед ліній.
@@ -409,7 +410,7 @@
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 30.09.2026 13:27 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 30.09.2026 14:12 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -4689,7 +4690,7 @@ function lParseAllData(rows, label) {
       date: dStr, shift: g(ci.shift)||'?',
       line: (g(ci.line)||'?').toUpperCase().replace('ЛИНИЯ','ЛІНІЯ'),
       vid:  g(ci.vid)||'?',
-      weight: wReal, rawWeight: wRaw, contrib: Math.round(contrib*100),
+      weight: wReal, rawWeight: wRaw, contrib: Math.round(contrib*100), contribFrac: contrib,
       loc: label, ops: g(ci.ops)||''
     });
   }
@@ -4710,15 +4711,37 @@ async function lRunAnalysis() {
   const dateTo   = document.getElementById('lDateTo').value;
   const vid      = document.getElementById('lVid').value;
   const errors = [];
-  let d1=[], d2=[];
-  try { d1 = await lFetchSheet(id1, sheet, name1); } catch(e) { errors.push(e.message); }
-  try { d2 = await lFetchSheet(id2, sheet, 'Локація 2'); } catch(e) { errors.push(e.message); }
-  lAllData = [...d1, ...d2];
+  // 🆕 30.09.2026: рекорди будуються з ЖУРНАЛІВ локацій (як простої та кг/год), а не з _AllData.
+  //    _AllData / «Аналіз вкладів» (скрипт-збирач у журналі Лок1) пише дані зі зсувом колонок,
+  //    втратив «Вид», а вклади операторів там часто не дають 100% → рекорди були ×2 або занижені.
+  //    У журналі маса лінії за зміну записана напряму («Вага, кг» продукції).
+  let slots = [];
+  try { slots = await djLoad(); } catch(e) { errors.push(String(e && e.message || e)); }
+  Object.keys(window._djStats || {}).forEach(k => {
+    const st = window._djStats[k]; if(st && st.error) errors.push('Журнал · Локація ' + k + ': ' + st.error);
+  });
+  lAllData = lRecordsFromJournal(slots);
   lBuildLineCheckboxes(lAllData);
   const filtered = lFilterData(lAllData, dateFrom, dateTo, vid);
   lLoading = false;
   btn.disabled = false; btn.textContent = '▶ АНАЛІЗ';
   lRenderResults(filtered, errors);
+}
+
+// Слоти журналу → записи вкладки «Лінії» (один запис = лінія × зміна × дата, маса — повна)
+let lSuspect = [];
+function lRecordsFromJournal(slots){
+  // Неправдоподібні зміни (> DJ_MAX_KGH кг/год — опечатка у вазі чи годинах, напр. 14 468 кг) у рекорди не беремо
+  lSuspect = (slots || []).filter(s => s.kg > 0 && s.suspect);
+  return (slots || []).filter(s => s.kg > 0 && !s.suspect).map(s => {
+    const vids = [...new Set(s.parts.filter(p => p.kg > 0).map(p => p.vid))];
+    return {
+      date: s.date, shift: s.shift || '?', line: s.line, vid: vids.join(' + ') || '?',
+      weight: Math.round(s.kg * 100) / 100, rawWeight: s.kg, contrib: 100, contribFrac: 1,
+      loc: s.locName, ops: (s.ops || []).join(', '), opsList: s.ops || [],
+      effBad: !!s.effBad, effSum: s.effSum, effEmpty: s.effEmpty || []
+    };
+  });
 }
 
 function lFilterData(data, dateFrom, dateTo, vid) {
@@ -4730,7 +4753,7 @@ function lFilterData(data, dateFrom, dateTo, vid) {
     if (vid === 'ALL') return true;
     if (vid === 'PETG') return r.vid.toUpperCase().startsWith('PETG');
     if (vid === 'PLA')  return r.vid.toUpperCase().startsWith('PLA');
-    return r.vid.toUpperCase() === vid.toUpperCase();
+    return r.vid.toUpperCase().split(' + ').indexOf(vid.toUpperCase()) >= 0;
   });
 }
 
@@ -4742,7 +4765,15 @@ function lRender() {
   lRenderResults(filtered, []);
 }
 
+// Медіана масиву чисел
+function lMedian(a){ if(!a.length) return 0; const b=a.slice().sort((x,y)=>x-y), m=b.length>>1; return b.length%2 ? b[m] : (b[m-1]+b[m])/2; }
+// Вклад → найближчий простий дріб, якщо відхилення ≤ 1,5 п.п. (CSV округлює «33%»)
+const L_FRACS=[1,1/2,1/3,2/3,1/4,3/4,1/5,2/5,3/5,4/5,1/6,5/6];
+function lSnapContrib(c){ if(!(c>0)) return 1; for(const f of L_FRACS){ if(Math.abs(c-f)<=0.015) return f; } return c; }
+let lContribIssues = [], lAbsRecord = null;
+
 function lRenderResults(filtered, errors) {
+  lContribIssues = []; lAbsRecord = null;
   const el = document.getElementById('lResults');
   let html = errors.map(e => `<div class="lines-err"><strong>⚠ Помилка завантаження</strong>${e}</div>`).join('');
   if (!filtered.length) {
@@ -4757,14 +4788,15 @@ function lRenderResults(filtered, errors) {
   }
   const keys = Object.keys(byLine).sort((a,b)=>{
     const [la,loca]=a.split('|'), [lb,locb]=b.split('|');
-    return la!==lb ? la.localeCompare(lb,'uk') : loca.localeCompare(locb,'uk');
+    const na=parseInt((la.match(/\d+/)||[0])[0]), nb=parseInt((lb.match(/\d+/)||[0])[0]);   // Лінія 2 перед Лінією 10
+    return na!==nb ? na-nb : (la!==lb ? la.localeCompare(lb,'uk') : loca.localeCompare(locb,'uk'));
   });
   const maxR = filtered.reduce((m,r)=>r.weight>m.weight?r:m, filtered[0]);
   html += `<div class="lines-summary">
     <div class="lines-stat"><div class="lines-stat-label">Записів</div><div class="lines-stat-val">${filtered.length}</div></div>
     <div class="lines-stat"><div class="lines-stat-label">Ліній</div><div class="lines-stat-val">${keys.length}</div></div>
     <div class="lines-stat"><div class="lines-stat-label">Робочих днів</div><div class="lines-stat-val">${new Set(filtered.map(r=>r.date)).size}</div></div>
-    <div class="lines-stat"><div class="lines-stat-label">Абс. рекорд</div><div class="lines-stat-val" style="font-size:22px">${maxR.weight.toFixed(1)} кг</div></div>
+    <div class="lines-stat"><div class="lines-stat-label">Абс. рекорд</div><div class="lines-stat-val" style="font-size:22px">@@ABS_RECORD@@</div></div>
   </div>
   <div class="section-title" style="margin-bottom:10px">Рекорди по лініях — Топ-${lTopN} на лінію</div>`;
   for (const k of keys) {
@@ -4787,24 +4819,43 @@ function lRenderResults(filtered, errors) {
     //    СУМУЄМО сирі H кожного оператора зміни — це коректно за
     //    визначенням (Σcontrib операторів зміни = 100%) і НЕ залежить
     //    від точності округлення відсотка в Google Sheets взагалі.
+    // 🆕 ФІКС 30.09.2026 — «рекорди ×2».
+    //    Сума сирих H по операторах дає повну масу ЛИШЕ якщо Σвкладів зміни = 100%.
+    //    У журналі це часто не так: в одного оператора порожня «Эффективность, %»
+    //    → _AllData ставить йому 100% з ПОВНОЮ вагою, а двом іншим по 50%
+    //    (Σ=200% → сума = 2× маса лінії; напр. 07.09 день); або рядків операторів
+    //    менше, ніж часток (Σ=33–67% → сума занижена).
+    //    Натомість у КОЖНОГО рядка H ÷ вклад = повна маса лінії за зміну, тож
+    //    беремо МЕДІАНУ цієї величини по операторах. Вклад «прив'язуємо» до
+    //    найближчого простого дробу (1, ½, ⅓, ⅔, ¼, ¾…), бо CSV-експорт віддає
+    //    «33%» замість 33,33% (той самий «+2 кг», що й раніше).
     const byShift = {};
     for (const r of records) {
       const sk = r.date + '|' + r.shift;
-      if (!byShift[sk]) {
-        byShift[sk] = {date:r.date, shift:r.shift, vid:r.vid, rawWeights:[r.rawWeight], ops:[r.ops].filter(Boolean)};
-      } else {
-        byShift[sk].rawWeights.push(r.rawWeight);
-        if (r.ops) byShift[sk].ops.push(r.ops);
-      }
+      if (!byShift[sk]) byShift[sk] = {date:r.date, shift:r.shift, vid:r.vid, fulls:[], csum:0, ops:[], j:null};
+      const b = byShift[sk];
+      if (r.opsList) b.j = r;   // запис із журналу — прапорці «Эффективность» беремо з нього
+      const c = lSnapContrib(r.contribFrac != null ? r.contribFrac : (r.contrib || 100) / 100);
+      b.fulls.push(r.rawWeight / c);
+      b.csum += c;
+      if (r.ops) b.ops.push(r.ops);
     }
-    const shiftRecords = Object.values(byShift).map(s => ({
-      date: s.date, shift: s.shift, vid: s.vid,
-      // Сума сирих H по всіх операторах зміни = повна маса лінії за
-      // зміну — коректно навіть якщо Вклад% в джерелі округлений.
-      weight: Math.round(s.rawWeights.reduce((a,b)=>a+b,0) * 100) / 100,
-      ops: s.ops.join(', '),
-      opsCount: s.ops.length,
-    }));
+    const shiftRecords = Object.values(byShift).map(s => {
+      const names = [...new Set(s.ops.join(', ').split(', ').map(x => x.trim()).filter(Boolean))];
+      return {
+        date: s.date, shift: s.shift, vid: s.vid,
+        weight: Math.round(lMedian(s.fulls) * 100) / 100,
+        ops: names.join(', '),
+        opsCount: names.length,
+        contribSum: s.j ? s.j.effSum : Math.round(s.csum * 100),
+        contribBad: s.j ? s.j.effBad : Math.abs(s.csum - 1) > 0.03,
+        effEmpty: s.j ? s.j.effEmpty : [],
+      };
+    });
+    shiftRecords.forEach(sr => { if (sr.contribBad) lContribIssues.push({line, loc, date: sr.date, shift: sr.shift, sum: sr.contribSum, ops: sr.ops, empty: sr.effEmpty}); });
+    if (!lAbsRecord || (shiftRecords.length && Math.max.apply(null, shiftRecords.map(x => x.weight)) > lAbsRecord.weight)) {
+      shiftRecords.forEach(x => { if (!lAbsRecord || x.weight > lAbsRecord.weight) lAbsRecord = Object.assign({line, loc}, x); });
+    }
     const sorted = shiftRecords.sort((a,b)=>b.weight-a.weight).slice(0,lTopN);
     const lc = loc.includes('1') ? 'loc1' : 'loc2';
     html += `<div class="line-block">
@@ -4827,7 +4878,7 @@ function lRenderResults(filtered, errors) {
       const m = medals[i] || String(i+1);
       html += `<tr>
         <td style="text-align:center;font-size:14px">${m}</td>
-        <td style="text-align:right;color:var(--good);font-weight:600">${r.weight.toFixed(2)}</td>
+        <td style="text-align:right;color:var(--good);font-weight:600">${r.weight.toFixed(2)}${r.contribBad ? ` <span title="«Эффективность, %» у журналі: Σ = ${r.contribSum == null ? '—' : r.contribSum + '%'}${r.effEmpty && r.effEmpty.length ? ', порожньо у: ' + r.effEmpty.join(', ') : ''}. На масу лінії не впливає." style="color:var(--warn);cursor:help">⚠</span>` : ''}</td>
         <td style="color:var(--muted)">${r.date}</td>
         <td style="color:var(--muted)">${r.shift}</td>
         <td style="color:var(--warn)">${r.vid}</td>
@@ -4836,6 +4887,25 @@ function lRenderResults(filtered, errors) {
       </tr>`;
     }
     html += '</tbody></table></div>';
+  }
+  html = html.replace('@@ABS_RECORD@@', lAbsRecord ? lAbsRecord.weight.toFixed(1) + ' кг' : '—');
+  if (lSuspect.length) {
+    html += `<div class="note-line" style="color:var(--warn)">⚠ Не враховано ${lSuspect.length} змін з неправдоподібною масою (&gt; ${DJ_MAX_KGH} кг/год — ймовірна опечатка в журналі): ` +
+      lSuspect.map(s => `${s.locName} ${s.date} ${s.shift} ${s.line.replace('ЛІНІЯ ', 'Л')}: ${Math.round(s.kg)} кг за ${s.hours} год`).join('; ') + '</div>';
+  }
+  // 🆕 Перелік змін, де вклади операторів у журналі не дають 100% (впливає й на мотивацію)
+  if (lContribIssues.length) {
+    const byShiftKey = {};
+    lContribIssues.forEach(x => { const k = x.loc + '|' + x.date + '|' + x.shift; (byShiftKey[k] = byShiftKey[k] || Object.assign({lines: []}, x)).lines.push(x.line.replace('ЛІНІЯ ', 'Л')); });
+    const items = Object.values(byShiftKey).sort((a, b) => b.date.localeCompare(a.date));
+    html += `<div class="card" style="margin-top:14px;border-color:rgba(217,119,6,.45)">
+      <div class="card-header" style="cursor:pointer" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'">
+        <div><div class="card-title" style="color:var(--warn)">⚠ Вклади операторів ≠ 100% · ${items.length} змін</div>
+        <div class="card-subtitle">Колонка «Эффективность, %» у журналі: порожня в когось з операторів або сума часток ≠ 100%. На рекорди це не впливає (маса береться з журналу), але скрипт вкладів рахує порожнє як 100% — мотивацію за ці зміни варто перевірити. Розгорнути ▾</div></div>
+      </div>
+      <div style="display:none;overflow-x:auto"><table><thead><tr><th>Дата</th><th>Зміна</th><th>Локація</th><th>Лінії</th><th class="num">Σ вкладів</th><th>Порожньо у</th><th>Оператори</th></tr></thead><tbody>` +
+      items.map(x => `<tr><td>${x.date}</td><td>${x.shift}</td><td>${x.loc}</td><td>${x.lines.join(', ')}</td><td class="num" style="color:var(--warn);font-weight:600">${x.sum == null ? '—' : x.sum + '%'}</td><td style="color:var(--bad)">${lEsc((x.empty || []).join(', ') || '—')}</td><td style="color:var(--muted)">${lEsc(x.ops || '—')}</td></tr>`).join('') +
+      `</tbody></table></div></div>`;
   }
   el.innerHTML = html;
 }
@@ -7241,13 +7311,15 @@ function djLoad(){
         st.rows = rows.length;
 
         // Колонки: знайдені в заголовках (перші 3 рядки), інакше — перевірені дефолти
-        var C = { date:0, shift:6, line:7, vid:8, kg:10, nf:11, waste:12, hours:16, reason:17, dt:18, comment:19 };
+        var C = { date:0, eff:3, op:4, shift:6, line:7, vid:8, kg:10, nf:11, waste:12, hours:16, reason:17, dt:18, comment:19 };
         for(var hi=0; hi<Math.min(3, rows.length); hi++){
           rows[hi].forEach(function(c, ci){
             var h = String(c||'').toLowerCase().trim();
             if(!h) return;
             if(h.indexOf('часов работы')>=0 || h.indexOf('часів роботи')>=0) C.hours = ci;
-            else if(h.indexOf('причина')>=0) C.reason = ci;
+            else if(h.indexOf('причин')>=0) C.reason = ci;          // «Причина1» / «Причини простою лінії»
+            else if(h.indexOf('эффективн')>=0 || h.indexOf('ефективн')>=0) C.eff = ci;
+            else if((h === 'зміна' || h === 'смена') && ci < 6) C.op = ci;   // під «Зміна» — ПІБ операторів
             else if((h === 'простой' || h === 'простій') && ci > C.hours) C.dt = ci;
             else if(h.indexOf('коментар')>=0 || h.indexOf('комментар')>=0) C.comment = ci;
             else if(h === 'лінія' || h === 'линия') C.line = ci;
@@ -7257,7 +7329,13 @@ function djLoad(){
         var start = 0;
         for(var si=0; si<Math.min(6, rows.length); si++){ if(djDate(rows[si][C.date])){ start = si; break; } start = si+1; }
 
-        var today = DPF.toStr(new Date()), curDate = null, curShift = '', slotMap = {};
+        var today = DPF.toStr(new Date()), curDate = null, curShift = '', slotMap = {}, opsMap = {};
+        // 🆕 30.09.2026: кожен блок зміни — окремо (раніше блок без позначки «Ніч» зливався з денним,
+        // і маса лінії подвоювалась — напр. 13.06 Лінія 1: 178 + 164 = 342 кг «за зміну»).
+        var blockNo = 0, blockHasLine = false, lastLineNo = 0, blockDate = null, blockShiftExplicit = false,
+            prevBlock = { date:null, shift:'' };
+        st.shiftInferred = 0;
+        function djOpposite(sh){ return /^д/i.test(sh) ? 'Ніч' : 'День'; }
         for(var i=start; i<rows.length; i++){
           var row = rows[i]; if(!row) continue;
           // Дата з захистом від описок: приймаємо лише -3…+20 днів від попередньої
@@ -7271,12 +7349,41 @@ function djLoad(){
             }
           }
           var sh = String(row[C.shift]||'').trim();
-          if(/^(день|ніч|ночь|день\s*$)/i.test(sh)) curShift = sh;
-          if(!curDate) continue;
+          var shValid = /^(день|ніч|ночь)/i.test(sh);
           var lineRaw = String(row[C.line]||'').trim().toUpperCase();
           var ln = lineRaw.match(/(\d+)/);
-          if(!ln || !/(ЛІН|ЛИН)/.test(lineRaw)) continue;
+          var isLine = !!(ln && /(ЛІН|ЛИН)/.test(lineRaw));
+          var opName = String(row[C.op]||'').trim();
+          var hasOp = !!(opName && !/^(зміна|смена|0|false|true)$/i.test(opName) && /[A-Za-zА-Яа-яІіЇїЄєҐґ]{3}/.test(opName));
+          // Межа блоку: нова дата / порожній рядок-роздільник / номер лінії «почався знову»
+          if(blockHasLine){
+            // «лінія почалась знову» — новий блок лише якщо рядок є заголовком блоку (ПІБ / зміна / дата);
+            // рядки зміни виду посеред зміни (без ПІБ) лишаються в тому ж блоці
+            var nb = (curDate !== blockDate) || (!isLine && !hasOp && !d)
+                  || (isLine && parseInt(ln[1]) < lastLineNo && (hasOp || shValid || !!d))
+                  || (shValid && blockShiftExplicit && sh.toLowerCase() !== String(curShift).toLowerCase());
+            if(nb){ prevBlock = { date:blockDate, shift:curShift }; blockNo++; blockHasLine = false; blockShiftExplicit = false; lastLineNo = 0; }
+          }
+          if(shValid){ curShift = sh; blockShiftExplicit = true; }
+          if(!curDate) continue;
+          // 🆕 Оператори зміни: ПІБ під «Зміна» у перших рядках блоку + їх «Эффективность, %»
+          if(hasOp){
+            var obk = blockNo;
+            var ob = opsMap[obk] || (opsMap[obk] = { names:[], eff:[] });
+            if(ob.names.indexOf(opName) < 0){
+              var ev = djNum(String(row[C.eff]||'').replace('%',''));
+              if(ev != null && ev > 1.5) ev = ev / 100;
+              ob.names.push(opName); ob.eff.push(ev != null && ev > 0 ? ev : null);
+            }
+          }
+          if(!isLine) continue;
           var lineNo = parseInt(ln[1]);
+          if(!blockHasLine){
+            // Блок без позначки зміни, а в цю дату вже був блок → протилежна зміна
+            if(!blockShiftExplicit && prevBlock.date === curDate && prevBlock.shift){ curShift = djOpposite(prevBlock.shift); st.shiftInferred++; }
+            blockHasLine = true; blockDate = curDate;
+          }
+          lastLineNo = lineNo;
 
           var hv = djHours(row[C.hours]);
           if(hv.fixed) st.hoursFixed++;
@@ -7288,11 +7395,11 @@ function djLoad(){
           if(comment.toLowerCase() === 'nan') comment = '';
           var kg = djNum(row[C.kg]) || 0, nf = djNum(row[C.nf]) || 0, waste = djNum(row[C.waste]) || 0;
 
-          var key = curDate+'|'+lineNo+'|'+curShift;
+          var key = curDate+'|'+lineNo+'|'+curShift+'|'+blockNo;
           var s = slotMap[key];
           if(!s){
             s = slotMap[key] = { date:curDate, loc:loc.id, locName:loc.name, lineNo:lineNo, line:'ЛІНІЯ '+lineNo,
-                                 shift:curShift, parts:[], reason:'', comment:'', dtExplicit:null };
+                                 shift:curShift, block:blockNo, parts:[], reason:'', comment:'', dtExplicit:null };
             slots.push(s);
           }
           s.parts.push({ vid: djVid(row[C.vid]), kg:kg, nf:nf, waste:waste, h:hv.h });
@@ -7304,6 +7411,15 @@ function djLoad(){
         // Фіналізуємо слоти цієї локації
         Object.keys(slotMap).forEach(function(k){
           var s = slotMap[k];
+          // 🆕 оператори зміни і контроль «Эффективность, %» (Σ має бути 100%, порожніх — нема)
+          var ob = opsMap[s.block];
+          s.ops = ob ? ob.names.slice() : [];
+          if(ob && ob.names.length){
+            var esum = ob.eff.reduce(function(a, x){ return a + (x || 0); }, 0);
+            s.effSum = Math.round(esum * 100);
+            s.effEmpty = ob.names.filter(function(_, i){ return ob.eff[i] == null; });
+            s.effBad = s.effEmpty.length > 0 || Math.abs(esum - 1) > 0.03;
+          }
           var hs = s.parts.map(function(p){ return p.h; }).filter(function(h){ return h != null; });
           var sumH = hs.reduce(function(a,b){return a+b;}, 0);
           var hours = !hs.length ? null : (sumH <= 12.5 ? Math.min(12, sumH) : Math.max.apply(null, hs));
@@ -7334,6 +7450,11 @@ function djLoad(){
           if(hours == null) st.hoursUnknown++;
           st.slots++;
         });
+        // 🆕 Дві зміни з однаковою позначкою в одну дату (напр. два блоки «День» 05.08) — опечатка в журналі
+        var shiftBlocks = {};
+        Object.keys(slotMap).forEach(function(k){ var s = slotMap[k], kk = s.date + ' ' + s.shift; (shiftBlocks[kk] = shiftBlocks[kk] || {})[s.block] = 1; });
+        st.dupShifts = Object.keys(shiftBlocks).filter(function(kk){ return Object.keys(shiftBlocks[kk]).length > 1; }).sort();
+        console.log('[DJ] '+loc.name+': зміна без позначки → визначена як протилежна: '+st.shiftInferred+', дублікати змін: '+st.dupShifts.join(', '));
         console.log('[DJ] '+loc.name+': рядків '+st.rows+', змін ліній '+st.slots+', дат-описок '+st.dateTypos+
                     ', годин відновлено з «дати» '+st.hoursFixed+', без годин '+st.hoursUnknown, C);
       } catch(e) {
@@ -7585,7 +7706,13 @@ function renderDowntime() {
     Object.keys(st).forEach(function(k){
       var s = st[k], ln = (DOWNTIME_LOCATIONS.find(function(l){return String(l.id)===String(k);})||{}).name || ('Лок.'+k);
       if(s.error) extra.push(ln + ': ⚠ ' + s.error);
-      else if(s.hoursFixed || s.dateTypos) extra.push(ln + ': відновлено годин з «дати» — ' + s.hoursFixed + ', проігноровано дат-описок — ' + s.dateTypos);
+      else {
+        var parts = [];
+        if(s.hoursFixed || s.dateTypos) parts.push('відновлено годин з «дати» — ' + s.hoursFixed + ', проігноровано дат-описок — ' + s.dateTypos);
+        if(s.shiftInferred) parts.push('блоків без позначки зміни (взято протилежну) — ' + s.shiftInferred);
+        if(s.dupShifts && s.dupShifts.length) parts.push('дві однакові зміни в одну дату: ' + s.dupShifts.join(', '));
+        if(parts.length) extra.push(ln + ': ' + parts.join('; '));
+      }
     });
     note.innerHTML = note.dataset.base + (extra.length ? '<br>🔧 Якість журналів: ' + extra.join(' · ') : '');
   }
