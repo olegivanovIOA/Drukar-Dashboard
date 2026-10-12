@@ -29,8 +29,8 @@
   .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:4px;color:var(--accent);line-height:1}
   .logo span{color:var(--muted);font-size:10px;font-family:'IBM Plex Mono',monospace;display:block;letter-spacing:2px;margin-top:2px}
   .header-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:right;line-height:1.8}
-  .tabs{display:flex;gap:2px;background:var(--surface);padding:12px 28px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;position:sticky;top:57px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .tab{padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;border:1px solid transparent;border-bottom:none;background:transparent;text-transform:uppercase;transition:all .2s;border-radius:4px 4px 0 0}
+  .tabs{display:flex;gap:1px;background:var(--surface);padding:10px 20px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;position:sticky;top:57px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .tab{padding:7px 9px;white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.3px;color:var(--muted);cursor:pointer;border:1px solid transparent;border-bottom:none;background:transparent;text-transform:uppercase;transition:all .2s;border-radius:4px 4px 0 0}
   .tab:hover{color:var(--text);border-color:var(--border)}
   .tab.active{color:var(--accent);border-color:var(--accent);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px;font-weight:600}
   .main{padding:22px 28px;max-width:1700px;margin:0 auto}
@@ -238,6 +238,12 @@
   .stack-bar>span{display:block;height:100%}
   .num{text-align:right;font-variant-numeric:tabular-nums}
   .muted{color:var(--muted)}
+  /* 🆕 HR */
+  .hr-tbl td,.hr-tbl th{padding:6px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)}
+  .hr-tbl td:first-child,.hr-tbl th:first-child{text-align:left}
+  .hr-tbl th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .hr-tbl tr.hr-partial td{color:var(--muted);font-style:italic}
+  .hr-err{background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.3);border-radius:6px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--warn);margin-bottom:12px}
   .note-line{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.8;margin-top:8px}
   .unit-row-total td{font-weight:700;background:var(--surface2)}
   .unit-row-loc td{font-weight:600}
@@ -461,6 +467,7 @@
   <button class="tab" onclick="switchTab('inventory',this)" data-tab-id="inventory">📦 Склад</button>
   <button class="tab" onclick="switchTab('product',this)" data-tab-id="product">📋 Товар</button>
   <button class="tab" onclick="switchTab('projects',this)" data-tab-id="projects">🗂 Проєкти</button>
+  <button class="tab" onclick="switchTab('hr',this)" data-tab-id="hr">👥 HR</button>
   <button class="tab" onclick="switchTab('resources',this)" data-tab-id="resources">🔗 Ресурси</button>
 </div>
 <div class="main">
@@ -2216,6 +2223,44 @@
   </div>
 </div>
 
+<!-- ══════════════ 🆕 HR (2026-10-12) ══════════════ -->
+<div id="tab-hr" class="tab-content" data-tab-id="hr">
+  <div class="section-title">HR · чисельність, найм, звільнення, плинність</div>
+  <div id="hrErr" class="hr-err" style="display:none"></div>
+  <div class="kpi-row" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi-card"><div class="kpi-label">Чисельність</div><div class="kpi-value" id="hrK_now">—</div><div class="kpi-unit" id="hrK_nowSub">осіб</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--accent2)"><div class="kpi-label">Приріст</div><div class="kpi-value" id="hrK_growth">—</div><div class="kpi-unit" id="hrK_growthSub">за період</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--good)"><div class="kpi-label">Прийнято</div><div class="kpi-value" id="hrK_hired" style="color:var(--good)">—</div><div class="kpi-unit" id="hrK_hiredSub">за період</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--bad)"><div class="kpi-label">Звільнено</div><div class="kpi-value" id="hrK_fired" style="color:var(--bad)">—</div><div class="kpi-unit" id="hrK_firedSub">за період</div></div>
+    <div class="kpi-card" style="--accent-bar:var(--warn)"><div class="kpi-label">Плинність</div><div class="kpi-value" id="hrK_turn">—</div><div class="kpi-unit" id="hrK_turnSub">% за період</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Чисельність персоналу</div>
+        <div class="card-subtitle">осіб на кінець місяця · пунктир — поточний місяць (оцінка)</div></div></div>
+      <div class="cw"><canvas id="hrHeadChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Найм vs звільнення</div>
+        <div class="card-subtitle">осіб/місяць · лінія — чиста зміна</div></div>
+        <div style="display:flex;gap:6px"><span class="badge badge-green">НАЙМ</span><span class="badge badge-red">ЗВІЛЬНЕННЯ</span></div></div>
+      <div class="cw"><canvas id="hrFlowChart"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-31">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Плинність кадрів, %</div>
+        <div class="card-subtitle">звільнені ÷ середня чисельність за місяць · пунктир — середнє</div></div></div>
+      <div class="cw"><canvas id="hrTurnChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">По місяцях</div><div class="card-subtitle">звірка: початок + найм − звільн. = кінець</div></div></div>
+      <div style="overflow-x:auto"><table class="hr-tbl"><thead><tr><th>Міс.</th><th>Поч.</th><th>+</th><th>−</th><th>Кін.</th><th>%</th><th></th></tr></thead><tbody id="hrTblBody"></tbody></table></div>
+    </div>
+  </div>
+  <div class="note-line">ℹ Джерело: HR-файл, лист «Плинність кадрів» (<a id="hrSrc" href="#" target="_blank" rel="noopener" style="color:var(--accent)">відкрити ↗</a>). Плинність = звільнені за місяць ÷ ((чисельність на початок + на кінець) / 2) × 100. Коментарі з ПІБ і причинами звільнень на дашборд не виводяться — сторінка публічна.</div>
+</div>
+
 <!-- ══════════════ 🆕 RESOURCES ══════════════ -->
 <div id="tab-resources" class="tab-content" data-tab-id="resources">
   <div class="section-title">Корисні ресурси · бібліотека для менеджерів</div>
@@ -2415,6 +2460,17 @@ function updateFilterBadge(){
 
 // ── TAB VISIBILITY (mid-режим) ────────────────────────────────────
 function applyTabVisibility(){
+  // 🆕 2026-10-12: ТОП теж може ховати табки (top:false у middle_config.json, напр. «Склад»).
+  // Активну вкладку не чіпаємо — у ТОП перша завжди «Огляд».
+  if(DASHBOARD_MODE==='top'){
+    var _hideTop=function(tid){ return MIDDLE_CONFIG && MIDDLE_CONFIG[tid] && MIDDLE_CONFIG[tid].top===false && tid!=='overview'; };
+    document.querySelectorAll('.tab[data-tab-id]').forEach(function(btn){
+      if(_hideTop(btn.getAttribute('data-tab-id'))) btn.style.display='none';
+    });
+    document.querySelectorAll('.tab-content[data-tab-id]').forEach(function(div){
+      if(_hideTop(div.getAttribute('data-tab-id'))){div.style.display='none';div.classList.remove('active');}
+    });
+  }
   if(DASHBOARD_MODE!=='top'){
     document.querySelectorAll('.tab[data-tab-id]').forEach(function(btn){
       var tid=btn.getAttribute('data-tab-id');
@@ -2468,7 +2524,7 @@ var ADMIN_TAB_LABELS={
   costs:'Фінанси', operators:'Оператори', calculator:'Калькулятор',
   lines:'Лінії', sales:'Продажі', forecast:'Прогноз',
   okr:'OKR 2026', inventory:'Склад', product:'Товар',
-  projects:'Проєкти', resources:'Ресурси'
+  projects:'Проєкти', resources:'Ресурси', hr:'HR'
 };
 
 function buildAdminPanel(){
@@ -2479,8 +2535,9 @@ function buildAdminPanel(){
     var lbl=ADMIN_TAB_LABELS[tabId];
     var cfg=MIDDLE_CONFIG[tabId]||{top:true,mid:false};
     var midChk=cfg.mid?'checked':'';
+    var topChk=cfg.top===false?'':'checked';
     rows+='<tr><td>'+lbl+'</td>'+
-          '<td><input type="checkbox" class="admin-cb" checked disabled title="ТОП завжди включає всі табки"></td>'+
+          '<td><input type="checkbox" class="admin-cb" id="adm_'+tabId+'_top" '+topChk+(tabId==='overview'?' disabled':'')+' title="Показувати у ТОП (index.html)"></td>'+
           '<td><input type="checkbox" class="admin-cb" id="adm_'+tabId+'_mid" '+midChk+'></td></tr>';
   });
   tbody.innerHTML=rows;
@@ -2506,7 +2563,8 @@ async function adminSave(){
   var newCfg={tabs:{},updated:new Date().toISOString().slice(0,10)};
   Object.keys(ADMIN_TAB_LABELS).forEach(function(tabId){
     var midCb=document.getElementById('adm_'+tabId+'_mid');
-    newCfg.tabs[tabId]={top:true,mid:midCb?midCb.checked:false};
+    var topCb=document.getElementById('adm_'+tabId+'_top');
+    newCfg.tabs[tabId]={top:(tabId==='overview'||!topCb)?true:topCb.checked,mid:midCb?midCb.checked:false};
   });
   btn.disabled=true;
   status.textContent='⏳ Зберігаємо...';
@@ -2523,7 +2581,7 @@ async function adminSave(){
       {method:'PUT',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(putBody)});
     if(!putResp.ok){var ej=await putResp.json();throw new Error(ej.message||putResp.status);}
     sessionStorage.setItem('drukar_gh_token',token);
-    status.textContent='✓ Збережено! middle.html оновиться за ~2 хв';
+    status.textContent='✓ Збережено! index.html і middle.html оновляться з наступним оновленням дашборду';
     status.className='admin-status ok';
   }catch(e){
     status.textContent='✗ Помилка: '+e.message;
@@ -2612,6 +2670,7 @@ const LINE_DAILY={{LINE_DAILY}}; // [[YYYY-MM-DD,'ЛІНІЯ N',лок,кг_де
 const SALES_DAILY={{SALES_DAILY}};
 const PROJECTS_DATA={{PROJECTS_DATA}};
 const RESOURCES_DATA={{RESOURCES_DATA}};
+const HR_DATA={{HR_DATA}}; // 🆕 2026-10-12 {months:[{ym,label,start,end,hired,fired,partial}],error,source_url}
 
 Chart.defaults.color='#64748b';Chart.defaults.borderColor='#252a3a';
 Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
@@ -2746,6 +2805,7 @@ function initTab(id){
   else if(id==='okr') safeInit(id, initOkr);
   else if(id==='projects') safeInit(id, initProjects);
   else if(id==='resources') safeInit(id, initResources);
+  else if(id==='hr') safeInit(id, initHr);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
@@ -2754,10 +2814,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   // Restore active tab from URL hash
   try {
     const hash=location.hash.replace('#','');
-    const validTabs=['overview','production','ito','quality','costs','operators','calculator','lines','sales','forecast','okr','inventory','product','projects','resources'];
+    const validTabs=['overview','production','ito','quality','costs','operators','calculator','lines','sales','forecast','okr','inventory','product','projects','resources','hr'];
     if(hash&&validTabs.includes(hash)){
       const btn=[...document.querySelectorAll('.tab')].find(b=>b.getAttribute('onclick')?.includes("'"+hash+"'"));
-      if(btn){switchTab(hash,btn);}
+      if(btn && btn.style.display!=='none'){switchTab(hash,btn);}
     }
   } catch(e){ console.warn('[hash-restore]', e); }
   // Overview — динамічні KPI + prodMonthChart з polyTrend
@@ -6966,6 +7026,103 @@ function resRender(){
   }).join('') || '<div class="res-empty">Нічого не знайдено</div>';
   var b = document.getElementById('resBadge');
   if(b) b.textContent = shown + ' посилань' + (RESOURCES_DATA.updated ? ' · оновлено ' + RESOURCES_DATA.updated : '');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🆕 2026-10-12 HR (HR_DATA ← лист «Плинність кадрів» HR-файлу)
+// ══════════════════════════════════════════════════════════════════
+function _hrN(v){ return (v===null||v===undefined||v==='')?null:+v; }
+function _hrRows(){
+  var M = (HR_DATA && HR_DATA.months) || [];
+  return M.map(function(m){
+    var st=_hrN(m.start), en=_hrN(m.end), h=_hrN(m.hired), f=_hrN(m.fired);
+    var est = (en===null && st!==null) ? st+(h||0)-(f||0) : null;   // поточний місяць — оцінка
+    var head = en!==null ? en : est;
+    var avg = (st!==null && en!==null) ? (st+en)/2 : (st!==null ? (st+(head!==null?head:st))/2 : null);
+    var turn = (!m.partial && f!==null && avg) ? Math.round(f/avg*1000)/10 : null;
+    var chk = (st!==null && en!==null && h!==null && f!==null) ? (st+h-f===en) : null;
+    return {ym:m.ym,label:m.label,start:st,end:en,hired:h,fired:f,head:head,est:est,partial:!!m.partial,avg:avg,turn:turn,chk:chk};
+  });
+}
+function initHr(){
+  var D = HR_DATA || {}, R = _hrRows();
+  var src = document.getElementById('hrSrc'); if(src && D.source_url) src.href = D.source_url;
+  var err = document.getElementById('hrErr');
+  if(D.error || !R.length){
+    if(err){ err.style.display='block'; err.textContent='⚠ '+(D.error||'немає даних')+'. Перевірте, що HR-файл відкритий «Всі з посиланням → Переглядач».'; }
+    if(!R.length) return;
+  }
+  var set=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  var closed = R.filter(function(r){ return !r.partial; });
+  var first = R[0], last = R[R.length-1];
+  var lastClosed = closed.length ? closed[closed.length-1] : null;
+  // KPI
+  var now = last.head;
+  set('hrK_now', now!==null ? now : '—');
+  set('hrK_nowSub', last.partial ? 'осіб · '+last.label+' (поточний, оцінка)' : 'осіб · кінець '+last.label);
+  var g0 = first.start;
+  if(g0!==null && now!==null){
+    var d = now-g0;
+    set('hrK_growth', (d>0?'+':'')+d);
+    set('hrK_growthSub', 'осіб з '+first.label+' ('+(d>=0?'+':'')+Math.round(d/g0*100)+'%)');
+  }
+  var sum=function(a,k){ return a.reduce(function(s,r){ return s+(r[k]||0); },0); };
+  set('hrK_hired', sum(R,'hired'));  set('hrK_hiredSub', 'осіб · '+first.label+' – '+last.label);
+  set('hrK_fired', sum(R,'fired'));  set('hrK_firedSub', 'осіб · '+first.label+' – '+last.label);
+  if(closed.length){
+    var avgHead = closed.reduce(function(s,r){ return s+r.avg; },0)/closed.length;
+    var pTurn = sum(closed,'fired')/avgHead*100;
+    var mTurn = closed.reduce(function(s,r){ return s+(r.turn||0); },0)/closed.length;
+    set('hrK_turn', pTurn.toFixed(1)+'%');
+    set('hrK_turnSub', 'за '+closed.length+' міс. · сер. '+mTurn.toFixed(1)+'%/міс');
+  }
+  var labels = R.map(function(r){ return r.label; });
+  var C_ACC='#2563eb', C_GOOD='#16a34a', C_BAD='#dc2626', C_WARN='#d97706', C_MUT='#94a3b8';
+  // 1) Чисельність — суцільна по закритих, пунктир до поточного (оцінка)
+  var headSolid = R.map(function(r){ return r.partial ? null : r.head; });
+  var headEst = R.map(function(r,i){
+    if(r.partial) return r.head;
+    var nx = R[i+1]; return (nx && nx.partial) ? r.head : null;
+  });
+  safeCreateChart('hrHeadChart', {type:'line', data:{labels:labels, datasets:[
+      {label:'Чисельність', data:headSolid, borderColor:C_ACC, backgroundColor:'rgba(37,99,235,.10)', fill:true, tension:.25, pointRadius:3, spanGaps:false},
+      {label:'Поточний (оцінка)', data:headEst, borderColor:C_ACC, borderDash:[5,4], pointRadius:3, pointStyle:'rectRot', fill:false, tension:0, spanGaps:false}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+c.parsed.y+' осіб'; }}}},
+      scales:{x:GR, y:Object.assign({}, GR, {beginAtZero:false, ticks:{color:'#64748b', precision:0}})}}});
+  // 2) Найм vs звільнення + чиста зміна
+  safeCreateChart('hrFlowChart', {type:'bar', data:{labels:labels, datasets:[
+      {label:'Прийнято', data:R.map(function(r){ return r.hired; }), backgroundColor:'rgba(22,163,74,.75)', borderRadius:3, order:2},
+      {label:'Звільнено', data:R.map(function(r){ return r.fired; }), backgroundColor:'rgba(220,38,38,.75)', borderRadius:3, order:2},
+      {type:'line', label:'Чиста зміна', data:R.map(function(r){ return (r.hired===null&&r.fired===null)?null:(r.hired||0)-(r.fired||0); }),
+       borderColor:C_ACC, backgroundColor:C_ACC, pointRadius:3, tension:0, order:1}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, labels:{boxWidth:10, font:{size:10}}},
+        tooltip:{callbacks:{afterTitle:function(it){ var r=R[it[0].dataIndex]; return r&&r.partial?'(місяць ще триває)':''; }}}},
+      scales:{x:GR, y:Object.assign({}, GR, {beginAtZero:true, ticks:{color:'#64748b', precision:0}})}}});
+  // 3) Плинність %
+  var tv = R.map(function(r){ return r.turn; });
+  var tAvg = closed.length ? closed.reduce(function(s,r){ return s+(r.turn||0); },0)/closed.length : null;
+  safeCreateChart('hrTurnChart', {type:'bar', data:{labels:labels, datasets:[
+      {label:'Плинність, %', data:tv, backgroundColor:tv.map(function(v){ return v===null?C_MUT:(tAvg!==null&&v>tAvg?'rgba(217,119,6,.8)':'rgba(37,99,235,.7)'); }), borderRadius:3, order:2},
+      {type:'line', label:'Середнє', data:R.map(function(){ return tAvg!==null?Math.round(tAvg*10)/10:null; }), borderColor:C_WARN, borderDash:[5,4], pointRadius:0, borderWidth:1.5, order:1}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{
+        label:function(c){ var r=R[c.dataIndex]; if(c.datasetIndex===1) return 'Середнє: '+c.parsed.y+'%';
+          return 'Плинність: '+c.parsed.y+'% ('+r.fired+' з сер. '+(r.avg!==null?r.avg.toFixed(1):'—')+')'; }}}},
+      scales:{x:GR, y:Object.assign({}, GR, {beginAtZero:true, ticks:{color:'#64748b', callback:function(v){ return v+'%'; }}})}}});
+  // Таблиця
+  var tb = document.getElementById('hrTblBody');
+  if(tb){
+    var d=function(v){ return v===null?'—':v; };
+    tb.innerHTML = R.map(function(r){
+      var mark = r.chk===null ? '' : (r.chk ? '<span style="color:var(--good)" title="Сходиться">✓</span>' : '<span style="color:var(--warn)" title="Початок + найм − звільнення ≠ кінець — перевірте лист">⚠</span>');
+      return '<tr'+(r.partial?' class="hr-partial" title="Місяць ще триває"':'')+'><td>'+r.label+'</td><td>'+d(r.start)+'</td><td style="color:var(--good)">'+d(r.hired)+'</td><td style="color:var(--bad)">'+d(r.fired)+'</td><td>'+(r.end!==null?r.end:(r.est!==null?'~'+r.est:'—'))+'</td><td>'+(r.turn!==null?r.turn.toFixed(1):'—')+'</td><td>'+mark+'</td></tr>';
+    }).join('');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════

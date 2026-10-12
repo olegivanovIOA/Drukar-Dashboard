@@ -3,6 +3,9 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-10-12 19:40 — нова вкладка HR (лист «Плинність кадрів» HR-файлу → HR_DATA, лише числа,
+без коментарів з ПІБ); «Склад» прихований у ТОП (middle_config.json: inventory.top=false).
+
 BUILD: 2026-09-30 20:10 — heatmap Лінія×Місяць спочатку з журналів (line_daily), _AllData_Product — лише запасний.
 
 BUILD: 2026-09-27 11:15 — Ресурси: name_by_mode / desc_by_mode / icon_by_mode (інша назва групи для ТОП чи Мідл).
@@ -57,10 +60,11 @@ DEFAULT_CONFIG = {
         "sales":      {"top": True, "mid": False},
         "forecast":   {"top": True, "mid": False},
         "okr":        {"top": True, "mid": True},
-        "inventory":  {"top": True, "mid": True},
+        "inventory":  {"top": False, "mid": True},
         "product":    {"top": True, "mid": False},
         "projects":   {"top": True, "mid": False},
         "resources":  {"top": True, "mid": True},
+        "hr":         {"top": True, "mid": False},
     }
 }
 
@@ -71,6 +75,13 @@ PROJECTS_SHEET_ID = os.environ.get("PROJECTS_SHEET_ID", "1Dpmb9zNdL3-JoMY_K44ZtU
 PROJECTS_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PROJECTS_SHEET_ID}/edit"
 # 🆕 Бібліотека корисних посилань — редагується руками у resources.json в репо.
 RESOURCES_FILE = "resources.json"
+# 🆕 2026-10-12 HR-файл (Анна Лобова), лист «Плинність кадрів» — для вкладки HR.
+# Читаємо через export?format=csv&gid= (а не gviz): у колонках змішані числа й текст,
+# і gviz викидає «менш поширений» тип — числа чисельності могли б зникнути.
+# Файл має бути відкритий «Всі з посиланням → Переглядач», інакше вкладка HR покаже підказку.
+HR_SHEET_ID  = os.environ.get("HR_SHEET_ID",  "1lLvjDO-OzdrMKGpwlRUa9LiZDLsNxJ84Gf6JIEpkmyU")
+HR_TURNOVER_GID = os.environ.get("HR_TURNOVER_GID", "827634834")   # лист «Плинність кадрів»
+HR_TURNOVER_SHEET = "Плинність кадрів"
 
 def load_config():
     try:
@@ -2331,6 +2342,103 @@ def parse_projects(map_rows, task_rows=None, delta_rows=None, res_rows=None):
     return out
 
 
+# ── 🆕 2026-10-12 HR: лист «Плинність кадрів» ────────────────────────────────
+def fetch_csv_gid(sheet_id, gid, retries=3, timeout=60):
+    """CSV конкретного листа через export (точні значення, без вгадування типів gviz)."""
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+    print(f"Fetching gid={gid}")
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, timeout=timeout)
+            r.raise_for_status()
+            r.encoding = 'utf-8'
+            return list(csv.reader(io.StringIO(r.text)))
+        except Exception as e:
+            last_err = e
+            print(f"  Attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                import time; time.sleep(5 * attempt)
+    raise last_err
+
+_HR_UA_MONTHS = {'січень':1,'лютий':2,'березень':3,'квітень':4,'травень':5,'червень':6,
+                 'липень':7,'серпень':8,'вересень':9,'жовтень':10,'листопад':11,'грудень':12,
+                 'январь':1,'февраль':2,'март':3,'апрель':4,'май':5,'июнь':6,
+                 'июль':7,'август':8,'сентябрь':9,'октябрь':10,'ноябрь':11,'декабрь':12}
+_HR_UA_SHORT = ['','Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру']
+
+def _hr_num(v):
+    """Тільки «чисте» число в клітинці (коментарі ігноруємо)."""
+    t = str(v or '').strip().replace('\xa0', '').replace(' ', '').replace(',', '.')
+    if re.fullmatch(r'-?\d+(\.\d+)?', t):
+        f = float(t)
+        return int(f) if f == int(f) else f
+    return None
+
+def _hr_month(v):
+    m = re.match(r'^\s*([А-Яа-яІіЇїЄєҐґ]+)\s+(\d{4})\s*$', str(v or ''))
+    if not m: return None
+    mo = _HR_UA_MONTHS.get(m.group(1).lower())
+    return f"{m.group(2)}-{mo:02d}" if mo else None
+
+def parse_hr_turnover(rows):
+    """Лист «Плинність кадрів»: на кожен місяць 2 колонки (ліва — коментар/«на початок»,
+    права — число/«на кінець»). Рядки: чисельність (під «Факт на початок/кінець»),
+    «Кількість звільнених», «Кількість прийнятих».
+    Повертає лише числа — коментарі з ПІБ і причинами НЕ публікуються (сторінка публічна)."""
+    rows = rows or []
+    head = ' '.join(str(c) for r in rows[:3] for c in r).lower()
+    if '<html' in head or '<!doctype' in head:
+        raise ValueError('отримано HTML замість CSV — файл не відкритий за посиланням')
+    # 1) рядок з назвами місяців
+    hdr_i, mcols = None, []
+    for i, r in enumerate(rows[:10]):
+        cols = [(c, _hr_month(v)) for c, v in enumerate(r)]
+        cols = [(c, ym) for c, ym in cols if ym]
+        if len(cols) >= 2:
+            hdr_i, mcols = i, cols
+            break
+    if hdr_i is None:
+        raise ValueError('не знайдено рядок з місяцями («Березень 2026» …)')
+    def col0(r): return str(r[0] if r else '').strip().lower()
+    def row_has(r, word): return any(word in str(v).lower() for v in r)
+    # 2) рядок чисельності: перший після «Факт на початок», де є числа в колонках місяців
+    hc_i = None
+    fact_i = next((i for i, r in enumerate(rows) if i > hdr_i and row_has(r, 'на початок')), hdr_i)
+    for i in range(fact_i + 1, min(fact_i + 4, len(rows))):
+        r = rows[i]
+        if any(_hr_num(r[c]) is not None for c, _ in mcols if c < len(r)):
+            hc_i = i; break
+    fired_i = next((i for i, r in enumerate(rows) if 'звільн' in col0(r)), None)
+    hired_i = next((i for i, r in enumerate(rows) if 'прийнят' in col0(r) or 'найм' in col0(r)), None)
+    if hc_i is None:
+        raise ValueError('не знайдено рядок чисельності (під «Факт на початок/кінець періоду»)')
+
+    def cell(ri, c):
+        if ri is None or ri >= len(rows) or c >= len(rows[ri]): return None
+        return rows[ri][c]
+    def pair_val(ri, c):
+        # число — у правій колонці пари; якщо там порожньо, а в лівій «чисте» число — беремо його
+        v = _hr_num(cell(ri, c + 1))
+        return v if v is not None else _hr_num(cell(ri, c))
+
+    out = []
+    for c, ym in mcols:
+        start = _hr_num(cell(hc_i, c))
+        end = _hr_num(cell(hc_i, c + 1))
+        hired = pair_val(hired_i, c)
+        fired = pair_val(fired_i, c)
+        if all(v is None for v in (start, end, hired, fired)):
+            continue
+        y, m = ym.split('-')
+        out.append({'ym': ym, 'label': f"{_HR_UA_SHORT[int(m)]} {y[2:]}",
+                    'start': start, 'end': end, 'hired': hired, 'fired': fired,
+                    'partial': end is None})
+    out.sort(key=lambda x: x['ym'])
+    print(f"  HR: {len(out)} міс. ({', '.join(x['ym'] for x in out)})")
+    return out
+
+
 def load_resources():
     """resources.json → {'groups': [{'name','icon','links':[{'title','url','desc'}]}]}.
     Якщо файлу немає або він битий — порожній список (вкладка покаже підказку)."""
@@ -2660,6 +2768,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{SALES_DAILY}}':    _jd((sales or {}).get('sku_sales_daily') or []),
         '{{PROJECTS_DATA}}':  _jd(data.get('projects') or {'projects': [], 'general_notes': [], 'layers_all': [],
                                                           'error': 'дані не завантажено'}),
+        '{{HR_DATA}}':        _jd(data.get('hr') or {'months': [], 'error': 'дані не завантажено', 'source_url': ''}),
         '{{RESOURCES_DATA}}': _jd(resources_for_mode(data.get('resources') or {'groups': [], 'updated': ''}, mode)),
     })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
@@ -3086,6 +3195,22 @@ if __name__ == '__main__':
 
     # ── 8. 🆕 Корисні ресурси (resources.json у репо) ─────────
     data['resources'] = load_resources()
+
+    # ── 9. 🆕 HR — лист «Плинність кадрів» (лише числа) ───────
+    _hr_url = f"https://docs.google.com/spreadsheets/d/{HR_SHEET_ID}/edit#gid={HR_TURNOVER_GID}"
+    data['hr'] = {'months': [], 'error': '', 'source_url': _hr_url}
+    try:
+        try:
+            _hr_rows = fetch_csv_gid(HR_SHEET_ID, HR_TURNOVER_GID)
+        except Exception as _e:
+            print(f"  WARNING HR export: {_e} → пробую gviz")
+            _hr_rows = fetch_csv(HR_SHEET_ID, HR_TURNOVER_SHEET)
+        data['hr']['months'] = parse_hr_turnover(_hr_rows)
+        if not data['hr']['months']:
+            data['hr']['error'] = 'у листі «Плинність кадрів» немає числових даних'
+    except Exception as e:
+        print(f"WARNING HR: {e}")
+        data['hr']['error'] = f"не вдалося прочитати HR-файл ({e})"
 
     config = load_config()
 

@@ -45,7 +45,7 @@
       "mid": true
     },
     "inventory": {
-      "top": true,
+      "top": false,
       "mid": true
     },
     "product": {
@@ -59,7 +59,11 @@
     "resources": {
       "top": true,
       "mid": true
+    },
+    "hr": {
+      "top": true,
+      "mid": false
     }
   },
-  "updated": "2026-09-26"
+  "updated": "2026-10-12"
 }
