@@ -2250,7 +2250,7 @@
   <div class="grid-31">
     <div class="card">
       <div class="card-header"><div><div class="card-title">Плинність кадрів, %</div>
-        <div class="card-subtitle">звільнені ÷ середня чисельність за місяць · пунктир — середнє</div></div></div>
+        <div class="card-subtitle">звільнені ÷ середня чисельність за місяць · пунктир — лінійний тренд</div></div></div>
       <div class="cw"><canvas id="hrTurnChart"></canvas></div>
     </div>
     <div class="card">
@@ -7044,6 +7044,23 @@ function _hrRows(){
     return {ym:m.ym,label:m.label,start:st,end:en,hired:h,fired:f,head:head,est:est,partial:!!m.partial,avg:avg,turn:turn,chk:chk};
   });
 }
+// Підписи значень над стовпцями/точками — лише для датасетів з _lbl (локальний плагін, глобально не реєструється)
+var _hrValLabels = {id:'hrValLabels', afterDatasetsDraw:function(ch){
+  var ctx=ch.ctx; ctx.save();
+  ctx.font="600 10px 'IBM Plex Mono',monospace"; ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ch.data.datasets.forEach(function(ds,di){
+    if(!ds._lbl) return; var meta=ch.getDatasetMeta(di); if(meta.hidden) return;
+    meta.data.forEach(function(el,i){
+      var v=ds.data[i]; if(v===null||v===undefined) return;
+      var t=ds._lbl(v);
+      ctx.lineWidth=3; ctx.strokeStyle='rgba(255,255,255,.92)'; ctx.lineJoin='round';
+      ctx.strokeText(t, el.x, el.y-4);
+      ctx.fillStyle=ds._lblColor||'#334155';
+      ctx.fillText(t, el.x, el.y-4);
+    });
+  });
+  ctx.restore();
+}};
 function initHr(){
   var D = HR_DATA || {}, R = _hrRows();
   var src = document.getElementById('hrSrc'); if(src && D.source_url) src.href = D.source_url;
@@ -7085,33 +7102,43 @@ function initHr(){
     var nx = R[i+1]; return (nx && nx.partial) ? r.head : null;
   });
   safeCreateChart('hrHeadChart', {type:'line', data:{labels:labels, datasets:[
-      {label:'Чисельність', data:headSolid, borderColor:C_ACC, backgroundColor:'rgba(37,99,235,.10)', fill:true, tension:.25, pointRadius:3, spanGaps:false},
-      {label:'Поточний (оцінка)', data:headEst, borderColor:C_ACC, borderDash:[5,4], pointRadius:3, pointStyle:'rectRot', fill:false, tension:0, spanGaps:false}
+      {label:'Чисельність', data:headSolid, borderColor:C_ACC, backgroundColor:'rgba(37,99,235,.10)', fill:true, tension:.25, pointRadius:3, spanGaps:false,
+       _lbl:function(v){ return v; }, _lblColor:C_ACC},
+      {label:'Поточний (оцінка)', data:R.map(function(r){ return r.partial?r.head:null; }), borderColor:'transparent', pointRadius:0, showLine:false,
+       _lbl:function(v){ return '~'+v; }, _lblColor:'#64748b'},
+      {label:'Поточний (оцінка) ', data:headEst, borderColor:C_ACC, borderDash:[5,4], pointRadius:3, pointStyle:'rectRot', fill:false, tension:0, spanGaps:false}
     ]},
-    options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+c.parsed.y+' осіб'; }}}},
+    plugins:[_hrValLabels],
+    options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:16}},
+      plugins:{legend:{display:false}, tooltip:{filter:function(it){ return it.datasetIndex!==1; }, callbacks:{label:function(c){ return c.dataset.label.trim()+': '+c.parsed.y+' осіб'; }}}},
       scales:{x:GR, y:Object.assign({}, GR, {beginAtZero:false, ticks:{color:'#64748b', precision:0}})}}});
   // 2) Найм vs звільнення + чиста зміна
   safeCreateChart('hrFlowChart', {type:'bar', data:{labels:labels, datasets:[
-      {label:'Прийнято', data:R.map(function(r){ return r.hired; }), backgroundColor:'rgba(22,163,74,.75)', borderRadius:3, order:2},
-      {label:'Звільнено', data:R.map(function(r){ return r.fired; }), backgroundColor:'rgba(220,38,38,.75)', borderRadius:3, order:2},
+      {label:'Прийнято', data:R.map(function(r){ return r.hired; }), backgroundColor:'rgba(22,163,74,.75)', borderRadius:3, order:2,
+       _lbl:function(v){ return v; }, _lblColor:C_GOOD},
+      {label:'Звільнено', data:R.map(function(r){ return r.fired; }), backgroundColor:'rgba(220,38,38,.75)', borderRadius:3, order:2,
+       _lbl:function(v){ return v; }, _lblColor:C_BAD},
       {type:'line', label:'Чиста зміна', data:R.map(function(r){ return (r.hired===null&&r.fired===null)?null:(r.hired||0)-(r.fired||0); }),
        borderColor:C_ACC, backgroundColor:C_ACC, pointRadius:3, tension:0, order:1}
     ]},
-    options:{responsive:true, maintainAspectRatio:false,
+    plugins:[_hrValLabels],
+    options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:14}},
       plugins:{legend:{display:true, labels:{boxWidth:10, font:{size:10}}},
         tooltip:{callbacks:{afterTitle:function(it){ var r=R[it[0].dataIndex]; return r&&r.partial?'(місяць ще триває)':''; }}}},
       scales:{x:GR, y:Object.assign({}, GR, {beginAtZero:true, ticks:{color:'#64748b', precision:0}})}}});
   // 3) Плинність %
   var tv = R.map(function(r){ return r.turn; });
-  var tAvg = closed.length ? closed.reduce(function(s,r){ return s+(r.turn||0); },0)/closed.length : null;
+  // Лінійний тренд (МНК) по закритих місяцях; поточний неповний місяць у розрахунок не йде (у tv він null)
+  var tTrend = (typeof trendline==='function') ? trendline(tv, false) : tv.map(function(){ return null; });
   safeCreateChart('hrTurnChart', {type:'bar', data:{labels:labels, datasets:[
-      {label:'Плинність, %', data:tv, backgroundColor:tv.map(function(v){ return v===null?C_MUT:(tAvg!==null&&v>tAvg?'rgba(217,119,6,.8)':'rgba(37,99,235,.7)'); }), borderRadius:3, order:2},
-      {type:'line', label:'Середнє', data:R.map(function(){ return tAvg!==null?Math.round(tAvg*10)/10:null; }), borderColor:C_WARN, borderDash:[5,4], pointRadius:0, borderWidth:1.5, order:1}
+      {label:'Плинність, %', data:tv, backgroundColor:'rgba(37,99,235,.7)', borderRadius:3, order:2,
+       _lbl:function(v){ return v.toFixed(1)+'%'; }, _lblColor:'#334155'},
+      {type:'line', label:'Тренд', data:tTrend, borderColor:C_WARN, borderDash:[6,4], pointRadius:0, borderWidth:2, order:1, spanGaps:true}
     ]},
-    options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{
-        label:function(c){ var r=R[c.dataIndex]; if(c.datasetIndex===1) return 'Середнє: '+c.parsed.y+'%';
+    plugins:[_hrValLabels],
+    options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:16}},
+      plugins:{legend:{display:true, labels:{boxWidth:10, font:{size:10}}}, tooltip:{callbacks:{
+        label:function(c){ var r=R[c.dataIndex]; if(c.datasetIndex===1) return 'Тренд: '+c.parsed.y+'%';
           return 'Плинність: '+c.parsed.y+'% ('+r.fired+' з сер. '+(r.avg!==null?r.avg.toFixed(1):'—')+')'; }}}},
       scales:{x:GR, y:Object.assign({}, GR, {beginAtZero:true, ticks:{color:'#64748b', callback:function(v){ return v+'%'; }}})}}});
   // Таблиця
