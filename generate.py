@@ -32,6 +32,7 @@ SHEET_ID      = os.environ.get("SHEET_ID",      "1thXW13Min0-5qWpNUvi0Y5ZWNl1LxY
 SHEET_ID2     = os.environ.get("SHEET_ID2",     "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI")
 LINES_SHEET_ID  = os.environ.get("LINES_SHEET_ID",  "1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4")
 LINES_SHEET_ID2 = os.environ.get("LINES_SHEET_ID2", "1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI")
+LINES_SHEET_ID3 = os.environ.get("LINES_SHEET_ID3", "13rSHX4DHMTOZIgBP8U5NbOoD-zo7qu0TWRtYef1HwGo")  # 🆕 09.11.2026: Журнал Лок3 (лінії 11–13)
 CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4WaxeR10SEKIBvM")
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
@@ -2821,6 +2822,7 @@ if __name__ == '__main__':
     JOURNAL_SOURCES = [
         (LINES_SHEET_ID,  "Журнал.Локация1"),
         (LINES_SHEET_ID2, "Журнал.Локация2"),
+        (LINES_SHEET_ID3, "Журнал.Локация3"),   # 🆕 09.11.2026
     ]
     journal_rows_list = []
     for _jid, _jsheet in JOURNAL_SOURCES:
@@ -2830,6 +2832,7 @@ if __name__ == '__main__':
             journal_rows_list.append(_rows)
         except Exception as e:
             print(f"  WARNING journal '{_jsheet}': {e}")
+            journal_rows_list.append([])   # 🆕 зберігаємо позицію: номер локації = індекс у JOURNAL_SOURCES
 
     if journal_rows_list:
         try:
@@ -3156,9 +3159,9 @@ if __name__ == '__main__':
                 print(f"  ⚠ HM {_lbl}: сума по лініях {_hm:,.0f} кг ≠ виробництво {_tot:,.0f} кг")
     except Exception as _e:
         print(f"  HM check skipped: {_e}")
-    # Норми з обох журналів (НОРМЫ Лок1 — лінії 1–6, НОРМЫ Лок2 — лінії 7+)
+    # Норми з усіх журналів (НОРМЫ Лок1 — лінії 1–6, Лок2 — 7–10, Лок3 — 11–13)
     line_norms = {}
-    for _nsid, _nlbl in ((LINES_SHEET_ID, 'Лок1'), (LINES_SHEET_ID2, 'Лок2')):
+    for _nsid, _nlbl in ((LINES_SHEET_ID, 'Лок1'), (LINES_SHEET_ID2, 'Лок2'), (LINES_SHEET_ID3, 'Лок3')):
         try:
             _n = parse_norms(fetch_csv(_nsid, 'НОРМЫ'))
             for _ln, _vids in _n.items():

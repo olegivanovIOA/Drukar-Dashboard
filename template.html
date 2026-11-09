@@ -14,6 +14,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DRUKAR — Виробничий Дашборд</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// 🆕 09.11.2026 — ЄДИНЕ ВІДОБРАЖЕННЯ «ЛІНІЯ → ЛОКАЦІЯ» для всіх вкладок.
+// Нова локація або перенесення ліній — змінити ЛИШЕ цей список.
+var LOC_LINE_RANGES = [
+  { loc: 1, from: 1,  to: 6  },   // Локація 1
+  { loc: 2, from: 7,  to: 10 },   // Локація 2
+  { loc: 3, from: 11, to: 13 },   // Локація 3 (з 07.11.2026)
+];
+function locOfLine(ln){
+  var m = String(ln == null ? '' : ln).match(/\d+/); var n = m ? parseInt(m[0], 10) : 0;
+  for (var i = 0; i < LOC_LINE_RANGES.length; i++) { var r = LOC_LINE_RANGES[i]; if (n >= r.from && n <= r.to) return r.loc; }
+  return LOC_LINE_RANGES.length + 1;
+}
+function linesOfLoc(loc){
+  var out = []; LOC_LINE_RANGES.forEach(function(r){ if (String(r.loc) === String(loc)) for (var n = r.from; n <= r.to; n++) out.push('ЛІНІЯ ' + n); });
+  return out;
+}
+function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out = out.concat(linesOfLoc(r.loc)); }); return out; }
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
   :root{
@@ -105,6 +124,7 @@
   .lb{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;letter-spacing:1px;text-transform:uppercase}
   .lb-loc1{color:var(--accent2);border:1px solid rgba(71,180,255,.35);background:rgba(71,180,255,.07)}
   .lb-loc2{color:#c084fc;border:1px solid rgba(192,132,252,.35);background:rgba(192,132,252,.07)}
+  .lb-loc3{color:#34d399;border:1px solid rgba(52,211,153,.35);background:rgba(52,211,153,.07)}
   .lines-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px;gap:14px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px}
   .lines-spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lspin .7s linear infinite}
   @keyframes lspin{to{transform:rotate(360deg)}}
@@ -961,6 +981,7 @@
             <button class="topn-btn active" id="utilLocAll" onclick="utilSetLoc('all',this)" style="font-size:9px">ВСІ</button>
             <button class="topn-btn" onclick="utilSetLoc('1',this)" style="font-size:9px">Лок. 1</button>
             <button class="topn-btn" onclick="utilSetLoc('2',this)" style="font-size:9px">Лок. 2</button>
+            <button class="topn-btn" onclick="utilSetLoc('3',this)" style="font-size:9px">Лок. 3</button>
           </div>
           <div style="width:1px;height:16px;background:var(--border);flex-shrink:0"></div>
           <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap">ЛІНІЯ:</span>
@@ -1012,7 +1033,7 @@
     </div>
     <div id="heatmapWrap"></div>
     <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);line-height:1.8">
-      ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026
+      ℹ ЛІНІЯ 5 — з груд. 2025 &nbsp;|&nbsp; ЛІНІЯ 6 — зі січня 2026 &nbsp;|&nbsp; ЛІНІЯ 7 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 8 — з березня 2026 &nbsp;|&nbsp; ЛІНІЯ 9 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 10 — з травня 2026 &nbsp;|&nbsp; ЛІНІЯ 11–13 (Локація 3) — з 07.11.2026
     </div>
   </div>
 
@@ -1033,6 +1054,7 @@
       <button class="topn-btn active" id="waLocAll" onclick="waSetLoc('all',this)" style="font-size:10px">ВСІ</button>
       <button class="topn-btn" onclick="waSetLoc('1',this)" style="font-size:10px">Локація 1</button>
       <button class="topn-btn" onclick="waSetLoc('2',this)" style="font-size:10px">Локація 2</button>
+      <button class="topn-btn" onclick="waSetLoc('3',this)" style="font-size:10px">Локація 3</button>
     </div>
     <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
     <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);white-space:nowrap">ЛІНІЯ:</span>
@@ -1533,6 +1555,7 @@
         <button class="month-btn active" onclick="setDailyFilter('all',this)">Всі</button>
         <button class="month-btn" onclick="setDailyFilter('loc1',this)">Лок.1</button>
         <button class="month-btn" onclick="setDailyFilter('loc2',this)">Лок.2</button>
+        <button class="month-btn" onclick="setDailyFilter('loc3',this)">Лок.3</button>
         <span style="width:1px;height:20px;background:var(--border);margin:0 2px;align-self:center"></span>
         <button class="month-btn" onclick="setDailyFilter('1',this)">Л1</button>
         <button class="month-btn" onclick="setDailyFilter('2',this)">Л2</button>
@@ -1545,6 +1568,10 @@
         <button class="month-btn" onclick="setDailyFilter('8',this)">Л8</button>
         <button class="month-btn" onclick="setDailyFilter('9',this)">Л9</button>
         <button class="month-btn" onclick="setDailyFilter('10',this)">Л10</button>
+        <span style="width:1px;height:20px;background:var(--border);margin:0 2px;align-self:center"></span>
+        <button class="month-btn" onclick="setDailyFilter('11',this)">Л11</button>
+        <button class="month-btn" onclick="setDailyFilter('12',this)">Л12</button>
+        <button class="month-btn" onclick="setDailyFilter('13',this)">Л13</button>
       </div>
     </div>
     <div style="position:relative;height:300px">
@@ -3209,7 +3236,7 @@ async function buildHeatmap(){
   function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
   function fmtFull(v){return v.toLocaleString('uk');}
   function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
-  function getLoc(ln){const n=lineNum(ln);if(n<=6)return 1;if(n<=14)return 2;return 3;}
+  function getLoc(ln){return locOfLine(ln);}
   const LOC_COLORS={1:'#00d4ff',2:'#a78bfa',3:'#34d399'};
   const LOC_LABELS={1:'ЛОКАЦІЯ 1',2:'ЛОКАЦІЯ 2',3:'ЛОКАЦІЯ 3'};
   const colTotals=HM_LABELS.map((_,i)=>lines.reduce((s,ln)=>s+(HM_DATA[ln][i]||0),0));
@@ -3468,7 +3495,7 @@ async function buildHeatmapWeekly(monthIdx){
     function tc(v){return v/maxVal>0.40?'rgba(255,255,255,.9)':'rgba(255,255,255,.25)';}
     function fmt(v){if(v===0)return'';if(v>=1000)return(v/1000).toFixed(1)+'k';return v;}
     function fmtFull(v){return v.toLocaleString('uk');}
-    function getLoc(ln){const n=parseInt(ln.match(/\d+/)||0);if(n<=6)return 1;if(n<=14)return 2;return 3;}
+    function getLoc(ln){return locOfLine(ln);}
     const LOC_COLORS={1:'#00d4ff',2:'#a78bfa',3:'#34d399'};
     const LOC_LABELS={1:'ЛОКАЦІЯ 1',2:'ЛОКАЦІЯ 2',3:'ЛОКАЦІЯ 3'};
     const wLabels=weeks.map(w=>w.label);
@@ -4695,7 +4722,7 @@ function lRenderResults(filtered, errors) {
       shiftRecords.forEach(x => { if (!lAbsRecord || x.weight > lAbsRecord.weight) lAbsRecord = Object.assign({line, loc}, x); });
     }
     const sorted = shiftRecords.sort((a,b)=>b.weight-a.weight).slice(0,lTopN);
-    const lc = loc.includes('1') ? 'loc1' : 'loc2';
+    const lc = loc.includes('3') ? 'loc3' : loc.includes('2') ? 'loc2' : 'loc1';
     html += `<div class="line-block">
       <div class="line-block-hdr">
         <span class="lname">${line}</span>
@@ -5454,6 +5481,7 @@ async function loadNormsFromSheets(){
   const statusEl = document.getElementById('utilNormStatus');
   const sid1 = '1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4';
   const sid2 = '1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI';
+  const sid3 = '13rSHX4DHMTOZIgBP8U5NbOoD-zo7qu0TWRtYef1HwGo';   // 🆕 09.11.2026 Лок3
   try {
     async function fetchCSV(sid, sheet){
       const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
@@ -5483,8 +5511,8 @@ async function loadNormsFromSheets(){
       }
       return result;
     }
-    const [r1,r2]=await Promise.all([fetchCSV(sid1,'НОРМЫ'),fetchCSV(sid2,'НОРМЫ')]);
-    const n1=parseNormsRows(r1), n2=parseNormsRows(r2);
+    const [r1,r2,r3]=await Promise.all([fetchCSV(sid1,'НОРМЫ'),fetchCSV(sid2,'НОРМЫ'),fetchCSV(sid3,'НОРМЫ')]);
+    const n1=parseNormsRows(r1), n2=parseNormsRows(r2), n3=parseNormsRows(r3);
     // Merge n1 і n2 — обидва словники вже містять найсвіжіші норми по даті
     // Просто об'єднуємо (якщо лінія в обох — беремо з n2 як "новіший" журнал для лок2)
     for(const [line,vids] of Object.entries(n1)){
@@ -5494,6 +5522,10 @@ async function loadNormsFromSheets(){
     for(const [line,vids] of Object.entries(n2)){
       if(!HM_NORMS[line]) HM_NORMS[line]={};
       for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm; // n2 перезаписує якщо є свіжіші
+    }
+    for(const [line,vids] of Object.entries(n3)){
+      if(!HM_NORMS[line]) HM_NORMS[line]={};
+      for(const [vid,norm] of Object.entries(vids)) HM_NORMS[line][vid]=norm;
     }
     const cnt=Object.values(HM_NORMS).reduce((s,v)=>s+Object.keys(v).length,0);
     if(statusEl) statusEl.textContent=`✓ Норми: ${cnt} записів для ${Object.keys(HM_NORMS).length} ліній`;
@@ -5591,9 +5623,9 @@ function renderDailyChart(){
   var data=window._dailyRawData;
   if(!data||!canvas) return;
 
-  var LOC1=['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
-  var LOC2=['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
+  var LOC1=linesOfLoc(1), LOC2=linesOfLoc(2), LOC3=linesOfLoc(3);
   var CLRS={
+    'ЛІНІЯ 11':'#14b8a6','ЛІНІЯ 12':'#f59e0b','ЛІНІЯ 13':'#6366f1',
     'ЛІНІЯ 1':'#2563eb','ЛІНІЯ 2':'#0ea5e9','ЛІНІЯ 3':'#06b6d4',
     'ЛІНІЯ 4':'#10b981','ЛІНІЯ 5':'#eab308','ЛІНІЯ 6':'#f97316',
     'ЛІНІЯ 7':'#a855f7','ЛІНІЯ 8':'#ec4899','ЛІНІЯ 9':'#ef4444','ЛІНІЯ 10':'#84cc16'
@@ -5607,8 +5639,8 @@ function renderDailyChart(){
   if(!allDates.length) return;
 
   // Визначаємо набір ліній
-  var isMulti = (filter==='loc1'||filter==='loc2');
-  var lineSet = filter==='loc1'?LOC1:filter==='loc2'?LOC2:
+  var isMulti = (filter==='loc1'||filter==='loc2'||filter==='loc3');
+  var lineSet = filter==='loc1'?LOC1:filter==='loc2'?LOC2:filter==='loc3'?LOC3:
                 filter==='all'?null:['ЛІНІЯ '+filter];
 
   // Для single/all — обрізаємо дати з початку активності
@@ -5696,7 +5728,7 @@ function renderDailyChart(){
   var sub=document.getElementById('dailyChartSubtitle');
   if(sub){
     var fl=filter==='all'?'всі лінії':filter==='loc1'?'Локація 1':
-           filter==='loc2'?'Локація 2':'Лінія '+filter;
+           filter==='loc2'?'Локація 2':filter==='loc3'?'Локація 3':'Лінія '+filter;
     sub.textContent='кг/день · '+new Date().getFullYear()+' · '+fl;
   }
 
@@ -6016,17 +6048,14 @@ async function buildUtilHeatmap(){
   function lineNum(ln){ const m=ln.match(/\d+/); return m?parseInt(m[0]):999; }
   // Застосовуємо фільтри локації і лінії
   let sortedLines = [...lines].sort((a,b)=>lineNum(a)-lineNum(b));
-  if(window._utilLocFilter === '1') sortedLines = sortedLines.filter(ln => UTIL_LOC1.includes(ln));
-  else if(window._utilLocFilter === '2') sortedLines = sortedLines.filter(ln => UTIL_LOC2.includes(ln));
+  if(window._utilLocFilter && window._utilLocFilter !== 'all') sortedLines = sortedLines.filter(ln => String(locOfLine(ln)) === String(window._utilLocFilter));
   if(window._utilLineFilter !== 'all') sortedLines = sortedLines.filter(ln => ln === window._utilLineFilter);
 
   // Будуємо кнопки ліній якщо ще не побудовані або після зміни локації
   _utilRebuildLineBtns(window._utilLocFilter||'all');
 
   // Определяем локации (те же что в _HM_DATA — по наличию данных)
-  const LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
-  const LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
-  const isLoc2 = ln => LOC2.includes(ln);
+  const locLbl = ln => 'ЛОК.' + locOfLine(ln);   // 🆕 09.11.2026: Лок1/2/3 через LOC_LINE_RANGES
 
   const totalCols = cols + 2; // лейбл + данные + итого
   let html = `<div class="hmap-grid" style="grid-template-columns:120px repeat(${cols},1fr) 80px;min-width:${100+cols*80}px">`;
@@ -6039,11 +6068,11 @@ async function buildUtilHeatmap(){
   // Рендеринг по локациям
   let prevLoc = null;
   sortedLines.forEach(ln => {
-    const loc = isLoc2(ln) ? 'ЛОК.2' : 'ЛОК.1';
+    const loc = locLbl(ln);
     if(loc !== prevLoc){
       if(prevLoc !== null){
         // ∑ Локація — тільки активні лінії/місяці
-        const locLinesPrev = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+        const locLinesPrev = sortedLines.filter(l => locLbl(l) === prevLoc);
         html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
         for(let i=0;i<cols;i++){
           const ca=colAvg(locLinesPrev,i);
@@ -6073,7 +6102,7 @@ async function buildUtilHeatmap(){
 
   // ∑ Остання локація
   if(prevLoc){
-    const locLinesLast = sortedLines.filter(l => (prevLoc==='ЛОК.2') === isLoc2(l));
+    const locLinesLast = sortedLines.filter(l => locLbl(l) === prevLoc);
     html += `<div class="hmap-label" style="color:#0ea5e9;font-size:9px;padding-left:4px">∑ ${prevLoc}</div>`;
     for(let i=0;i<cols;i++){
       const ca=colAvg(locLinesLast,i);
@@ -6133,9 +6162,9 @@ function onUtilMonthChange(val, btn){
 // ── Фільтри завантаженості ──
 window._utilLocFilter  = 'all';
 window._utilLineFilter = 'all';
-const UTIL_LOC1 = ['ЛІНІЯ 1','ЛІНІЯ 2','ЛІНІЯ 3','ЛІНІЯ 4','ЛІНІЯ 5','ЛІНІЯ 6'];
-const UTIL_LOC2 = ['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10'];
-// Локація 3 буде додана тут
+const UTIL_LOC1 = linesOfLoc(1);
+const UTIL_LOC2 = linesOfLoc(2);
+const UTIL_LOC3 = linesOfLoc(3);   // 🆕 09.11.2026
 
 function utilSetLoc(val, btn) {
   window._utilLocFilter  = val;
@@ -6175,10 +6204,7 @@ function _utilRebuildLineBtns(locFilter) {
   var wrap = document.getElementById('utilLineBtns'); if(!wrap) return;
   var allBtn = document.getElementById('utilLineAll');
   wrap.innerHTML = ''; if(allBtn) wrap.appendChild(allBtn);
-  var locLines = locFilter==='all' ? [...UTIL_LOC1,...UTIL_LOC2]
-                : locFilter==='1'  ? UTIL_LOC1
-                : locFilter==='2'  ? UTIL_LOC2
-                : [];
+  var locLines = locFilter==='all' ? allLocLines() : linesOfLoc(locFilter);
   // Показуємо тільки ті лінії що реально є в HM_DATA
   var available = locLines.filter(function(ln){ return HM_DATA && HM_DATA[ln]; });
   available.forEach(function(ln){
@@ -6322,10 +6348,8 @@ async function buildUtilHeatmapWeekly(monthIdx){
     function lineNum(ln){const m=ln.match(/\d+/);return m?parseInt(m[0]):999;}
     let sortedLines=Object.keys(merged).sort((a,b)=>lineNum(a)-lineNum(b));
     // Застосовуємо фільтри
-    if(window._utilLocFilter==='1') sortedLines=sortedLines.filter(ln=>UTIL_LOC1.includes(ln));
-    else if(window._utilLocFilter==='2') sortedLines=sortedLines.filter(ln=>UTIL_LOC2.includes(ln));
+    if(window._utilLocFilter && window._utilLocFilter!=='all') sortedLines=sortedLines.filter(ln=>String(locOfLine(ln))===String(window._utilLocFilter));
     if(window._utilLineFilter!=='all') sortedLines=sortedLines.filter(ln=>ln===window._utilLineFilter);
-    const LOC2=['ЛІНІЯ 7','ЛІНІЯ 8','ЛІНІЯ 9','ЛІНІЯ 10']; const isLoc2=ln=>LOC2.includes(ln);
     const wLabels=weeks.map(w=>w.label); const wcols=weeks.length;
 
     let html=`<div class="hmap-grid" style="grid-template-columns:120px repeat(${wcols},1fr) 80px;min-width:${100+wcols*120}px">`;
@@ -6334,7 +6358,7 @@ async function buildUtilHeatmapWeekly(monthIdx){
     html+=`<div class="hmap-label" style="justify-content:center;font-weight:600;color:var(--accent)">СЕРЕДНЄ</div>`;
     let prevLoc=null;
     sortedLines.forEach(ln=>{
-      const loc=isLoc2(ln)?'ЛОК.2':'ЛОК.1';
+      const loc='ЛОК.'+locOfLine(ln);
       if(loc!==prevLoc){
         html+=`<div style="grid-column:1/-1;padding:4px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#0ea5e9;text-transform:uppercase;background:rgba(14,165,233,.06);border-radius:3px;margin:4px 0">${loc}</div>`;
         prevLoc=loc;
@@ -7159,7 +7183,7 @@ function initHr(){
 var DOWNTIME_LOCATIONS = [
   { id: 1, name: 'Локація 1', sheetId: '1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4', sheetName: 'Журнал.Локация1' },
   { id: 2, name: 'Локація 2', sheetId: '1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI', sheetName: 'Журнал.Локация2' },
-  // { id: 3, name: 'Локація 3', sheetId: 'SHEET_ID_3', sheetName: 'Журнал.Локация3' },
+  { id: 3, name: 'Локація 3', sheetId: '13rSHX4DHMTOZIgBP8U5NbOoD-zo7qu0TWRtYef1HwGo', sheetName: 'Журнал.Локация3' },
 ];
 
 // ══════════════════════════════════════════════════════════════════
@@ -8509,7 +8533,7 @@ function itoRenderAll() {
 var WA_SOURCES = [
   { locId:'1', locName:'Локація 1', sheetId:'1SewXdbiFVIUPCESo5XDrRzvvG5rut4vuQTDyBDg3qp4', sheet:'Журнал.Локация1' },
   { locId:'2', locName:'Локація 2', sheetId:'1NJkxtyha_oSpeaB7Jzmf440-kOF2gHBB0xsaMfKPRsI', sheet:'Журнал.Локация2' },
-  // { locId:'3', locName:'Локація 3', sheetId:'SHEET_ID_3', sheet:'Журнал.Локация3' },
+  { locId:'3', locName:'Локація 3', sheetId:'13rSHX4DHMTOZIgBP8U5NbOoD-zo7qu0TWRtYef1HwGo', sheet:'Журнал.Локация3' },
 ];
 
 window._waRaw       = [];   // [{date,week,year,locId,line,vid,kg,prod,nf,brak,coils,packed}]
