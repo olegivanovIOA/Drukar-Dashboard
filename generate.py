@@ -3231,3 +3231,9 @@ if __name__ == '__main__':
         f.write(html_mid)
     print(f"OK middle.html ({len(html_mid):,} bytes)")
     print(f"\n✅ Done — index: {len(html_top):,} / middle: {len(html_mid):,} chars, updated {data['updated']}")
+    # ── 10. 🆕 data/*.json для WhatsApp-офісу агентів (окремо від HTML; збій тут дашборд не ламає) ──
+    try:
+        import export_agent_data
+        export_agent_data.export(data, sales, okr, hm_labels, hm_data, line_norms, calc, calc_ext, MONTH_ORDER)
+    except Exception as e:
+        print(f"WARNING agent data export: {e}")
