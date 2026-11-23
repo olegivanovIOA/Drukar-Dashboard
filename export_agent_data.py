@@ -111,10 +111,11 @@ def export(data: dict, sales: dict | None, okr: dict | None, hm_labels, hm_data,
     def sales_f():
         s = sales or {}
         sm = s.get("sales_months") or []
-        months = [{"month": ym,
-                   "stream_t": _at(s.get("sales_opt1_kg"), i),
-                   "easy_t": _at(s.get("sales_opt2_kg"), i),
-                   "retail_t": _at(s.get("sales_ret_kg"), i)} for i, ym in enumerate(sm)]
+        months = []
+        for i, ym in enumerate(sm):
+            st, et, rt = (_at(s.get(k), i) or 0 for k in ("sales_opt1_kg", "sales_opt2_kg", "sales_ret_kg"))
+            months.append({"month": ym, "total_kg": round((st + et + rt) * 1000), "stream_kg": round(st * 1000),
+                           "easy_kg": round(et * 1000), "retail_kg": round(rt * 1000)})
         by_sku = []
         for ch, key in (("опт", "sku_sales_opt"), ("роздріб", "sku_sales_ret")):
             for sku, arr in (s.get(key) or {}).items():
@@ -123,16 +124,19 @@ def export(data: dict, sales: dict | None, okr: dict | None, hm_labels, hm_data,
                     if v:
                         by_sku.append({"month": ym, "sku": sku, "channel": ch, "kg": v})
         _write("sales.json", {
-            "about": "Відвантаження з Журналу Відвантажень. months: тонни по каналах (stream_t — ТОВ Стрім Техно, "
-                     "easy_t — EASY3DPRINT, retail_t — роздріб). by_sku: кг по SKU, каналу й місяцю.",
-            "months": months, "by_sku": by_sku,
+            "about": "Відвантаження з Журналу Відвантажень (фактична маса, кг). ЗАГАЛЬНІ ОБСЯГИ — ЛИШЕ з months: "
+                     "total_kg = stream_kg (ТОВ Стрім Техно) + easy_kg (EASY3DPRINT) + retail_kg (роздріб). "
+                     "by_sku — лише розбивка по розпізнаних SKU (PETG/PLA N кг); рядки без SKU сюди не потрапляють — "
+                     "їх маса в unmatched_sku_kg. Сума by_sku ≠ загальний обсяг, не підсумовуй by_sku як «усього».",
+            "months": months, "by_sku": by_sku, "unmatched_sku_kg": s.get("sku_unmatched_kg") or {},
         })
 
     def sales_daily():
         rows = [{"d": r[0], "sku": r[1], "channel": "опт" if r[2] == "o" else "роздріб", "kg": r[3],
                  "kg_estimated": r[4]} for r in ((sales or {}).get("sku_sales_daily") or []) if len(r) >= 5]
-        _write("sales_daily.json", {"about": "Відвантаження по днях: SKU, канал, кг (kg_estimated — кг, "
-                                             "оцінені з суми, коли кг не вказано).", "rows": rows})
+        _write("sales_daily.json", {"about": "Відвантаження по днях ЛИШЕ для розпізнаних SKU: SKU, канал, кг "
+                                             "(kg_estimated — оцінені з суми, коли маси немає). НЕ для загальних "
+                                             "обсягів — їх бери з sales.json → months.", "rows": rows})
 
     # ---- OKR / проєкти / HR ----
     def okr_f():

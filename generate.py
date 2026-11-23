@@ -37,6 +37,7 @@ CALC_SHEET_ID = os.environ.get("CALC_SHEET_ID", "1U8dZJ_2niv5eYp0VGHvUHThQP6Ts4W
 STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoYp6GPjW5bNyzauMIDcbSWk")
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
 RETAIL_SHEET_ID   = os.environ.get("RETAIL_SHEET_ID",   "1W4mHhbIy43xxTuTQA2nl1atYag8ynlkHpbY_Fx6JUdk")
+RETAIL_GID        = os.environ.get("RETAIL_GID", "1793222686")   # лист «2026» Журналу роздрібних продажів
 # Журнал Відвантажень — об'єднаний реєстр ТОВ(Стрім)+ФОП(Роздріб)+Easy(Изи), лист "Відвантаження".
 # З 07.2026 вкладка "Продажі" рахується САМЕ з нього (замість _AllData_$), бо _AllData_$
 # відстає від бухгалтера (той самий баг, що давав 0 доходу за минулі місяці в ПнЛ).
@@ -1583,7 +1584,7 @@ def _cal_extract_row_by_month(row, col_map):
             result[i] = _pnl_num(row[ci])
     return result
 
-def parse_sales_from_journal(rows):
+def parse_sales_from_journal(rows, retail_rows=None):
     """
     Парсить продажі з Журналу Відвантажень (SHIP_SHEET_ID, лист "Відвантаження") —
     об'єднаний реєстр ТОВ(Стрім)+ФОП(Роздріб)+Easy(Изи). Повертає ТОЧНО ТУ Ж
@@ -1679,7 +1680,65 @@ def parse_sales_from_journal(rows):
         print("  WARNING: no sales data parsed from journal")
         return {}
 
+    # 🆕 Роздріб — з Журналу роздрібних продажів (повніший): у Журнал відвантажень потрапляють лише рядки
+    # з «Датою відгрузки». Припущення (погоджено 23.11.2026): якщо дати відгрузки немає — вона = дата оплати.
+    reg = _retail_register_rows(retail_rows) if retail_rows else []
+    if reg:
+        first_ym = min(r['ym'] for r in reg)
+        before = len(data_rows)
+        data_rows = [r for r in data_rows if not (r['channel'] == 'Розница' and r['ym'] >= first_ym)] + reg
+        print(f"  Роздріб з реєстру: {len(reg)} рядків (з {first_ym}); замінено SRC1 журналу: {before - (len(data_rows) - len(reg))}")
+
     return _sales_rows_to_result(data_rows)
+
+
+def _retail_register_rows(rows):
+    """Журнал роздрібних продажів (лист «2026») → рядки продажів у форматі parse_sales_from_journal.
+    Дата = «Дата відгрузки», а якщо порожня — «Дата оплати» (припущення для роздробу)."""
+    import re as _r
+    from datetime import datetime as _dt
+    if not rows or len(rows) < 2:
+        return []
+    hdr = [str(c or '').strip().lower() for c in rows[0]]
+    def col(*n):
+        for i, h in enumerate(hdr):
+            if all(x in h for x in n):
+                return i
+        return None
+    c_pay, c_ship, c_kg = col('дата', 'оплат'), col('дата', 'відгруз'), col('кількість', 'кг')
+    c_sum, c_prod = col('сума'), col('продукт')
+    if c_pay is None or c_kg is None:
+        print(f"  WARNING retail register: не знайдено колонок. {hdr}")
+        return []
+    def num(x):
+        raw = str(x or '')
+        t = _r.sub(r'[^\d,]', '', raw).replace(',', '.') if ',' in raw else _r.sub(r'[^\d.]', '', raw).strip('.')
+        try: return float(t)
+        except ValueError: return 0.0
+    def date(x):
+        t = str(x or '').strip()
+        m = _r.match(r'(\d{4})-(\d{2})-(\d{2})', t)
+        if m:
+            try: return _dt(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            except ValueError: return None
+        m = _r.match(r'(\d{1,2})[./](\d{1,2})[./](\d{4})', t)
+        if not m: return None
+        try: return _dt(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        except ValueError: return None
+    g = lambda r, i: r[i] if i is not None and i < len(r) else ''
+    out = []
+    for r in rows[1:]:
+        kg = num(g(r, c_kg)); rev = num(g(r, c_sum))
+        if kg <= 0 and rev <= 0: continue
+        d = date(g(r, c_ship)) or date(g(r, c_pay))
+        if d is None or d.year < 2020: continue
+        prod = str(g(r, c_prod)).strip()
+        m = _r.search(r'(PETG|PLA)\s*([\d.,]+)', prod, _r.I)
+        product = f"{m.group(1).upper()} {m.group(2).replace(',', '.').rstrip('0').rstrip('.')} кг" if m else prod
+        plastic = 'PETG' if 'PETG' in prod.upper() else ('PLA' if 'PLA' in prod.upper() else '')
+        out.append({'ym': d.strftime('%Y-%m'), 'channel': 'Розница', 'product': product, 'plastic': plastic,
+                    'revenue': rev, 'kg': kg, 'op_type': 'Роздріб', 'date': d.strftime('%Y-%m-%d')})
+    return out
 
 
 def _sales_rows_to_result(data_rows):
@@ -1702,6 +1761,7 @@ def _sales_rows_to_result(data_rows):
         if 'СТРИМТЕХНО' in t or 'Стримтехно' in t: return 'opt1'
         if 'EASY' in t or 'Easy' in t:               return 'opt2'
         if 'Розниц' in t or 'розниц' in t:           return 'ret'
+        if 'Роздріб' in t or 'роздріб' in t:         return 'ret'   # Журнал Відвантажень: op_type='Роздріб' (SRC1)
         return None
 
     for r in data_rows:
@@ -1790,9 +1850,13 @@ def _sales_rows_to_result(data_rows):
 
     # 🆕 денні продажі по SKU/каналу: (date, sku, 'o'|'r') → [kg, kg_оцінено]
     sku_daily = _dd2(lambda: [0.0, 0.0])
+    sku_unmatched = _dd2(lambda: {'o': 0.0, 'r': 0.0})   # 🆕 кг рядків без розпізнаного SKU (щоб суми сходились)
     for r in data_rows:
         sku = _norm_sku(r['product'])
-        if not sku: continue
+        if not sku:
+            if r['kg'] > 0:
+                sku_unmatched[r['ym']]['o' if r['channel'] == 'Опт' else 'r'] += r['kg']
+            continue
         try:
             mi = MONTH_ORDER.index(r['ym'])
         except ValueError:
@@ -1869,6 +1933,7 @@ def _sales_rows_to_result(data_rows):
         # 🆕 [[YYYY-MM-DD, sku, 'o'|'r', kg, kg_оцінено_з_грн], ...]
         'sku_sales_daily':   [[k[0], k[1], k[2], round(v[0], 2), round(v[1], 2)]
                               for k, v in sorted(sku_daily.items())],
+        'sku_unmatched_kg':  {ym: {k: round(x, 1) for k, x in v.items()} for ym, v in sorted(sku_unmatched.items())},
     }
     print(f"  Sales: {len(months_sorted)} months, opt={round(total_opt/1e6,1)}M, ret={round(total_ret/1e6,1)}M")
     return result
@@ -1943,6 +2008,7 @@ def parse_sales(rows):
         if 'СТРИМТЕХНО' in t or 'Стримтехно' in t: return 'opt1'
         if 'EASY' in t or 'Easy' in t:               return 'opt2'
         if 'Розниц' in t or 'розниц' in t:           return 'ret'
+        if 'Роздріб' in t or 'роздріб' in t:         return 'ret'   # Журнал Відвантажень: op_type='Роздріб' (SRC1)
         return None
 
     for r in data_rows:
@@ -3046,7 +3112,12 @@ if __name__ == '__main__':
     # той самий баг, що ламав П&Л). Формат результату ідентичний parse_sales().
     sales = None
     try:
-        sales = parse_sales_from_journal(fetch_csv(SHIP_SHEET_ID, "Відвантаження"))
+        try:
+            _retail_reg = fetch_csv_gid(RETAIL_SHEET_ID, RETAIL_GID)  # 🆕 роздріб — з Журналу роздрібних продажів
+        except Exception as _e:
+            print(f"  WARNING retail register: {_e} — роздріб лишається з Журналу відвантажень")
+            _retail_reg = None
+        sales = parse_sales_from_journal(fetch_csv(SHIP_SHEET_ID, "Відвантаження"), _retail_reg)
         if sales and 'donut_by_month' in sales:
             for i, ym in enumerate(MONTH_ORDER):
                 if data['income'][i] is None and ym in sales['donut_by_month']:
