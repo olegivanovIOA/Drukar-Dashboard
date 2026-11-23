@@ -23,6 +23,7 @@ jobs:
       - name: Generate dashboard
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          EXPORT_FINANCE_JSON: "1"        # фінанси пишуться лише в agent_data/ → приватний репо, не сюди
         run: python generate.py
 
       - name: Commit and push
@@ -31,4 +32,23 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html middle.html middle_config.json
           git diff --staged --quiet || git commit -m "Auto-update dashboard $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
+
+      # Дані для WhatsApp-офісу агентів → ОКРЕМИЙ ПРИВАТНИЙ репозиторій (у цей публічний — ніколи).
+      # Потрібен секрет AGENT_DATA_TOKEN (fine-grained PAT: репозиторій drukar-agent-data, Contents: Read and write).
+      - name: Publish agent data to private repo
+        if: ${{ always() && hashFiles('agent_data/*.json') != '' }}
+        env:
+          TOKEN: ${{ secrets.AGENT_DATA_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "AGENT_DATA_TOKEN не задано — пропускаю"; exit 0; fi
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/olegivanovIOA/drukar-agent-data.git" /tmp/agent-data
+          mkdir -p /tmp/agent-data/data
+          rm -f /tmp/agent-data/data/*.json
+          cp agent_data/*.json /tmp/agent-data/data/
+          cd /tmp/agent-data
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A data
+          git diff --staged --quiet || git commit -m "Agent data $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
