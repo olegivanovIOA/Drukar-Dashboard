@@ -3,7 +3,9 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
-BUILD: 2026-11-27 14:20 — звірка Журнал відвантажень ↔ P&L по місяцях (build_recon → RECON_DATA, лише ТОП): Клієнт 2↔Easy, Клієнт 1+Роздріб↔ТОВ+ФОП, Разом↔Доходи, поріг 2%.
+BUILD: 2026-11-27 15:50 — Фінанси 2026 (дохід/витрати/чистий прибуток) з P&L; FIN_PROFIT більше не захардкоджений у шаблоні.
+BUILD: 2026-11-27 15:30 — mask_client_names(): назви клієнтів на сторінці → «Клієнт 1/2»; у звірці Easy → «Юрособа 3»; мобільна верстка.
+BUILD: 2026-11-27 14:20 — звірка Журнал відвантажень ↔ P&L по місяцях (build_recon → RECON_DATA, лише ТОП): Клієнт 2↔Юрособа 3, Клієнт 1+Роздріб↔ТОВ+ФОП, Разом↔Доходи, поріг 2%.
 BUILD: 2026-11-27 14:10 — собівартість 1 кг з калькуляції 1С (cost_1c.json → apply_cost_1c, COST_NOTES): вересень 2026 = 199,23 / 247,71; жовт./лист. — не перераховано.
 BUILD: 2026-11-27 13:50 — (1) detect_month_columns: голі «Листопад/Грудень» правіше «Січня» = 2026
 (P&L 2026: листопад потрапляв у «Лис 25» — собівартість зсувалась, Календар управлінця без листопада);
@@ -2578,7 +2580,7 @@ def apply_cost_1c(data):
 
 def build_recon(pnl, jr):
     """Рядки звірки по місяцях 2026: журнал (Клієнт 1, Роздріб, Клієнт 2) ↔ P&L (ТОВ, ФОП, Easy, Доходи).
-    Пари: Клієнт 2↔Easy, Клієнт 1+Роздріб↔ТОВ+ФОП, Разом↔Доходи. Δ% = (журнал − P&L) / P&L."""
+    Пари: Клієнт 2↔Юрособа 3, Клієнт 1+Роздріб↔ТОВ+ФОП, Разом↔Доходи. Δ% = (журнал − P&L) / P&L."""
     from datetime import datetime as _d
     cur = _d.utcnow().strftime('%Y-%m')
     rows = []
@@ -2606,6 +2608,25 @@ def build_recon(pnl, jr):
     print(f"  Звірка журнал↔P&L: {len(rows)} міс.; >2%: "
           f"{[r['ym'] for r in rows if any(abs(r[k] or 0) > 2 for k in ('d_easy','d_tovfop','d_total'))]}")
     return rows
+
+
+# 🆕 2026-11-27: знеособлення назв клієнтів на публічній сторінці (Pages публічний).
+# Застосовується до ВСЬОГО згенерованого HTML (дані проєктів, продажів тощо).
+_CLIENT_MASKS = [
+    (r'(?:ТОВ\s*)?[«"]?\s*Стр[иі]м[\s\-]*Техно\s*[»"]?', 'Клієнт 1'),
+    (r'(?<![А-Яа-яІіЇїЄєҐґA-Za-z])Стр[иі]м(?:техно|ові|ом|у|а|і|е)?(?![А-Яа-яІіЇїЄєҐґ])', 'Клієнт 1'),
+    (r'(?<![А-Яа-яІіЇїЄєҐґA-Za-z])СТР[ИІ]М(?:ТЕХНО)?(?![А-ЯІЇЄҐ])', 'КЛІЄНТ 1'),
+    (r'(?<![А-Яа-яІіЇїЄєҐґA-Za-z])Изи(?![А-Яа-яІіЇїЄєҐґ])', 'Клієнт 2'),
+]
+
+def mask_client_names(html):
+    import re as _rm
+    n = 0
+    for pat, rep in _CLIENT_MASKS:
+        html, k = _rm.subn(pat, rep, html)
+        n += k
+    if n: print(f"  Знеособлено назв клієнтів: {n}")
+    return html
 
 
 def load_resources():
@@ -2962,7 +2983,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         html = html.replace(k, v)
     missing = [k for k in subs if k in html]
     if missing: print(f"WARNING unreplaced: {missing}")
-    return html
+    return mask_client_names(html)
 
 if __name__ == '__main__':
     line_norms = {}
@@ -3149,6 +3170,25 @@ if __name__ == '__main__':
         arr_bal_s  = _cal_extract_row_by_month(row_bal_s,  cal_col_map) if row_bal_s  else [None] * MONTH_COUNT
         arr_bal_e  = _cal_extract_row_by_month(row_bal_e,  cal_col_map) if row_bal_e  else [None] * MONTH_COUNT
         print(f"  Календар: arr_income = {arr_income}")
+
+        # 🆕 2026-11-27: Фінанси (FIN_INCOME / FIN_EXPENSES / FIN_PROFIT) за 2026 — з управлінського P&L,
+        # а не з _AllData_Sebest (там витрати порожні з грудня 2025, прибуток — випадкові значення).
+        # Витрати = Дохід − EBITDA (як у Календарі управлінця); Прибуток = «Чистий прибуток».
+        try:
+            row_net = get_row(cal_pnl_rows, 'чистий прибуток')
+            arr_net = _cal_extract_row_by_month(row_net, cal_col_map) if row_net else [None] * MONTH_COUNT
+            for _k in ('income', 'expenses', 'profit'):
+                if not isinstance(data.get(_k), list) or len(data[_k]) != MONTH_COUNT:
+                    data[_k] = [None] * MONTH_COUNT
+            for i, ym in enumerate(MONTH_ORDER):
+                if not ym.startswith('2026-') or arr_income[i] is None:
+                    continue
+                data['income'][i]   = round(arr_income[i])
+                data['expenses'][i] = round(arr_income[i] - arr_ebitda[i]) if arr_ebitda[i] is not None else None
+                data['profit'][i]   = round(arr_net[i]) if arr_net[i] is not None else None
+            print(f"  Фінанси з P&L: income={data['income']}\n    expenses={data['expenses']}\n    profit={data['profit']}")
+        except Exception as _efin:
+            print(f"  WARNING Фінанси з P&L: {_efin}")
 
         # 🆕 2026-11-27: дохід по юрособах з P&L — для звірки з Журналом відвантажень
         try:

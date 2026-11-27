@@ -56,7 +56,7 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
   .tab:hover{color:var(--text);border-color:var(--border)}
   .tab.active{color:var(--accent);border-color:var(--accent);background:var(--surface);border-bottom-color:var(--surface);margin-bottom:-1px;font-weight:600}
   .main{padding:22px 28px;max-width:1700px;margin:0 auto}
-  .tab-content{display:block!important;position:absolute;visibility:hidden;opacity:0;pointer-events:none;height:0;overflow:hidden;}.tab-content.active{position:static!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:auto!important;overflow:visible!important;}
+  .tab-content{display:block!important;position:absolute;left:0;right:0;max-width:100%;visibility:hidden;opacity:0;pointer-events:none;height:0;overflow:hidden;}.tab-content.active{position:static!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:auto!important;overflow:visible!important;}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
   .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s;box-shadow:var(--shadow)}
   .kpi-card:hover{border-color:var(--accent2)}
@@ -289,6 +289,13 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
   .recon-table td.d-bad{color:#fff;background:#dc2626;font-weight:700;border-radius:3px}
   .recon-table tr.partial td{opacity:.6}
   .recon-table td.sep{border-left:2px solid var(--border)}
+  .recon-toggle{display:none;font-size:10px}
+  @media (max-width:760px){
+    .recon-toggle{display:inline-block}
+    .recon-table:not(.show-amt) .rc-amt{display:none}
+    .recon-table:not(.show-amt) td.sep,.recon-table:not(.show-amt) th.sep{border-left:none}
+    .recon-table th,.recon-table td{padding:6px 5px}
+  }
   /* Ресурси */
   .res-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
   .res-search{flex:1;min-width:220px;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--text);outline:none}
@@ -367,6 +374,7 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
     .card-header{flex-wrap:wrap;gap:8px}
     .card-header>div:last-child{max-width:100%}
     .section-title{font-size:10px;margin-top:14px!important}
+    html,body{overflow-x:clip}  /* 🆕 2026-11-27: прихована вкладка не розширює сторінку вбік */
     /* Сітки з розмітки → одна колонка; KPI-ряди → 2 колонки */
     .m-stack{grid-template-columns:minmax(0,1fr)!important}
     .m-stack>*{grid-row:auto!important;grid-column:auto!important;min-width:0}
@@ -595,14 +603,35 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
       var _now = new Date();
       var CUR_YM = _now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
 
+      var _mob = window.matchMedia && window.matchMedia('(max-width:760px)').matches;
       function fmt(v){
         if(v===null||v===undefined) return '<span style="color:var(--muted)">—</span>';
         var m=v/1000000;
+        if(_mob) return (Math.abs(m)>=1?m.toFixed(1)+'M':(v/1000).toFixed(0)+'K');   // компактно на телефоні
         return (m>=1?m.toFixed(1)+' млн':(v/1000).toFixed(0)+' тис.');
       }
 
+      // 🆕 2026-11-27: на телефоні — транспонована таблиця (місяці рядками), без бокового скролу
+      if(window.matchMedia && window.matchMedia('(max-width:760px)').matches){
+        var mh = '<table style="width:100%;border-collapse:collapse;font-family:IBM Plex Mono,monospace;font-size:10.5px;white-space:nowrap">'
+          + '<thead><tr style="color:var(--muted);font-size:9.5px"><th style="text-align:left;padding:4px">Міс.</th><th style="text-align:right;padding:4px">Поч.</th>'
+          + '<th style="text-align:right;padding:4px;color:var(--good)">▲ Дохід</th><th style="text-align:right;padding:4px;color:var(--bad)">▼ Витр.</th><th style="text-align:right;padding:4px">Кін.</th></tr></thead><tbody>';
+        CF_MONTHS.forEach(function(m,i){
+          var isCur = CF_YM[i]===CUR_YM;
+          mh += '<tr style="border-top:1px solid var(--border);'+(isCur?'background:rgba(37,99,235,.08);outline:2px solid var(--accent);outline-offset:-2px':'')+'">'
+            + '<td style="padding:6px 4px;font-weight:700;color:'+(isCur?'var(--accent)':(CF_INCOME[i]!==null?'var(--text)':'var(--muted)'))+'">'+m+(isCur?' ●':'')+'</td>'
+            + '<td style="text-align:right;padding:6px 4px">'+fmt(CF_BAL_S[i])+'</td>'
+            + '<td style="text-align:right;padding:6px 4px;color:var(--good);font-weight:600">'+fmt(CF_INCOME[i])+'</td>'
+            + '<td style="text-align:right;padding:6px 4px;color:var(--bad);font-weight:600">'+fmt(CF_OUT[i])+'</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-weight:700">'+fmt(CF_BAL_E[i])+'</td></tr>';
+        });
+        mh += '</tbody></table><div style="font-size:9px;color:var(--muted);margin-top:6px;padding:0 4px">● — поточний місяць · Витрати = Дохід − EBITDA (до податків) · млн грн</div>';
+        var mw=document.getElementById('cashCalendarInner'); if(mw) mw.innerHTML=mh;
+        return;
+      }
+
       var cols = '148px repeat('+N+', minmax(0,1fr))';
-      var html = '<div style="display:grid;grid-template-columns:'+cols+';gap:1px;font-family:IBM Plex Mono,monospace">';
+      var html = '<div data-m-done="1" style="display:grid;grid-template-columns:'+cols+';gap:1px;font-family:IBM Plex Mono,monospace">';
 
       // ── Заголовок: порожня кутова клітинка + місяці ──
       html += '<div></div>';
@@ -1955,10 +1984,11 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
     <div class="card-header">
       <div><div class="card-title">Звірка продажів · Журнал відвантажень ↔ P&L</div>
       <div class="card-subtitle">грн за місяць · Δ = (журнал − P&L) / P&L · червоним — розбіжність понад 2%</div></div>
-      <span class="badge badge-blue" id="reconBadge"></span>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="badge badge-blue" id="reconBadge"></span>
+      <button class="topn-btn recon-toggle" id="reconToggle" onclick="document.getElementById('reconTable').classList.toggle('show-amt');this.textContent=document.getElementById('reconTable').classList.contains('show-amt')?'Лише Δ':'Показати суми'">Показати суми</button></div>
     </div>
     <div class="recon-wrap"><table class="recon-table" id="reconTable"></table></div>
-    <div class="note-line" style="margin-top:8px">ℹ Пари: <b>Клієнт 2 ↔ Easy</b>, <b>Клієнт 1 + Роздріб ↔ ТОВ + ФОП</b>, <b>Разом ↔ Доходи</b>. Журнал — первинне джерело; P&L — управлінський документ для перевірки. Поточний місяць неповний (P&L оновлюється із затримкою).</div>
+    <div class="note-line" style="margin-top:8px">ℹ Пари: <b>Клієнт 2 ↔ Юрособа 3</b>, <b>Клієнт 1 + Роздріб ↔ ТОВ + ФОП</b>, <b>Разом ↔ Доходи</b>. Журнал — первинне джерело; P&L — управлінський документ для перевірки. Поточний місяць неповний (P&L оновлюється із затримкою).</div>
   </div>
 </div>
 
@@ -2910,7 +2940,7 @@ const COST_NOTES={{COST_NOTES}};
 const RECON_DATA={{RECON_DATA}}; // 🆕 звірка журнал ↔ P&L (лише ТОП) // 🆕 примітки до собівартості (cost_1c.json)
 const FIN_INCOME=/*INCOME*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_EXPENSES=/*EXPENSES*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
-const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
+const FIN_PROFIT={{PROFIT}}; // 🆕 2026-11-27: було захардкоджено старими числами (KPI «Прибуток · міс.» показував 196 тис.)
 // ── OKR DATA (from Друкар_стратегия_2026.xlsx) ──
 const OKR_COMPANY_PCT={{OKR_COMPANY_PCT}};
 const OKR_DATA={{OKR_DATA}};
@@ -5041,13 +5071,13 @@ function reconRender(){
     var bad=Math.abs(v)>2;
     return '<td class="sep '+(bad?(partial?'':'d-bad'):'d-ok')+'" title="'+(partial?'Поточний місяць — неповний':'')+'">'+(v>0?'+':'')+v.toFixed(1)+'%</td>';
   };
-  var bad=0, h='<thead><tr><th></th><th class="grp" colspan="4">Журнал відвантажень</th><th class="grp" colspan="4">P&L (управлінський)</th><th class="grp" colspan="3">Δ, %</th></tr>'+
-    '<tr><th>Місяць</th><th>Клієнт 1</th><th>Роздріб</th><th>Клієнт 2</th><th>Разом</th><th>ТОВ</th><th>ФОП</th><th>Easy</th><th>Доходи</th><th>Кл.2↔Easy</th><th>Кл.1+Розд↔ТОВ+ФОП</th><th>Разом</th></tr></thead><tbody>';
+  var bad=0, h='<thead><tr><th></th><th class="grp rc-amt" colspan="4">Журнал відвантажень</th><th class="grp rc-amt" colspan="4">P&L (управлінський)</th><th class="grp" colspan="3">Δ, %</th></tr>'+
+    '<tr><th>Місяць</th><th class="rc-amt">Клієнт 1</th><th class="rc-amt">Роздріб</th><th class="rc-amt">Клієнт 2</th><th class="rc-amt">Разом</th><th class="rc-amt">ТОВ</th><th class="rc-amt">ФОП</th><th class="rc-amt">Юрособа 3</th><th class="rc-amt">Доходи</th><th>Кл.2↔ЮО 3</th><th>Кл.1+Розд↔ТОВ+ФОП</th><th>Разом</th></tr></thead><tbody>';
   R.forEach(function(r){
     var m=+r.ym.slice(5,7), lbl=UA[m]+' '+r.ym.slice(2,4)+(r.partial?' *':'');
     if(!r.partial && [r.d_easy,r.d_tovfop,r.d_total].some(function(x){return x!=null&&Math.abs(x)>2;})) bad++;
-    h+='<tr class="'+(r.partial?'partial':'')+'"><td>'+lbl+'</td><td>'+f(r.j_strim)+'</td><td>'+f(r.j_ret)+'</td><td>'+f(r.j_izi)+'</td><td><b>'+f(r.j_total)+'</b></td>'+
-       '<td class="sep">'+f(r.p_tov)+'</td><td>'+f(r.p_fop)+'</td><td>'+f(r.p_easy)+'</td><td><b>'+f(r.p_total)+'</b></td>'+
+    h+='<tr class="'+(r.partial?'partial':'')+'"><td>'+lbl+'</td><td class="rc-amt">'+f(r.j_strim)+'</td><td class="rc-amt">'+f(r.j_ret)+'</td><td class="rc-amt">'+f(r.j_izi)+'</td><td class="rc-amt"><b>'+f(r.j_total)+'</b></td>'+
+       '<td class="sep rc-amt">'+f(r.p_tov)+'</td><td class="rc-amt">'+f(r.p_fop)+'</td><td class="rc-amt">'+f(r.p_easy)+'</td><td class="rc-amt"><b>'+f(r.p_total)+'</b></td>'+
        d(r.d_easy,r.partial)+d(r.d_tovfop,r.partial)+d(r.d_total,r.partial)+'</tr>';
   });
   tb.innerHTML=h+'</tbody>';
