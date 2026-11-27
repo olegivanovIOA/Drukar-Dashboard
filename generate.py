@@ -3,6 +3,7 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-11-27 14:20 — звірка Журнал відвантажень ↔ P&L по місяцях (build_recon → RECON_DATA, лише ТОП): Изи↔Easy, Стрім+Роздріб↔ТОВ+ФОП, Разом↔Доходи, поріг 2%.
 BUILD: 2026-11-27 14:10 — собівартість 1 кг з калькуляції 1С (cost_1c.json → apply_cost_1c, COST_NOTES): вересень 2026 = 199,23 / 247,71; жовт./лист. — не перераховано.
 BUILD: 2026-11-27 13:50 — (1) detect_month_columns: голі «Листопад/Грудень» правіше «Січня» = 2026
 (P&L 2026: листопад потрапляв у «Лис 25» — собівартість зсувалась, Календар управлінця без листопада);
@@ -1720,7 +1721,16 @@ def parse_sales_from_journal(rows, retail_rows=None):
         data_rows = [r for r in data_rows if not (r['channel'] == 'Розница' and r['ym'] >= first_ym)] + reg
         print(f"  Роздріб з реєстру: {len(reg)} рядків (з {first_ym}); замінено SRC1 журналу: {before - (len(data_rows) - len(reg))}")
 
-    return _sales_rows_to_result(data_rows)
+    res = _sales_rows_to_result(data_rows)
+    # 🆕 2026-11-27: суми журналу по каналах (для звірки з P&L): Стрім=SRC2, Изи=SRC3, Роздріб
+    rj = {}
+    for r in data_rows:
+        k = {'СТРИМТЕХНО': 'strim', 'EASY': 'izi', 'Роздріб': 'ret'}.get(r.get('op_type'))
+        if not k: continue
+        d = rj.setdefault(r['ym'], {'strim': 0.0, 'izi': 0.0, 'ret': 0.0})
+        d[k] += r['revenue']
+    res['recon_journal'] = rj
+    return res
 
 
 def _retail_register_rows(rows):
@@ -2566,6 +2576,38 @@ def apply_cost_1c(data):
     return notes
 
 
+def build_recon(pnl, jr):
+    """Рядки звірки по місяцях 2026: журнал (Стрім, Роздріб, Изи) ↔ P&L (ТОВ, ФОП, Easy, Доходи).
+    Пари: Изи↔Easy, Стрім+Роздріб↔ТОВ+ФОП, Разом↔Доходи. Δ% = (журнал − P&L) / P&L."""
+    from datetime import datetime as _d
+    cur = _d.utcnow().strftime('%Y-%m')
+    rows = []
+    for ym in [m for m in MONTH_ORDER if m.startswith('2026-') and m <= cur]:
+        p = pnl.get(ym) or {}; j = jr.get(ym) or {}
+        if not p and not j: continue
+        n = lambda v: round(v) if v is not None else None
+        if not j:   # місяця немає в журналі — не рахуємо −100%, показуємо «—»
+            rows.append({'ym': ym, 'partial': ym == cur, 'j_strim': None, 'j_ret': None, 'j_izi': None, 'j_total': None,
+                         'p_tov': p.get('tov'), 'p_fop': p.get('fop'), 'p_easy': p.get('easy'), 'p_total': p.get('total'),
+                         'd_easy': None, 'd_tovfop': None, 'd_total': None})
+            continue
+        js, jrt, ji = j.get('strim', 0), j.get('ret', 0), j.get('izi', 0)
+        pt, pf, pe = p.get('tov'), p.get('fop'), p.get('easy')
+        ptot = p.get('total')
+        if ptot is None and any(v is not None for v in (pt, pf, pe)):
+            ptot = (pt or 0) + (pf or 0) + (pe or 0)
+        def pct(a, b):
+            return round((a - b) / b * 100, 1) if b else None
+        tf = (pt or 0) + (pf or 0) if (pt is not None or pf is not None) else None
+        rows.append({'ym': ym, 'partial': ym == cur,
+                     'j_strim': n(js), 'j_ret': n(jrt), 'j_izi': n(ji), 'j_total': n(js + jrt + ji),
+                     'p_tov': n(pt), 'p_fop': n(pf), 'p_easy': n(pe), 'p_total': n(ptot),
+                     'd_easy': pct(ji, pe), 'd_tovfop': pct(js + jrt, tf), 'd_total': pct(js + jrt + ji, ptot)})
+    print(f"  Звірка журнал↔P&L: {len(rows)} міс.; >2%: "
+          f"{[r['ym'] for r in rows if any(abs(r[k] or 0) > 2 for k in ('d_easy','d_tovfop','d_total'))]}")
+    return rows
+
+
 def load_resources():
     """resources.json → {'groups': [{'name','icon','links':[{'title','url','desc'}]}]}.
     Якщо файлу немає або він битий — порожній список (вкладка покаже підказку)."""
@@ -2896,6 +2938,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{PROJECTS_DATA}}':  _jd(data.get('projects') or {'projects': [], 'general_notes': [], 'layers_all': [],
                                                           'error': 'дані не завантажено'}),
         '{{HR_DATA}}':        _jd(data.get('hr') or {'months': [], 'error': 'дані не завантажено', 'source_url': ''}),
+        '{{RECON_DATA}}': _jd(data.get('recon') or [] if mode == 'top' else []),
         '{{COST_NOTES}}': _jd(data.get('cost_notes') or []),
         '{{RESOURCES_DATA}}': _jd(resources_for_mode(data.get('resources') or {'groups': [], 'updated': ''}, mode)),
     })
@@ -3107,6 +3150,20 @@ if __name__ == '__main__':
         arr_bal_e  = _cal_extract_row_by_month(row_bal_e,  cal_col_map) if row_bal_e  else [None] * MONTH_COUNT
         print(f"  Календар: arr_income = {arr_income}")
 
+        # 🆕 2026-11-27: дохід по юрособах з P&L — для звірки з Журналом відвантажень
+        try:
+            _rp = {}
+            for key, kw in (('tov', 'дохід від продажу товарів тов'), ('fop', 'дохід від продажу товарів фоп'),
+                            ('easy', 'дохід від продажу товарів easy')):
+                rr = get_row(cal_pnl_rows, kw)
+                _rp[key] = _cal_extract_row_by_month(rr, cal_col_map) if rr else [None] * MONTH_COUNT
+            _rp['total'] = arr_income
+            data['recon_pnl'] = {ym: {k: _rp[k][i] for k in _rp} for i, ym in enumerate(MONTH_ORDER)
+                                 if any(_rp[k][i] is not None for k in _rp)}
+            print(f"  Звірка: P&L по юрособах — {sorted(data['recon_pnl'])}")
+        except Exception as _erp:
+            print(f"  WARNING звірка P&L: {_erp}")
+
         UA_CAL = {'01':'Січ','02':'Лют','03':'Бер','04':'Кві','05':'Тра','06':'Чер',
                   '07':'Лип','08':'Сер','09':'Вер','10':'Жов','11':'Лис','12':'Гру'}
         # Фіксований діапазон Січ-Гру 2026 (як у графіку виробництва вище) —
@@ -3196,6 +3253,9 @@ if __name__ == '__main__':
             print(f"  Income after sales backfill: {data['income']}")
     except Exception as e:
         print(f"WARNING sales: {e}")
+
+    # 🆕 2026-11-27: звірка Журнал відвантажень ↔ управлінський P&L (лише ТОП)
+    data['recon'] = build_recon(data.get('recon_pnl') or {}, (sales or {}).get('recon_journal') or {})
 
     # ── 4b. Роздрібні продажі (окремий Google Sheet) ──────────
     # ВИМКНЕНО з 07.2026: Журнал Відвантажень (крок 4 вище) вже містить роздріб
