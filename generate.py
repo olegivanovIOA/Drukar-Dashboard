@@ -3,6 +3,12 @@ generate.py — читает Google Sheets → генерирует index.html
 Поддерживает данные за любой месяц с Ноябрь 2025 по Декабрь 2026.
 Таблицы должны быть публичными (Поділитися → Всі з посиланням → Переглядач).
 
+BUILD: 2026-11-27 14:10 — собівартість 1 кг з калькуляції 1С (cost_1c.json → apply_cost_1c, COST_NOTES): вересень 2026 = 199,23 / 247,71; жовт./лист. — не перераховано.
+BUILD: 2026-11-27 13:50 — (1) detect_month_columns: голі «Листопад/Грудень» правіше «Січня» = 2026
+(P&L 2026: листопад потрапляв у «Лис 25» — собівартість зсувалась, Календар управлінця без листопада);
+(2) Журнал відвантажень читається через export по gid (SHIP_GID), gviz — запасний; _ship_num() для
+чисел «3 615,00» (у листопаді 2026 на дашборді не було жодного відвантаження Стрім/SRC2).
+
 BUILD: 2026-10-12 19:40 — нова вкладка HR (лист «Плинність кадрів» HR-файлу → HR_DATA, лише числа,
 без коментарів з ПІБ); «Склад» прихований у ТОП (middle_config.json: inventory.top=false).
 
@@ -38,6 +44,7 @@ STRATEGY_SHEET_ID = os.environ.get("STRATEGY_SHEET_ID", "1ASrf0kKP_0uIBdLCB__hoY
 STRATEGY_FILE = "Друкар_стратегия_2026.xlsx"
 RETAIL_SHEET_ID   = os.environ.get("RETAIL_SHEET_ID",   "1W4mHhbIy43xxTuTQA2nl1atYag8ynlkHpbY_Fx6JUdk")
 RETAIL_GID        = os.environ.get("RETAIL_GID", "1793222686")   # лист «2026» Журналу роздрібних продажів
+SHIP_GID          = os.environ.get("SHIP_GID",   "2082267454")   # 🆕 лист «Відвантаження» Журналу відвантажень (export by gid)
 # Журнал Відвантажень — об'єднаний реєстр ТОВ(Стрім)+ФОП(Роздріб)+Easy(Изи), лист "Відвантаження".
 # З 07.2026 вкладка "Продажі" рахується САМЕ з нього (замість _AllData_$), бо _AllData_$
 # відстає від бухгалтера (той самий баг, що давав 0 доходу за минулі місяці в ПнЛ).
@@ -381,6 +388,15 @@ def detect_month_columns(rows):
                 if kw in cell_l and month_key not in mapping:
                     mapping[month_key] = ci
                     break  # знайшли для цієї клітинки — далі не перевіряємо
+    # 🆕 2026-11-27: голі «Листопад»/«Грудень» без року ПРАВІШЕ «Січня» — це 2026-й
+    # (аркуш на рік Січ→Гру, напр. «P&L 2026»), а не 2025-й. Раніше листопад 2026
+    # потрапляв у слот «Лис 25» (собівартість, Календар управлінця без листопада).
+    jan = mapping.get('2026-01')
+    if jan is not None:
+        for old_key, new_key in (('2025-11', '2026-11'), ('2025-12', '2026-12')):
+            ci = mapping.get(old_key)
+            if ci is not None and ci > jan and new_key not in mapping:
+                mapping[new_key] = mapping.pop(old_key)
     col_start = min(mapping.values()) if mapping else 2
     print(f"  Month columns detected: {mapping}")
     return mapping, col_start
@@ -1584,6 +1600,25 @@ def _cal_extract_row_by_month(row, col_map):
             result[i] = _pnl_num(row[ci])
     return result
 
+def _ship_num(v):
+    """🆕 2026-11-27: число з клітинки журналу в будь-якому форматі —
+    «3 615,00» (пробіл/NBSP/вузький NBSP як роздільник тисяч, кома як десяткова),
+    «3615.00», «1,670.00». export?format=csv віддає відформатовані значення."""
+    import re as _rn
+    t = _rn.sub(r'[\s\u00a0\u202f\u2009]', '', str(v or ''))
+    if not t:
+        return 0.0
+    if ',' in t and '.' in t:
+        t = t.replace(',', '')            # 1,670.00 → 1670.00
+    elif ',' in t:
+        t = t.replace(',', '.')           # 3615,00 → 3615.00
+    t = _rn.sub(r'[^\d.\-]', '', t)
+    try:
+        return float(t)
+    except ValueError:
+        return 0.0
+
+
 def parse_sales_from_journal(rows, retail_rows=None):
     """
     Парсить продажі з Журналу Відвантажень (SHIP_SHEET_ID, лист "Відвантаження") —
@@ -1650,12 +1685,8 @@ def parse_sales_from_journal(rows, retail_rows=None):
             if d.year < 2020: continue
         except: continue
 
-        try: revenue = float(str(row[col_sum]).replace(',', '.').replace(' ', '').replace('\xa0', '')) if row[col_sum] else 0
-        except: revenue = 0
-        kg = 0.0
-        if col_kg is not None and len(row) > col_kg:
-            try: kg = float(str(row[col_kg]).replace(',', '.').replace(' ', '').replace('\xa0', '')) if row[col_kg] else 0
-            except: kg = 0
+        revenue = _ship_num(row[col_sum])
+        kg = _ship_num(row[col_kg]) if col_kg is not None and len(row) > col_kg else 0.0
         if revenue <= 0 and kg <= 0: continue
 
         product = str(row[col_name]).strip() if col_name is not None and len(row) > col_name else ''
@@ -2506,6 +2537,35 @@ def parse_hr_turnover(rows):
     return out
 
 
+COST_1C_FILE = "cost_1c.json"
+
+def apply_cost_1c(data):
+    """🆕 2026-11-27: собівартість 1 кг з калькуляції 1С (cost_1c.json) поверх P&L 2026.
+    null у файлі = прибрати значення місяця (не перераховано). Повертає список приміток."""
+    notes = []
+    try:
+        with open(COST_1C_FILE, 'r', encoding='utf-8') as fh:
+            months = (json.load(fh) or {}).get('months') or {}
+    except FileNotFoundError:
+        return notes
+    except Exception as e:
+        print(f"  WARNING {COST_1C_FILE}: {e}")
+        return notes
+    for ym in sorted(months):
+        if ym not in MONTH_ORDER:
+            continue
+        i = MONTH_ORDER.index(ym); m = months[ym] or {}
+        for key, arr in (('petg', 'cost_petg_kg'), ('pla', 'cost_pla_kg')):
+            if key in m:
+                if not data.get(arr): data[arr] = [None] * MONTH_COUNT
+                v = m[key]
+                data[arr][i] = round(float(v), 2) if v is not None else None
+        if m.get('note'):
+            notes.append(str(m['note']))
+    print(f"  Собівартість 1С: {sorted(months)} → PETG {data.get('cost_petg_kg')} · PLA {data.get('cost_pla_kg')}")
+    return notes
+
+
 def load_resources():
     """resources.json → {'groups': [{'name','icon','links':[{'title','url','desc'}]}]}.
     Якщо файлу немає або він битий — порожній список (вкладка покаже підказку)."""
@@ -2836,6 +2896,7 @@ def generate(data, calc, calc_ext, sales=None, okr=None, hm_labels=None, hm_data
         '{{PROJECTS_DATA}}':  _jd(data.get('projects') or {'projects': [], 'general_notes': [], 'layers_all': [],
                                                           'error': 'дані не завантажено'}),
         '{{HR_DATA}}':        _jd(data.get('hr') or {'months': [], 'error': 'дані не завантажено', 'source_url': ''}),
+        '{{COST_NOTES}}': _jd(data.get('cost_notes') or []),
         '{{RESOURCES_DATA}}': _jd(resources_for_mode(data.get('resources') or {'groups': [], 'updated': ''}, mode)),
     })
     # OKR placeholders — завжди замінюємо, навіть якщо okr=None (щоб не було JS syntax error)
@@ -3117,7 +3178,16 @@ if __name__ == '__main__':
         except Exception as _e:
             print(f"  WARNING retail register: {_e} — роздріб лишається з Журналу відвантажень")
             _retail_reg = None
-        sales = parse_sales_from_journal(fetch_csv(SHIP_SHEET_ID, "Відвантаження"), _retail_reg)
+        # 🆕 2026-11-27: export по gid (точні значення) — gviz вгадував типи колонок і
+        # губив частину рядків (листопад 2026: не було жодного відвантаження Стрім/SRC2).
+        try:
+            _ship_rows = fetch_csv_gid(SHIP_SHEET_ID, SHIP_GID)
+            if not _ship_rows or 'джерело' not in ' '.join(str(c).lower() for c in _ship_rows[0]):
+                raise ValueError('export: не той лист або порожньо')
+        except Exception as _e:
+            print(f"  WARNING Журнал відвантажень export: {_e} — fallback gviz")
+            _ship_rows = fetch_csv(SHIP_SHEET_ID, "Відвантаження")
+        sales = parse_sales_from_journal(_ship_rows, _retail_reg)
         if sales and 'donut_by_month' in sales:
             for i, ym in enumerate(MONTH_ORDER):
                 if data['income'][i] is None and ym in sales['donut_by_month']:
@@ -3269,6 +3339,8 @@ if __name__ == '__main__':
 
     # ── 8. 🆕 Корисні ресурси (resources.json у репо) ─────────
     data['resources'] = load_resources()
+    # 🆕 Собівартість з калькуляції 1С (cost_1c.json) — поверх P&L
+    data['cost_notes'] = apply_cost_1c(data)
 
     # ── 9. 🆕 HR — лист «Плинність кадрів» (лише числа) ───────
     _hr_url = f"https://docs.google.com/spreadsheets/d/{HR_SHEET_ID}/edit#gid={HR_TURNOVER_GID}"

@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-09-30 20:10 — усе виробниче — з журналів (djLoad з перевіркою колонок за вмістом): День/Ніч, PETG/PLA, тижневі теплокарти, понеділковий аналіз, Оператори (внесок = «Эффективность»×продукція блоку, старші зміни); _AllData_Product не читається; банер лише при зламаній структурі журналу; Фінанси — підписи собівартості без накладань.
+<!-- BUILD: 2026-11-27 14:10 — Фінанси: примітка під «Собівартість 1 кг» (COST_NOTES з cost_1c.json — калькуляція 1С).
+     BUILD: 2026-11-27 13:40 — виправлено «wLabels is not defined»: прибрано осиротілий код графіків waPlasticKgChart/waPlasticCoilsChart (без canvas, поза функцією waRender). Ресурси: анімована схема «Процес виробництва філаменту» (як на 3drukar.com/#process, блок dkp-*), посилання на сайт 3drukar.com у групі «Маркетинг» (resources.json).
+     BUILD: 2026-09-30 20:10 — усе виробниче — з журналів (djLoad з перевіркою колонок за вмістом): День/Ніч, PETG/PLA, тижневі теплокарти, понеділковий аналіз, Оператори (внесок = «Эффективность»×продукція блоку, старші зміни); _AllData_Product не читається; банер лише при зламаній структурі журналу; Фінанси — підписи собівартості без накладань.
      BUILD: 2026-09-30 18:40 — «Продуктивність ліній по днях» теж з журналів (графік вічно «завантажувався» через зламаний _AllData_Product); банер про зламаний _AllData прибрано з вкладки «Лінії».
      BUILD: 2026-09-30 18:10 — Лінії/рекорди: дані з ЖУРНАЛІВ локацій (маса лінії за зміну напряму), а не з _AllData (там зсув колонок, немає «Вид», вклади ≠100% → рекорди ×2); оператори зміни й контроль «Эффективность, %» — з журналу; перелік змін з порожньою/несходною ефективністю.
      BUILD: 2026-09-27 11:35 — OKR: таблиця «Прогноз досягнення 100%» — лише компанія та основні ОКР, без персональних OKR_<Ім'я>.
@@ -1452,7 +1454,7 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
   <div class="section-title">Фінансовий аналіз</div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><div><div class="card-title">Доход та Витрати</div><div class="card-subtitle">грн · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="incExpChart"></canvas></div></div>
-    <div class="card"><div class="card-header"><div><div class="card-title">Собівартість 1 кг</div><div class="card-subtitle">PETG та PLA, грн/кг · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="costPerKgChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Собівартість 1 кг</div><div class="card-subtitle">PETG та PLA, грн/кг · пунктир = тренд</div></div></div><div class="cw-lg"><canvas id="costPerKgChart"></canvas></div><div class="note-line" id="cpkNote" style="margin-top:6px"></div></div>
   </div>
 </div>
 
@@ -2297,6 +2299,230 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
     <span class="pf-badge" id="resBadge"></span>
   </div>
   <div id="resGrid" class="res-grid"></div>
+  <div class="section-title" style="margin-top:22px">Процес виробництва філаменту</div>
+<!-- ===== DRUKAR: анімована схема виробництва філаменту ===== -->
+<!-- Самодостатній блок: вставити в template.html у потрібну вкладку. Усі класи з префіксом dkp- -->
+<style>
+.dkp-wrap{font-family:Inter,Segoe UI,Arial,sans-serif;background:#f7f9ff;border:1px solid #e3e8f5;border-radius:18px;padding:18px 18px 12px;margin:16px 0}
+.dkp-title{font-weight:700;font-size:16px;color:#1d2b5e;margin:0 0 8px 4px}
+.dkp-svg{width:100%;height:auto;display:block}
+.dkp-svg text{font-family:Inter,Segoe UI,Arial,sans-serif}
+/* гранули падають */
+.dkp-pel{animation:dkpFall 2.4s linear infinite}
+.dkp-pel.d2{animation-delay:.8s}.dkp-pel.d3{animation-delay:1.6s}
+@keyframes dkpFall{0%{transform:translateY(-10px);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translateY(190px);opacity:0}}
+/* шнек */
+.dkp-screw{animation:dkpScrew 1.2s linear infinite}
+@keyframes dkpScrew{from{transform:translateX(0)}to{transform:translateX(56px)}}
+/* пара/тепло */
+.dkp-heat{animation:dkpHeat 2s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom}
+.dkp-heat.d2{animation-delay:.5s}.dkp-heat.d3{animation-delay:1s}
+@keyframes dkpHeat{0%,100%{transform:translateY(0) scaleY(1);opacity:.9}50%{transform:translateY(-8px) scaleY(1.12);opacity:.45}}
+/* нитка рухається */
+.dkp-fil{stroke-dasharray:26 10;animation:dkpFlow .9s linear infinite}
+@keyframes dkpFlow{to{stroke-dashoffset:-36}}
+/* хвилі та бульбашки */
+.dkp-wave{animation:dkpWave 3s ease-in-out infinite}
+@keyframes dkpWave{0%,100%{transform:translateX(0)}50%{transform:translateX(-24px)}}
+.dkp-bub{animation:dkpBub 3s ease-in infinite}
+.dkp-bub.d2{animation-delay:1s}.dkp-bub.d3{animation-delay:2s}
+@keyframes dkpBub{0%{transform:translateY(0);opacity:0}20%{opacity:.9}100%{transform:translateY(-110px);opacity:0}}
+/* лазер */
+.dkp-beam{animation:dkpBeam 1s ease-in-out infinite}
+@keyframes dkpBeam{0%,100%{opacity:1}50%{opacity:.35}}
+/* обертання */
+.dkp-rot{transform-box:fill-box;transform-origin:center;animation:dkpRot 1.6s linear infinite}
+.dkp-rot.rev{animation-direction:reverse}
+.dkp-rot.slow{animation-duration:7s}
+@keyframes dkpRot{to{transform:rotate(360deg)}}
+/* інтерактив */
+.dkp-zone{cursor:pointer}
+.dkp-zone .dkp-hl{fill:transparent;transition:fill .2s}
+.dkp-zone:hover .dkp-hl,.dkp-zone.on .dkp-hl{fill:rgba(46,64,200,.06)}
+.dkp-zone .dkp-badge{transition:transform .2s;transform-box:fill-box;transform-origin:center}
+.dkp-zone:hover .dkp-badge,.dkp-zone.on .dkp-badge{transform:scale(1.15)}
+.dkp-info{min-height:44px;margin:4px 6px 0;padding:10px 14px;border-radius:12px;background:#fff;border:1px solid #e3e8f5;color:#33406b;font-size:14px;line-height:1.45}
+.dkp-info b{color:#2333b8}
+.dkp-src{margin:6px 8px 0;font-size:11px;color:#7a86ad;text-align:right}
+.dkp-src a{color:#2a3bbf;text-decoration:none}
+.dkp-paused *{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){.dkp-wrap *{animation:none!important}}
+</style>
+
+<div class="dkp-wrap" id="dkpProcess">
+    <svg class="dkp-svg" viewBox="60 60 1890 630" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <clipPath id="dkpBarrelClip"><rect x="178" y="330" width="570" height="104" rx="22"/></clipPath>
+      <clipPath id="dkpHopperClip"><path d="M126 96 H332 L262 248 H196 Z M212 248 H248 V330 H212 Z"/></clipPath>
+      <clipPath id="dkpBathClip"><rect x="898" y="340" width="300" height="182" rx="6"/></clipPath>
+      <linearGradient id="dkpHeatGrad" x1="0" x2="1">
+        <stop offset="0" stop-color="#e9eefc"/><stop offset=".45" stop-color="#f3d9b5"/><stop offset="1" stop-color="#e89a8e"/>
+      </linearGradient>
+      <pattern id="dkpStripes" width="56" height="104" patternUnits="userSpaceOnUse">
+        <path d="M18 104 L46 0" stroke="#8d9bd6" stroke-width="12" opacity=".55"/>
+      </pattern>
+    </defs>
+
+    <line x1="70" y1="556" x2="1940" y2="556" stroke="#d7dcef" stroke-width="4"/>
+
+    <!-- 1. Гранули -->
+    <g class="dkp-zone" data-step="1">
+      <rect class="dkp-hl" x="100" y="70" width="260" height="610" rx="16"/>
+      <path d="M122 94 H336 L264 250 H194 Z" fill="#eef1fc" stroke="#1d2b5e" stroke-width="7" stroke-linejoin="round"/>
+      <rect x="208" y="250" width="44" height="80" fill="#eef1fc" stroke="#1d2b5e" stroke-width="6"/>
+      <g clip-path="url(#dkpHopperClip)">
+        <g fill="#fff" stroke="#5263b8" stroke-width="3">
+          <rect x="200" y="200" width="20" height="13" rx="6"/><rect x="222" y="196" width="20" height="13" rx="6"/>
+          <rect x="244" y="204" width="20" height="13" rx="6"/><rect x="210" y="214" width="20" height="13" rx="6"/>
+          <rect x="234" y="218" width="20" height="13" rx="6"/><rect x="196" y="226" width="20" height="13" rx="6"/>
+          <rect x="222" y="232" width="20" height="13" rx="6"/><rect x="246" y="230" width="20" height="13" rx="6"/>
+          <rect class="dkp-pel" x="226" y="100" width="20" height="13" rx="6"/>
+          <rect class="dkp-pel d2" x="212" y="110" width="20" height="13" rx="6"/>
+          <rect class="dkp-pel d3" x="238" y="104" width="20" height="13" rx="6"/>
+        </g>
+      </g>
+      <circle class="dkp-badge" cx="228" cy="608" r="21" fill="#2a3bbf"/>
+      <text x="228" y="616" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">1</text>
+      <text x="228" y="664" text-anchor="middle" font-size="26" font-weight="700" fill="#1d2b5e">Гранула</text>
+    </g>
+
+    <!-- 2. Екструдер -->
+    <g class="dkp-zone" data-step="2">
+      <rect class="dkp-hl" x="84" y="90" width="760" height="590" rx="16" style="pointer-events:none"/>
+      <rect x="370" y="90" width="470" height="590" fill="transparent"/>
+      <rect x="92" y="324" width="80" height="124" rx="14" fill="#1d2b5e"/>
+      <rect x="326" y="450" width="26" height="104" fill="#aab2c9"/><rect x="678" y="450" width="26" height="104" fill="#aab2c9"/>
+      <rect x="172" y="324" width="584" height="124" rx="26" fill="url(#dkpHeatGrad)" stroke="#1d2b5e" stroke-width="7"/>
+      <g clip-path="url(#dkpBarrelClip)">
+        <rect class="dkp-screw" x="122" y="330" width="680" height="104" fill="url(#dkpStripes)"/>
+      </g>
+      <rect x="268" y="320" width="54" height="132" rx="6" fill="#f0c45a" opacity=".85"/>
+      <rect x="386" y="320" width="54" height="132" rx="6" fill="#ec9535" opacity=".9"/>
+      <rect x="502" y="320" width="54" height="132" rx="6" fill="#e5703a" opacity=".9"/>
+      <rect x="620" y="320" width="54" height="132" rx="6" fill="#df6457" opacity=".85"/>
+      <path d="M756 344 L828 378 V394 L756 428 Z" fill="#1d2b5e"/>
+      <g fill="none" stroke-width="5" stroke-linecap="round">
+        <path class="dkp-heat" d="M308 296 c-12 -20 12 -30 0 -60" stroke="#f0c45a"/>
+        <path class="dkp-heat d2" d="M424 296 c-12 -20 12 -30 0 -60" stroke="#ec9535"/>
+        <path class="dkp-heat d3" d="M540 296 c-12 -20 12 -30 0 -60" stroke="#e5703a"/>
+        <path class="dkp-heat" d="M640 300 c-12 -20 12 -30 0 -60" stroke="#d6473b"/>
+      </g>
+      <rect x="470" y="94" width="22" height="78" rx="11" fill="#fff" stroke="#1d2b5e" stroke-width="5"/>
+      <rect x="477" y="124" width="8" height="44" fill="#d6473b"><animate attributeName="y" values="132;118;132" dur="3s" repeatCount="indefinite"/><animate attributeName="height" values="36;50;36" dur="3s" repeatCount="indefinite"/></rect>
+      <circle cx="481" cy="176" r="17" fill="#d6473b" stroke="#1d2b5e" stroke-width="5"/>
+      <text x="522" y="152" font-size="28" font-weight="700" fill="#d6473b">Нагрів 200–240 °C</text>
+      <circle class="dkp-badge" cx="491" cy="608" r="21" fill="#2a3bbf"/>
+      <text x="491" y="616" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">2</text>
+      <text x="491" y="664" text-anchor="middle" font-size="26" font-weight="700" fill="#1d2b5e">Екструдер</text>
+    </g>
+
+    <!-- нитка -->
+    <line x1="828" y1="386" x2="1600" y2="386" stroke="#c7d0f6" stroke-width="7"/>
+    <line class="dkp-fil" x1="828" y1="386" x2="1600" y2="386" stroke="#6f86e8" stroke-width="7"/>
+
+    <!-- 3. Охолодження -->
+    <g class="dkp-zone" data-step="3">
+      <rect class="dkp-hl" x="870" y="300" width="356" height="380" rx="16"/>
+      <rect x="912" y="528" width="16" height="26" fill="#aab2c9"/><rect x="1164" y="528" width="16" height="26" fill="#aab2c9"/>
+      <g clip-path="url(#dkpBathClip)">
+        <path class="dkp-wave" d="M880 376 q38 -18 76 0 t76 0 t76 0 t76 0 t76 0 V530 H880 Z" fill="#b9c8f0"/>
+        <g fill="#fff" opacity=".85">
+          <circle class="dkp-bub" cx="950" cy="500" r="6"/><circle class="dkp-bub d2" cx="1050" cy="510" r="5"/><circle class="dkp-bub d3" cx="1148" cy="495" r="6"/>
+        </g>
+      </g>
+      <line class="dkp-fil" x1="890" y1="386" x2="1200" y2="386" stroke="#6f86e8" stroke-width="7"/>
+      <path d="M890 336 V524 H1204 V336" fill="none" stroke="#1d2b5e" stroke-width="7" stroke-linejoin="round"/>
+      <circle class="dkp-badge" cx="1047" cy="608" r="21" fill="#2a3bbf"/>
+      <text x="1047" y="616" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">3</text>
+      <text x="1047" y="664" text-anchor="middle" font-size="26" font-weight="700" fill="#1d2b5e">Охолодження</text>
+    </g>
+
+    <!-- 4. Лазер -->
+    <g class="dkp-zone" data-step="4">
+      <rect class="dkp-hl" x="1266" y="270" width="130" height="410" rx="16"/>
+      <rect x="1282" y="286" width="100" height="208" rx="16" fill="#1d2b5e"/>
+      <rect x="1294" y="300" width="76" height="40" rx="6" fill="#0e1636"/>
+      <text id="dkpLaserVal" x="1332" y="330" text-anchor="middle" font-size="25" font-weight="700" fill="#8ef0a0" font-family="monospace">1.75</text>
+      <rect x="1282" y="370" width="100" height="32" fill="#0e1636"/>
+      <line class="dkp-fil" x1="1282" y1="386" x2="1382" y2="386" stroke="#8fa2f2" stroke-width="7"/>
+      <line class="dkp-beam" x1="1312" y1="346" x2="1312" y2="424" stroke="#e0323a" stroke-width="3"/>
+      <line class="dkp-beam" x1="1351" y1="346" x2="1351" y2="424" stroke="#e0323a" stroke-width="3"/>
+      <circle class="dkp-badge" cx="1331" cy="608" r="21" fill="#2a3bbf"/>
+      <text x="1331" y="616" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">4</text>
+      <text x="1331" y="664" text-anchor="middle" font-size="26" font-weight="700" fill="#1d2b5e">Лазер</text>
+    </g>
+
+    <!-- 5. Тягнучий пристрій -->
+    <g class="dkp-zone" data-step="5">
+      <rect class="dkp-hl" x="1400" y="290" width="112" height="390" rx="16"/>
+      <g class="dkp-rot">
+        <circle cx="1456" cy="346" r="38" fill="#f0c43a" stroke="#1d2b5e" stroke-width="6"/>
+        <path d="M1456 310 V382 M1420 346 H1492" stroke="#1d2b5e" stroke-width="4"/>
+        <circle cx="1456" cy="346" r="6" fill="#1d2b5e"/>
+      </g>
+      <g class="dkp-rot rev">
+        <circle cx="1456" cy="425" r="38" fill="#f0c43a" stroke="#1d2b5e" stroke-width="6"/>
+        <path d="M1456 389 V461 M1420 425 H1492" stroke="#1d2b5e" stroke-width="4"/>
+        <circle cx="1456" cy="425" r="6" fill="#1d2b5e"/>
+      </g>
+      <circle class="dkp-badge" cx="1456" cy="608" r="21" fill="#2a3bbf"/>
+      <text x="1456" y="616" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">5</text>
+      <text x="1456" y="664" text-anchor="middle" font-size="26" font-weight="700" fill="#1d2b5e">Тягнучий</text>
+    </g>
+
+    <!-- 6. Намотування -->
+    <g class="dkp-zone" data-step="6">
+      <rect class="dkp-hl" x="1580" y="210" width="340" height="470" rx="16"/>
+      <g class="dkp-rot slow">
+        <circle cx="1748" cy="386" r="152" fill="#1d2b5e"/>
+        <circle cx="1748" cy="386" r="138" fill="#3646c9"/>
+        <g fill="none" stroke="#5f70e6" stroke-width="3">
+          <circle cx="1748" cy="386" r="126"/><circle cx="1748" cy="386" r="114"/><circle cx="1748" cy="386" r="102"/><circle cx="1748" cy="386" r="90"/>
+        </g>
+        <path d="M1680 270 L1706 310 M1880 386 L1836 386 M1700 500 L1720 465" stroke="#8da0f0" stroke-width="3"/>
+      </g>
+      <circle cx="1748" cy="386" r="80" fill="#fff" stroke="#1d2b5e" stroke-width="6"/>
+      <text x="1748" y="397" text-anchor="middle" font-size="30" font-weight="900" fill="#2333b8" transform="rotate(-28 1748 386)" letter-spacing="1">DRUKAR</text>
+      <circle class="dkp-badge" cx="1748" cy="608" r="21" fill="#2a3bbf"/>
+      <text x="1748" y="616" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">6</text>
+      <text x="1748" y="664" text-anchor="middle" font-size="26" font-weight="700" fill="#1d2b5e">Намотування</text>
+    </g>
+  </svg>
+  <div class="dkp-info" id="dkpInfo">Наведіть на етап, щоб побачити опис. Клік по схемі — пауза/старт анімації.</div>
+  <div class="dkp-src">Схема як на сайті · <a href="https://3drukar.com/#process" target="_blank" rel="noopener">3drukar.com/#process ↗</a></div>
+</div>
+
+<script>
+(function(){
+  var root=document.getElementById('dkpProcess'); if(!root) return;
+  var info=document.getElementById('dkpInfo'), def=info.innerHTML;
+  var D={
+    1:'<b>1. Гранула.</b> PETG/PLA-гранула (з барвником) подається з бункера в екструдер. Перед цим гранулу сушать — волога дає бульбашки й крихкість.',
+    2:'<b>2. Екструдер.</b> Шнек проштовхує гранулу через зони нагріву, полімер плавиться і гомогенізується, розплав виходить через фільєру.',
+    3:'<b>3. Охолодження.</b> Нитка проходить водяну ванну й набуває форми; температура води впливає на круглість і внутрішні напруження.',
+    4:'<b>4. Лазер.</b> Лазерний мікрометр безперервно вимірює діаметр (ціль 1.75 мм) і подає сигнал на регулювання швидкості.',
+    5:'<b>5. Тягнучий пристрій.</b> Ролики тягнуть нитку з контрольованою швидкістю — саме швидкість протяжки утримує діаметр у допуску.',
+    6:'<b>6. Намотування.</b> Нитка рівно укладається на котушку DRUKAR, далі — контроль ваги, вакуумне пакування та маркування.'
+  };
+  root.querySelectorAll('.dkp-zone').forEach(function(z){
+    z.addEventListener('mouseenter',function(){
+      root.querySelectorAll('.dkp-zone.on').forEach(function(o){o.classList.remove('on')});
+      z.classList.add('on'); info.innerHTML=D[z.dataset.step];
+    });
+  });
+  root.querySelector('svg').addEventListener('mouseleave',function(){
+    root.querySelectorAll('.dkp-zone.on').forEach(function(o){o.classList.remove('on')}); info.innerHTML=def;
+  });
+  root.querySelector('svg').addEventListener('click',function(){
+    var p=root.classList.toggle('dkp-paused'), s=root.querySelector('svg');
+    if(s.pauseAnimations){p?s.pauseAnimations():s.unpauseAnimations();}
+  });
+  var lv=document.getElementById('dkpLaserVal'), vals=['1.75','1.75','1.76','1.75','1.74','1.75'], i=0;
+  setInterval(function(){ if(!root.classList.contains('dkp-paused')){ i=(i+1)%vals.length; lv.textContent=vals[i]; } },700);
+})();
+</script>
+<!-- ===== /DRUKAR process ===== -->
+
   <div class="note-line">ℹ Список редагується у файлі <b>resources.json</b> у репозиторії дашборду: група → посилання (назва, URL, опис). Після push зміни з'являться з наступним оновленням.</div>
 </div>
 </div><!-- /main -->
@@ -2657,6 +2883,7 @@ const W_PLA={{PLA_WASTE}};
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG={{COST_PETG_KG}};
 const CPKG_PLA={{COST_PLA_KG}};
+const COST_NOTES={{COST_NOTES}}; // 🆕 примітки до собівартості (cost_1c.json)
 const FIN_INCOME=/*INCOME*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_EXPENSES=/*EXPENSES*/[null,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
@@ -3749,6 +3976,7 @@ function initCosts(){
     // Телефон: лише місяці з даними (порожні місяці року забирають місце у стовпчиків)
     const cpkIdx = window.innerWidth<=760 ? MS.map((_,i)=>i).filter(i=>CPKG_PETG[i]!=null||CPKG_PLA[i]!=null) : MS.map((_,i)=>i);
     const cpk = arr => cpkIdx.map(i=>arr[i]);
+    (function(){var n=document.getElementById('cpkNote'); if(n) n.textContent=(COST_NOTES&&COST_NOTES.length)?'ℹ '+COST_NOTES.join(' · '):'';})();
     safeCreateChart('costPerKgChart',{
       plugins:[barLabelsPlugin],
       data:{labels:cpk(MS),datasets:[
@@ -8921,41 +9149,6 @@ function waRender() {
   }
 }
 
-
-  safeCreateChart('waPlasticKgChart',{
-    type:'bar',
-    data:{labels:wLabels,datasets:[
-      {label:'PETG екструдер кг', data:wkLast8.map(function(w){return Math.round(w.petg_autokg||0);}),
-       backgroundColor:'#1A56DBcc',borderColor:'#1A56DB',borderWidth:1,borderRadius:3},
-      {label:'PETG готова кг',    data:wkLast8.map(function(w){return Math.round(w.petg_prod||0);}),
-       backgroundColor:'#1A56DB44',borderColor:'#1A56DB',borderWidth:1,borderRadius:3,
-       borderDash:[4,2]},
-      {label:'PLA екструдер кг',  data:wkLast8.map(function(w){return Math.round(w.pla_autokg||0);}),
-       backgroundColor:'#1E8A44cc',borderColor:'#1E8A44',borderWidth:1,borderRadius:3},
-      {label:'PLA готова кг',     data:wkLast8.map(function(w){return Math.round(w.pla_prod||0);}),
-       backgroundColor:'#1E8A4444',borderColor:'#1E8A44',borderWidth:1,borderRadius:3},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:TC,font:{size:10},boxWidth:12}}},
-      scales:{x:{...GR},y:{...GR,beginAtZero:true,
-        ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
-    }
-  });
-
-  safeCreateChart('waPlasticCoilsChart',{
-    type:'bar',
-    data:{labels:wLabels,datasets:[
-      {label:'PETG котушок',data:wkLast8.map(function(w){return Math.round(w.petg_coils||0);}),
-       backgroundColor:'#2E75B6aa',borderColor:'#2E75B6',borderWidth:1,borderRadius:3},
-      {label:'PLA котушок', data:wkLast8.map(function(w){return Math.round(w.pla_coils||0);}),
-       backgroundColor:'#107C10aa',borderColor:'#107C10',borderWidth:1,borderRadius:3},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:TC,font:{size:11}}}},
-      scales:{x:{...GR},y:{...GR,beginAtZero:true,
-        ticks:{...GR.ticks,callback:function(v){return v>=1000?(v/1000).toFixed(1)+'k':v;}}}}
-    }
-  });
 
 </script>
 </body>
