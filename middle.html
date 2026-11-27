@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-11-27 14:10 — Фінанси: примітка під «Собівартість 1 кг» (COST_NOTES з cost_1c.json — калькуляція 1С).
+<!-- BUILD: 2026-11-27 14:20 — Продажі: картка «Звірка продажів · Журнал відвантажень ↔ P&L» (RECON_DATA, лише ТОП), червоним — розбіжність >2%.
+     BUILD: 2026-11-27 14:10 — Фінанси: примітка під «Собівартість 1 кг» (COST_NOTES з cost_1c.json — калькуляція 1С).
      BUILD: 2026-11-27 13:40 — виправлено «wLabels is not defined»: прибрано осиротілий код графіків waPlasticKgChart/waPlasticCoilsChart (без canvas, поза функцією waRender). Ресурси: анімована схема «Процес виробництва філаменту» (як на 3drukar.com/#process, блок dkp-*), посилання на сайт 3drukar.com у групі «Маркетинг» (resources.json).
      BUILD: 2026-09-30 20:10 — усе виробниче — з журналів (djLoad з перевіркою колонок за вмістом): День/Ніч, PETG/PLA, тижневі теплокарти, понеділковий аналіз, Оператори (внесок = «Эффективность»×продукція блоку, старші зміни); _AllData_Product не читається; банер лише при зламаній структурі журналу; Фінанси — підписи собівартості без накладань.
      BUILD: 2026-09-30 18:40 — «Продуктивність ліній по днях» теж з журналів (графік вічно «завантажувався» через зламаний _AllData_Product); банер про зламаний _AllData прибрано з вкладки «Лінії».
@@ -277,6 +278,17 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
   td.kph-min{color:#c24141;background:rgba(220,38,38,.08);font-weight:700}
   td.kph-max small,td.kph-min small{color:inherit;opacity:.75}
   .est{color:var(--warn);font-weight:600;cursor:help}
+  /* 🆕 Звірка журнал ↔ P&L */
+  .recon-wrap{overflow-x:auto}
+  .recon-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .recon-table th,.recon-table td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  .recon-table th{color:var(--muted);font-weight:600;font-size:10px;letter-spacing:.5px}
+  .recon-table th.grp{text-align:center;color:var(--text);border-bottom:2px solid var(--accent)}
+  .recon-table td:first-child,.recon-table th:first-child{text-align:left}
+  .recon-table td.d-ok{color:#16a34a;font-weight:600}
+  .recon-table td.d-bad{color:#fff;background:#dc2626;font-weight:700;border-radius:3px}
+  .recon-table tr.partial td{opacity:.6}
+  .recon-table td.sep{border-left:2px solid var(--border)}
   /* Ресурси */
   .res-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
   .res-search{flex:1;min-width:220px;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--text);outline:none}
@@ -440,7 +452,7 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
     </div>
     </div>
   </div>
-  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 27.11.2026 12:01 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
+  <div class="header-meta" style="flex-shrink:0">ДАНІ: ОНОВЛЕНО 27.11.2026 12:14 UTC<br>8 ЛІНІЙ · 21 ОПЕРАТОРІВ · PETG + PLA<br><span style="color:var(--accent)">● АКТИВНИЙ МОНІТОРИНГ</span><br><span id="quoteDate" style="color:rgba(37,99,235,.5);letter-spacing:1.5px"></span></div>
 </header>
 
 
@@ -1950,6 +1962,17 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
       <div class="cw-lg"><canvas id="avgPriceChart"></canvas></div>
     </div>
   </div>
+
+  <!-- 🆕 2026-11-27: звірка Журнал відвантажень ↔ управлінський P&L -->
+  <div class="card" id="reconCard" style="margin-top:14px;display:none">
+    <div class="card-header">
+      <div><div class="card-title">Звірка продажів · Журнал відвантажень ↔ P&L</div>
+      <div class="card-subtitle">грн за місяць · Δ = (журнал − P&L) / P&L · червоним — розбіжність понад 2%</div></div>
+      <span class="badge badge-blue" id="reconBadge"></span>
+    </div>
+    <div class="recon-wrap"><table class="recon-table" id="reconTable"></table></div>
+    <div class="note-line" style="margin-top:8px">ℹ Пари: <b>Изи ↔ Easy</b>, <b>Стрім + Роздріб ↔ ТОВ + ФОП</b>, <b>Разом ↔ Доходи</b>. Журнал — первинне джерело; P&L — управлінський документ для перевірки. Поточний місяць неповний (P&L оновлюється із затримкою).</div>
+  </div>
 </div>
 
 <!-- ══════════════ FORECAST ══════════════ -->
@@ -2896,7 +2919,8 @@ const W_PLA=[1.05,14.33,3.16,1.35,1.91,1.35,1.09,1.06,1.79,1.32,null,null,null,n
 const WASTE_PCT=W_PETG.map((v,i)=>v!==null&&W_PLA[i]!==null?+((v+W_PLA[i])/2).toFixed(2):v!==null?v:W_PLA[i]);
 const CPKG_PETG=[null,null,151.52,148.16,156.01,192.99,169.37,165.16,157.03,157.03,199.23,null,null,null];
 const CPKG_PLA=[null,null,179.55,181.9,200.77,210.5,213.76,210.21,200.02,200.02,247.71,null,null,null];
-const COST_NOTES=["Вер 26 — калькуляція 1С (ТОВ): PETG 3 кг чорний 597,69 грн/шт = 199,23 грн/кг; PLA — напівфабрикат 247,71 грн/кг (готовий PLA у вересні не випускали). Сировина + пакування + загальновиробничі + амортизація, без ЗП.", "Жов 26 — не перераховано (чекаємо калькуляцію).", "Лис 26 — не перераховано (чекаємо калькуляцію)."]; // 🆕 примітки до собівартості (cost_1c.json)
+const COST_NOTES=["Вер 26 — калькуляція 1С (ТОВ): PETG 3 кг чорний 597,69 грн/шт = 199,23 грн/кг; PLA — напівфабрикат 247,71 грн/кг (готовий PLA у вересні не випускали). Сировина + пакування + загальновиробничі + амортизація, без ЗП.", "Жов 26 — не перераховано (чекаємо калькуляцію).", "Лис 26 — не перераховано (чекаємо калькуляцію)."];
+const RECON_DATA=[]; // 🆕 звірка журнал ↔ P&L (лише ТОП) // 🆕 примітки до собівартості (cost_1c.json)
 const FIN_INCOME=[3499280,8452623,8735424,24480,1891488,23635005,25455441,26450708,35188477,38726772,27977622,28623197,22029907,null];
 const FIN_EXPENSES=[5504774,null,null,null,null,null,null,null,null,null,null,null,null,null];
 const FIN_PROFIT=[-703788,null,-1552289,-285383,196143,null,null,null,null,null,null,null,null,null];
@@ -5016,7 +5040,35 @@ function lRenderResults(filtered, errors) {
   el.innerHTML = html;
 }
 
+// 🆕 2026-11-27: звірка Журнал відвантажень ↔ P&L
+function reconRender(){
+  var card=document.getElementById('reconCard'), tb=document.getElementById('reconTable');
+  if(!card||!tb) return;
+  var R=(typeof RECON_DATA!=='undefined'&&RECON_DATA)||[];
+  if(!R.length){ card.style.display='none'; return; }
+  card.style.display='';
+  var UA=['','Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+  var f=function(v){ return v==null?'—':Math.round(v).toLocaleString('uk-UA'); };
+  var d=function(v,partial){
+    if(v==null) return '<td class="sep">—</td>';
+    var bad=Math.abs(v)>2;
+    return '<td class="sep '+(bad?(partial?'':'d-bad'):'d-ok')+'" title="'+(partial?'Поточний місяць — неповний':'')+'">'+(v>0?'+':'')+v.toFixed(1)+'%</td>';
+  };
+  var bad=0, h='<thead><tr><th></th><th class="grp" colspan="4">Журнал відвантажень</th><th class="grp" colspan="4">P&L (управлінський)</th><th class="grp" colspan="3">Δ, %</th></tr>'+
+    '<tr><th>Місяць</th><th>Стрім</th><th>Роздріб</th><th>Изи</th><th>Разом</th><th>ТОВ</th><th>ФОП</th><th>Easy</th><th>Доходи</th><th>Изи↔Easy</th><th>Стрім+Розд↔ТОВ+ФОП</th><th>Разом</th></tr></thead><tbody>';
+  R.forEach(function(r){
+    var m=+r.ym.slice(5,7), lbl=UA[m]+' '+r.ym.slice(2,4)+(r.partial?' *':'');
+    if(!r.partial && [r.d_easy,r.d_tovfop,r.d_total].some(function(x){return x!=null&&Math.abs(x)>2;})) bad++;
+    h+='<tr class="'+(r.partial?'partial':'')+'"><td>'+lbl+'</td><td>'+f(r.j_strim)+'</td><td>'+f(r.j_ret)+'</td><td>'+f(r.j_izi)+'</td><td><b>'+f(r.j_total)+'</b></td>'+
+       '<td class="sep">'+f(r.p_tov)+'</td><td>'+f(r.p_fop)+'</td><td>'+f(r.p_easy)+'</td><td><b>'+f(r.p_total)+'</b></td>'+
+       d(r.d_easy,r.partial)+d(r.d_tovfop,r.partial)+d(r.d_total,r.partial)+'</tr>';
+  });
+  tb.innerHTML=h+'</tbody>';
+  var b=document.getElementById('reconBadge');
+  if(b) b.textContent=bad?('⚠ '+bad+' міс. з розбіжністю >2%'):'✓ усе в межах 2%';
+}
 function initSales() {
+  try{ reconRender(); }catch(e){ console.warn('recon',e); }
   // Chart 1: Monthly sales stacked bar Опт + Роздріб
   safeCreateChart('salesMonthChart', {
     type: 'bar',
