@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<!-- BUILD: 2026-11-27 14:20 — Продажі: картка «Звірка продажів · Журнал відвантажень ↔ P&L» (RECON_DATA, лише ТОП), червоним — розбіжність >2%.
+<!-- BUILD: 2026-11-27 14:20 — Продажі: картка «Звірка продажів · Журнал відвантажень ↔ P&L» (RECON_DATA, лише ТОП; клієнти знеособлені: Клієнт 1 / Клієнт 2), червоним — розбіжність >2%.
      BUILD: 2026-11-27 14:10 — Фінанси: примітка під «Собівартість 1 кг» (COST_NOTES з cost_1c.json — калькуляція 1С).
      BUILD: 2026-11-27 13:40 — виправлено «wLabels is not defined»: прибрано осиротілий код графіків waPlasticKgChart/waPlasticCoilsChart (без canvas, поза функцією waRender). Ресурси: анімована схема «Процес виробництва філаменту» (як на 3drukar.com/#process, блок dkp-*), посилання на сайт 3drukar.com у групі «Маркетинг» (resources.json).
      BUILD: 2026-09-30 20:10 — усе виробниче — з журналів (djLoad з перевіркою колонок за вмістом): День/Ніч, PETG/PLA, тижневі теплокарти, понеділковий аналіз, Оператори (внесок = «Эффективность»×продукція блоку, старші зміни); _AllData_Product не читається; банер лише при зламаній структурі журналу; Фінанси — підписи собівартості без накладань.
@@ -1958,7 +1958,7 @@ function allLocLines(){ var out = []; LOC_LINE_RANGES.forEach(function(r){ out =
       <span class="badge badge-blue" id="reconBadge"></span>
     </div>
     <div class="recon-wrap"><table class="recon-table" id="reconTable"></table></div>
-    <div class="note-line" style="margin-top:8px">ℹ Пари: <b>Изи ↔ Easy</b>, <b>Стрім + Роздріб ↔ ТОВ + ФОП</b>, <b>Разом ↔ Доходи</b>. Журнал — первинне джерело; P&L — управлінський документ для перевірки. Поточний місяць неповний (P&L оновлюється із затримкою).</div>
+    <div class="note-line" style="margin-top:8px">ℹ Пари: <b>Клієнт 2 ↔ Easy</b>, <b>Клієнт 1 + Роздріб ↔ ТОВ + ФОП</b>, <b>Разом ↔ Доходи</b>. Журнал — первинне джерело; P&L — управлінський документ для перевірки. Поточний місяць неповний (P&L оновлюється із затримкою).</div>
   </div>
 </div>
 
@@ -5042,7 +5042,7 @@ function reconRender(){
     return '<td class="sep '+(bad?(partial?'':'d-bad'):'d-ok')+'" title="'+(partial?'Поточний місяць — неповний':'')+'">'+(v>0?'+':'')+v.toFixed(1)+'%</td>';
   };
   var bad=0, h='<thead><tr><th></th><th class="grp" colspan="4">Журнал відвантажень</th><th class="grp" colspan="4">P&L (управлінський)</th><th class="grp" colspan="3">Δ, %</th></tr>'+
-    '<tr><th>Місяць</th><th>Стрім</th><th>Роздріб</th><th>Изи</th><th>Разом</th><th>ТОВ</th><th>ФОП</th><th>Easy</th><th>Доходи</th><th>Изи↔Easy</th><th>Стрім+Розд↔ТОВ+ФОП</th><th>Разом</th></tr></thead><tbody>';
+    '<tr><th>Місяць</th><th>Клієнт 1</th><th>Роздріб</th><th>Клієнт 2</th><th>Разом</th><th>ТОВ</th><th>ФОП</th><th>Easy</th><th>Доходи</th><th>Кл.2↔Easy</th><th>Кл.1+Розд↔ТОВ+ФОП</th><th>Разом</th></tr></thead><tbody>';
   R.forEach(function(r){
     var m=+r.ym.slice(5,7), lbl=UA[m]+' '+r.ym.slice(2,4)+(r.partial?' *':'');
     if(!r.partial && [r.d_easy,r.d_tovfop,r.d_total].some(function(x){return x!=null&&Math.abs(x)>2;})) bad++;
